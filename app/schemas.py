@@ -24,6 +24,7 @@ class UserCreate(BaseModel):
     phone: str = Field(min_length=6, max_length=20)
     full_name: str = Field(min_length=1, max_length=100)
     role: str = Field(pattern="^(passenger|driver)$")
+    password: str = Field(min_length=8, max_length=128)
     avatar_url: str | None = None
 
 
@@ -38,8 +39,17 @@ class UserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class LoginRequest(BaseModel):
+    phone: str = Field(min_length=6, max_length=20)
+    password: str = Field(min_length=8, max_length=128)
+
+
+class AuthResponse(BaseModel):
+    token: str
+    user: UserRead
+
+
 class VehicleCreate(BaseModel):
-    owner_id: UUID
     plate_number: str = Field(min_length=1, max_length=20)
     seat_type: int
     model: str | None = Field(default=None, max_length=50)
@@ -58,7 +68,6 @@ class VehicleRead(BaseModel):
 
 
 class TripCreate(BaseModel):
-    driver_id: UUID
     vehicle_id: UUID | None = None
     departure_province: str = Field(min_length=1, max_length=50)
     destination_province: str = Field(min_length=1, max_length=50)
@@ -86,7 +95,6 @@ class TripRead(BaseModel):
 
 class BookingCreate(BaseModel):
     trip_id: UUID
-    passenger_id: UUID
     seat_numbers: list[int] = Field(min_length=1)
     total_price: Decimal = Field(gt=0)
     status: str = Field(default="pending", pattern="^(pending|confirmed|cancelled)$")

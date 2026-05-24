@@ -67,7 +67,9 @@ The app starts on `http://127.0.0.1:8000` and runs `alembic upgrade head` before
 - `GET /items/{item_id}`
 - `PUT /items/{item_id}`
 - `DELETE /items/{item_id}`
-- `POST /travel/users`
+- `POST /travel/auth/signup`
+- `POST /travel/auth/login`
+- `GET /travel/auth/me`
 - `GET /travel/users/{user_id}`
 - `POST /travel/vehicles`
 - `GET /travel/vehicles/{vehicle_id}`
@@ -80,6 +82,32 @@ The app starts on `http://127.0.0.1:8000` and runs `alembic upgrade head` before
 - `GET /travel/payments/{payment_id}`
 
 Open `http://127.0.0.1:8000/docs` for interactive API docs.
+
+## Travel auth
+
+The travel API now uses bearer-token authentication.
+
+1. Sign up with `POST /travel/auth/signup`
+2. Log in with `POST /travel/auth/login`
+3. Send the returned token in `Authorization: Bearer <token>`
+
+Signup body example:
+
+```json
+{
+  "phone": "012345678",
+  "full_name": "Sok Dara",
+  "role": "driver",
+  "password": "strongpass123",
+  "avatar_url": null
+}
+```
+
+After login/signup, authenticated routes derive the acting user from the token:
+
+- vehicle creation uses the logged-in driver as `owner_id`
+- trip creation uses the logged-in driver as `driver_id`
+- booking creation uses the logged-in passenger as `passenger_id`
 
 ## Database and migrations
 

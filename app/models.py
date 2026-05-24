@@ -1,10 +1,11 @@
 from sqlalchemy import (
-    String, 
-    Boolean, 
-    DateTime, 
-    Numeric, 
-    Integer, 
-    ARRAY, 
+    String,
+    Boolean,
+    DateTime,
+    Numeric,
+    Integer,
+    ARRAY,
+    Text,
     ForeignKey,
     CheckConstraint,
     Index,
@@ -29,6 +30,7 @@ class User(Base):
     phone: Mapped[str] = mapped_column(String(20), unique=True, nullable=False, index=True)
     full_name: Mapped[str] = mapped_column(String(100), nullable=False)
     role: Mapped[str] = mapped_column(String(20), nullable=False)  # 'passenger' or 'driver'
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     avatar_url: Mapped[str | None] = mapped_column(String, nullable=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
@@ -37,6 +39,7 @@ class User(Base):
     vehicles: Mapped[list["Vehicle"]] = relationship("Vehicle", back_populates="owner", cascade="all, delete-orphan")
     trips: Mapped[list["Trip"]] = relationship("Trip", back_populates="driver", foreign_keys="Trip.driver_id", cascade="all, delete-orphan")
     bookings: Mapped[list["Booking"]] = relationship("Booking", back_populates="passenger", cascade="all, delete-orphan")
+    auth_tokens: Mapped[list["AuthToken"]] = relationship("AuthToken", back_populates="user", cascade="all, delete-orphan")
 
     __table_args__ = (
         CheckConstraint("role IN ('passenger', 'driver')", name='role_check'),
@@ -144,3 +147,14 @@ class Payment(Base):
     __table_args__ = (
         CheckConstraint("status IN ('pending', 'success', 'failed')", name='payment_status_check'),
     )
+
+
+class AuthToken(Base):
+    __tablename__ = "auth_tokens"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    token: Mapped[str] = mapped_column(Text, unique=True, nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
+
+    user: Mapped["User"] = relationship("User", back_populates="auth_tokens")
