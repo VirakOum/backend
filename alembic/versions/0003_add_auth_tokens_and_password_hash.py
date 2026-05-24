@@ -1,6 +1,6 @@
 """Add password hash and auth tokens
 
-Revision ID: 0003_add_auth_tokens_and_password_hash
+Revision ID: 0003_auth_tokens
 Revises: 0002_create_rideshare_tables
 Create Date: 2026-05-24 00:00:00.000000
 
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 
-revision = "0003_add_auth_tokens_and_password_hash"
+revision = "0003_auth_tokens"
 down_revision = "0002_create_rideshare_tables"
 branch_labels = None
 depends_on = None
