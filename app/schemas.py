@@ -130,3 +130,32 @@ class PaymentRead(BaseModel):
     paid_at: datetime | None
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
+
+
+class PassengerPlaceUpsert(BaseModel):
+    address_line: str = Field(min_length=1, max_length=255)
+    lat: float
+    lng: float
+    note: str | None = Field(default=None, max_length=255)
+
+
+class PassengerPlaceItem(BaseModel):
+    key: str
+    label: str
+    address_id: str | None
+    address_line: str | None
+    has_address: bool
+
+
+class PassengerPlacesResponse(BaseModel):
+    places: list[PassengerPlaceItem]
+
+
+class ScheduleOption(BaseModel):
+    id: str
+    label: str
+
+
+class TripSearchConfigResponse(BaseModel):
+    default_schedule: str
+    schedule_options: list[ScheduleOption]

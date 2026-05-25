@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from .routes.items import router as items_router
 from .routes.meta import router as meta_router
 from .routes.travel import router as travel_router
+from .routes.passenger import router as passenger_router
 
 app = FastAPI(
     title="Learning FastAPI",
@@ -19,3 +20,4 @@ app = FastAPI(
 # app.include_router(meta_router)
 # app.include_router(items_router)
 app.include_router(travel_router)
+app.include_router(passenger_router)

@@ -50,6 +50,12 @@ It now uses PostgreSQL in Docker and Alembic for database migrations.
    pytest
    ```
 
+8. Seed demo data:
+
+   ```bash
+   python3 scripts/seed_demo_data.py
+   ```
+
 ### Run everything in Docker
 
 ```bash
@@ -80,6 +86,9 @@ The app starts on `http://127.0.0.1:8000` and runs `alembic upgrade head` before
 - `GET /travel/bookings/{booking_id}`
 - `POST /travel/payments`
 - `GET /travel/payments/{payment_id}`
+- `GET /passenger/profile/places`
+- `PUT /passenger/profile/places/{key}`
+- `GET /passenger/trips/search-config`
 
 Open `http://127.0.0.1:8000/docs` for interactive API docs.
 
@@ -108,6 +117,11 @@ After login/signup, authenticated routes derive the acting user from the token:
 - vehicle creation uses the logged-in driver as `owner_id`
 - trip creation uses the logged-in driver as `driver_id`
 - booking creation uses the logged-in passenger as `passenger_id`
+
+Demo seed accounts after running `python3 scripts/seed_demo_data.py`:
+
+- driver: `012345678` / `strongpass123`
+- passenger: `099887766` / `strongpass123`
 
 ## Database and migrations
 

@@ -130,14 +130,6 @@ def create_trip(
 	return TripRead.model_validate(trip)
 
 
-@router.get("/trips/{trip_id}", response_model=TripRead)
-def get_trip(trip_id: UUID, db: Session = Depends(get_db)) -> TripRead:
-	trip = db.get(Trip, trip_id)
-	if trip is None:
-		raise HTTPException(status_code=404, detail="Trip not found")
-	return TripRead.model_validate(trip)
-
-
 @router.get("/trips/search", response_model=list[TripRead])
 def search_trips(
 	departure_province: str = Query(min_length=1, max_length=50),
@@ -152,6 +144,14 @@ def search_trips(
 		)
 	).scalars().all()
 	return [TripRead.model_validate(row) for row in rows]
+
+
+@router.get("/trips/{trip_id}", response_model=TripRead)
+def get_trip(trip_id: UUID, db: Session = Depends(get_db)) -> TripRead:
+	trip = db.get(Trip, trip_id)
+	if trip is None:
+		raise HTTPException(status_code=404, detail="Trip not found")
+	return TripRead.model_validate(trip)
 
 
 @router.post("/bookings", response_model=BookingRead, status_code=status.HTTP_201_CREATED)

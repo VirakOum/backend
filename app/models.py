@@ -8,6 +8,7 @@ from sqlalchemy import (
     Text,
     ForeignKey,
     CheckConstraint,
+    UniqueConstraint,
     Index,
     func,
 )
@@ -158,3 +159,22 @@ class AuthToken(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
 
     user: Mapped["User"] = relationship("User", back_populates="auth_tokens")
+
+
+class PassengerQuickPlace(Base):
+    __tablename__ = "passenger_quick_places"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    key: Mapped[str] = mapped_column(String(20), nullable=False)
+    label: Mapped[str] = mapped_column(String(50), nullable=False)
+    address_line: Mapped[str] = mapped_column(String(255), nullable=False)
+    lat: Mapped[float] = mapped_column(Numeric(10, 6), nullable=False)
+    lng: Mapped[float] = mapped_column(Numeric(10, 6), nullable=False)
+    note: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "key", name="uq_passenger_quick_places_user_key"),
+    )
