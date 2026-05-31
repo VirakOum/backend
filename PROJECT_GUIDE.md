@@ -12,7 +12,10 @@ This is a FastAPI backend project for a travel/rideshare-style system with:
 - bookings created by passengers
 - payments tied to bookings
 - passenger quick places (`home`, `work`)
-- passenger search config for trip schedule UI
+- passenger search config for trip schedule + ride choices UI
+- live driver departure location (`lat/lng`) on trips
+- automatic live-location cleanup after 24 hours
+- optional weekly auto-repeat trip settings for drivers
 
 Primary router groups:
 - `/travel/*` for auth + core travel flow
@@ -80,6 +83,12 @@ erDiagram
       string departure_province
       string destination_province
       datetime departure_time
+      decimal departure_lat
+      decimal departure_lng
+      datetime live_location_expires_at
+      bool auto_repeat_weekly
+      int recurring_day_of_week
+      time recurring_departure_time
       decimal price_per_seat
       int total_seats
       int available_seats
@@ -134,6 +143,7 @@ Important constraints:
 - `vehicles.seat_type` in (`4`, `15`, `30`, `45`)
 - status constraints on trips/bookings/payments
 - unique `(user_id, key)` on `passenger_quick_places`
+- `trips.recurring_day_of_week` in `0..6` when present
 
 ## 4. API Structure (Current)
 
@@ -150,6 +160,16 @@ Important constraints:
 - `GET /travel/trips/search`
 - `GET /travel/trips/{trip_id}`
 
+`/travel/trips` create payload now supports:
+- `departure_lat`, `departure_lng`
+- `auto_repeat_weekly`
+- `recurring_day_of_week`
+- `recurring_departure_time`
+
+Live-location behavior:
+- if `departure_lat/lng` is set on trip creation, backend sets `live_location_expires_at = now + 24h`
+- expired live location is auto-cleared when trip search/detail endpoints are called
+
 ### Passenger booking/payment
 - `POST /travel/bookings`
 - `GET /travel/bookings/{booking_id}`
@@ -160,6 +180,31 @@ Important constraints:
 - `GET /passenger/profile/places`
 - `PUT /passenger/profile/places/{key}`
 - `GET /passenger/trips/search-config`
+- `GET /passenger/nearby-drivers`
+
+`/passenger/trips/search-config` now includes:
+- `default_schedule`
+- `schedule_options`
+- `ride_choices` (`economy`, `comfort`, `premium`, `xl`, `more`)
+
+`/passenger/nearby-drivers` query:
+- required: `lat`, `lng`, `radius_km`
+- optional: `seat_type` (`4`, `15`, `30`, `45`)
+
+`/passenger/nearby-drivers` response item includes:
+- `driver_id`, `trip_id`
+- `lat`, `lng`, `speed_kph`, `updated_at`
+- `auto_repeat_weekly`
+- `seat_type`, `total_seats`, `available_seats`
+
+Filtering behavior:
+- always returns only `active` trips with non-expired live location
+- if `seat_type` is provided:
+- includes only matching seat type
+- excludes full vehicles (`available_seats <= 0`)
+- requires fresh updates (`updated_at` within 60 seconds)
+- if `seat_type` is not provided:
+- keeps backward compatibility and returns all nearby live active drivers
 
 ## 5. Folder Structure
 
@@ -230,9 +275,20 @@ Run tests:
 pytest
 ```
 
+Seed demo data:
+```bash
+python3 scripts/seed_demo_data.py
+```
+
+Run containers:
+```bash
+docker compose up --build -d
+```
+
 ## 8. Notes for Future Improvements
 
 - Consider moving business logic from routes into service classes for easier testability.
 - Consider token expiration/refresh strategy for auth tokens.
 - Add richer passenger quick-place keys if frontend expands beyond `home` and `work`.
 - Add endpoint versioning (`/v1/...`) if API scope grows.
+- Consider a background scheduler (cron/Celery/APScheduler) for strict time-based live-location cleanup, not only request-time cleanup.

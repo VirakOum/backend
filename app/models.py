@@ -2,22 +2,28 @@ from sqlalchemy import (
     String,
     Boolean,
     DateTime,
+    Time,
     Numeric,
     Integer,
     ARRAY,
+    JSON,
     Text,
     ForeignKey,
     CheckConstraint,
     UniqueConstraint,
     Index,
-    func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
-from datetime import datetime
+from datetime import datetime, time
+from zoneinfo import ZoneInfo
 
 from .db import Base
+
+
+def phnom_penh_now() -> datetime:
+    return datetime.now(ZoneInfo("Asia/Phnom_Penh")).replace(tzinfo=None)
 
 
 class User(Base):
@@ -34,13 +40,18 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     avatar_url: Mapped[str | None] = mapped_column(String, nullable=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
+    rating_avg: Mapped[float] = mapped_column(Numeric(3, 2), default=0)
+    rating_count: Mapped[int] = mapped_column(Integer, default=0)
+    completed_trips: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now)
 
     # Relationships
     vehicles: Mapped[list["Vehicle"]] = relationship("Vehicle", back_populates="owner", cascade="all, delete-orphan")
     trips: Mapped[list["Trip"]] = relationship("Trip", back_populates="driver", foreign_keys="Trip.driver_id", cascade="all, delete-orphan")
     bookings: Mapped[list["Booking"]] = relationship("Booking", back_populates="passenger", cascade="all, delete-orphan")
     auth_tokens: Mapped[list["AuthToken"]] = relationship("AuthToken", back_populates="user", cascade="all, delete-orphan")
+    notification_preferences: Mapped["NotificationPreference | None"] = relationship("NotificationPreference", back_populates="user", cascade="all, delete-orphan")
+    support_tickets: Mapped[list["SupportTicket"]] = relationship("SupportTicket", back_populates="user")
 
     __table_args__ = (
         CheckConstraint("role IN ('passenger', 'driver')", name='role_check'),
@@ -50,24 +61,26 @@ class User(Base):
 class Vehicle(Base):
     """
     Table: vehicles (ព័ត៌មានរថយន្ត)
-    Vehicle information with specific seat types (4, 15, 30, 45)
+    Vehicle information with specific seat types (4, 15, 16, 23, 30, 45)
     """
     __tablename__ = "vehicles"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     plate_number: Mapped[str] = mapped_column(String(20), unique=True, nullable=False, index=True)
-    seat_type: Mapped[int] = mapped_column(Integer, nullable=False)  # 4, 15, 30, or 45
+    seat_type: Mapped[int] = mapped_column(Integer, nullable=False)  # 4, 15, 16, 23, 30, or 45
+    vehicle_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     model: Mapped[str | None] = mapped_column(String(50), nullable=True)  # e.g., Prius, Hyundai County
+    color: Mapped[str | None] = mapped_column(String(30), nullable=True)
     company_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now)
 
     # Relationships
     owner: Mapped["User"] = relationship("User", back_populates="vehicles")
     trips: Mapped[list["Trip"]] = relationship("Trip", back_populates="vehicle", cascade="all, delete-orphan")
 
     __table_args__ = (
-        CheckConstraint("seat_type IN (4, 15, 30, 45)", name='seat_type_check'),
+        CheckConstraint("seat_type IN (4, 15, 16, 23, 30, 45)", name='seat_type_check'),
     )
 
 
@@ -84,11 +97,22 @@ class Trip(Base):
     departure_province: Mapped[str] = mapped_column(String(50), nullable=False)
     destination_province: Mapped[str] = mapped_column(String(50), nullable=False)
     departure_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    departure_lat: Mapped[float | None] = mapped_column(Numeric(10, 6), nullable=True)
+    departure_lng: Mapped[float | None] = mapped_column(Numeric(10, 6), nullable=True)
+    live_heading: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    live_speed_kph: Mapped[float | None] = mapped_column(Numeric(6, 2), nullable=True)
+    live_location_updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    live_location_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    auto_repeat_weekly: Mapped[bool] = mapped_column(Boolean, default=False)
+    recurring_day_of_week: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 0=Mon .. 6=Sun
+    recurring_departure_time: Mapped[time | None] = mapped_column(Time, nullable=True)
+    promotion_label: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    promotion_discount_percent: Mapped[int | None] = mapped_column(Integer, nullable=True)
     price_per_seat: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     total_seats: Mapped[int] = mapped_column(Integer, nullable=False)
     available_seats: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(String(20), default='scheduled')  # 'scheduled', 'active', 'completed', 'cancelled'
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now)
 
     # Relationships
     driver: Mapped["User"] = relationship("User", back_populates="trips", foreign_keys=[driver_id])
@@ -97,7 +121,22 @@ class Trip(Base):
 
     __table_args__ = (
         CheckConstraint("status IN ('scheduled', 'active', 'completed', 'cancelled')", name='trip_status_check'),
+        CheckConstraint(
+            "recurring_day_of_week IS NULL OR (recurring_day_of_week >= 0 AND recurring_day_of_week <= 6)",
+            name="trip_recurring_day_of_week_check",
+        ),
+        CheckConstraint(
+            "promotion_discount_percent IS NULL OR (promotion_discount_percent >= 0 AND promotion_discount_percent <= 100)",
+            name="trip_promotion_discount_percent_check",
+        ),
         Index('idx_trips_provinces', 'departure_province', 'destination_province'),
+        Index(
+            "idx_trips_route_departure_status",
+            "departure_province",
+            "destination_province",
+            "departure_time",
+            "status",
+        ),
     )
 
 
@@ -113,8 +152,9 @@ class Booking(Base):
     passenger_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     seat_numbers: Mapped[list[int]] = mapped_column(ARRAY(Integer), nullable=False)  # e.g., [1, 2, 3]
     total_price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    payment_method: Mapped[str] = mapped_column(String(20), default="cash_on_arrival")
     status: Mapped[str] = mapped_column(String(20), default='pending')  # 'pending', 'confirmed', 'cancelled'
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now)
 
     # Relationships
     trip: Mapped["Trip"] = relationship("Trip", back_populates="bookings")
@@ -123,6 +163,7 @@ class Booking(Base):
 
     __table_args__ = (
         CheckConstraint("status IN ('pending', 'confirmed', 'cancelled')", name='booking_status_check'),
+        CheckConstraint("payment_method IN ('khqr', 'cash_on_arrival')", name="booking_payment_method_check"),
     )
 
 
@@ -140,7 +181,7 @@ class Payment(Base):
     amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     status: Mapped[str] = mapped_column(String(20), default='pending')  # 'pending', 'success', 'failed'
     paid_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now)
 
     # Relationships
     booking: Mapped["Booking"] = relationship("Booking", back_populates="payments")
@@ -156,7 +197,7 @@ class AuthToken(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     token: Mapped[str] = mapped_column(Text, unique=True, nullable=False, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now)
 
     user: Mapped["User"] = relationship("User", back_populates="auth_tokens")
 
@@ -172,9 +213,45 @@ class PassengerQuickPlace(Base):
     lat: Mapped[float] = mapped_column(Numeric(10, 6), nullable=False)
     lng: Mapped[float] = mapped_column(Numeric(10, 6), nullable=False)
     note: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, onupdate=phnom_penh_now)
 
     __table_args__ = (
         UniqueConstraint("user_id", "key", name="uq_passenger_quick_places_user_key"),
+    )
+
+
+class NotificationPreference(Base):
+    __tablename__ = "notification_preferences"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True)
+    booking_updates: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    route_promotions: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    pickup_reminders: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, onupdate=phnom_penh_now)
+
+    user: Mapped["User"] = relationship("User", back_populates="notification_preferences")
+
+
+class SupportTicket(Base):
+    __tablename__ = "support_tickets"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    booking_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("bookings.id", ondelete="SET NULL"), nullable=True, index=True)
+    trip_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("trips.id", ondelete="SET NULL"), nullable=True, index=True)
+    category: Mapped[str] = mapped_column(String(50), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    passenger_location: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    driver_location: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    locale: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="open", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now)
+
+    user: Mapped["User | None"] = relationship("User", back_populates="support_tickets")
+
+    __table_args__ = (
+        CheckConstraint("status IN ('open', 'in_progress', 'resolved', 'closed')", name="support_ticket_status_check"),
     )

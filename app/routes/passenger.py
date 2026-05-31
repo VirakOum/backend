@@ -1,14 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException, Path
+from datetime import timedelta
+from math import asin, cos, radians, sin, sqrt
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..auth import get_current_user
 from ..db import get_db
-from ..models import PassengerQuickPlace, User
+from ..models import PassengerQuickPlace, Trip, User, phnom_penh_now
 from ..schemas import (
+    NearbyDriverItem,
+    NearbyDriversResponse,
     PassengerPlaceItem,
     PassengerPlacesResponse,
     PassengerPlaceUpsert,
+    RideChoiceOption,
+    ScheduleBucketRange,
     ScheduleOption,
     TripSearchConfigResponse,
 )
@@ -19,6 +25,14 @@ DEFAULT_PLACE_LABELS = {
     "home": "Home",
     "work": "Work",
 }
+
+
+def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    earth_radius_km = 6371.0
+    dlat = radians(lat2 - lat1)
+    dlng = radians(lng2 - lng1)
+    a = sin(dlat / 2) ** 2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlng / 2) ** 2
+    return 2 * earth_radius_km * asin(sqrt(a))
 
 
 @router.get("/profile/places", response_model=PassengerPlacesResponse)
@@ -111,4 +125,132 @@ def get_trip_search_config(
             ScheduleOption(id="now", label="Now"),
             ScheduleOption(id="later", label="Schedule"),
         ],
+        ride_choices=[
+            RideChoiceOption(
+                id="economy",
+                title="Economy",
+                meta="2 mins",
+                icon="directions_car_filled_rounded",
+                color="#4169E1",
+                seat_type=4,
+            ),
+            RideChoiceOption(
+                id="comfort",
+                title="Comfort",
+                meta="4 mins",
+                icon="airport_shuttle_rounded",
+                color="#697588",
+                seat_type=15,
+            ),
+            RideChoiceOption(
+                id="van_16",
+                title="16 Seats",
+                meta="5 mins",
+                icon="airport_shuttle_rounded",
+                color="#2F7D6B",
+                seat_type=16,
+            ),
+            RideChoiceOption(
+                id="sleeping_bus",
+                title="Sleeping Bus",
+                meta="7 mins",
+                icon="airline_seat_individual_suite_rounded",
+                color="#8B5E34",
+                seat_type=23,
+            ),
+            RideChoiceOption(
+                id="premium",
+                title="Premium",
+                meta="6 mins",
+                icon="local_taxi_rounded",
+                color="#353B4C",
+                seat_type=30,
+            ),
+            RideChoiceOption(
+                id="xl",
+                title="XL",
+                meta="8 mins",
+                icon="directions_bus_filled_rounded",
+                color="#4D5568",
+                seat_type=45,
+            ),
+            RideChoiceOption(
+                id="more",
+                title="More",
+                meta="",
+                icon="grid_view_rounded",
+                color="#697588",
+                is_more=True,
+            ),
+        ],
+        timezone="Asia/Phnom_Penh",
+        schedule_bucket_ranges=[
+            ScheduleBucketRange(id="morning", start="05:00", end="11:59"),
+            ScheduleBucketRange(id="afternoon", start="12:00", end="16:59"),
+            ScheduleBucketRange(id="evening", start="17:00", end="21:59"),
+        ],
     )
+
+
+@router.get("/nearby-drivers", response_model=NearbyDriversResponse)
+def get_nearby_drivers(
+    lat: float,
+    lng: float,
+    radius_km: float,
+    seat_type: int | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> NearbyDriversResponse:
+    if current_user.role != "passenger":
+        raise HTTPException(status_code=403, detail="Only passengers can access nearby drivers")
+
+    if radius_km <= 0:
+        raise HTTPException(status_code=400, detail="radius_km must be greater than 0")
+    if seat_type is not None and seat_type not in (4, 15, 16, 23, 30, 45):
+        raise HTTPException(status_code=400, detail="seat_type must be one of: 4, 15, 16, 23, 30, 45")
+
+    now = phnom_penh_now()
+    # Keep live data reasonably fresh while avoiding empty results for normal demo usage.
+    fresh_threshold = now - timedelta(minutes=30)
+    rows = db.execute(
+        select(Trip).where(
+            Trip.status == "active",
+            Trip.departure_lat.is_not(None),
+            Trip.departure_lng.is_not(None),
+            Trip.live_location_expires_at.is_not(None),
+            Trip.live_location_expires_at > now,
+        )
+    ).scalars().all()
+
+    drivers: list[NearbyDriverItem] = []
+    for trip in rows:
+        trip_seat_type = trip.total_seats
+        if seat_type is not None:
+            if trip_seat_type != seat_type:
+                continue
+            if trip.available_seats <= 0:
+                continue
+            if trip.live_location_updated_at is None or trip.live_location_updated_at < fresh_threshold:
+                continue
+
+        trip_lat = float(trip.departure_lat)
+        trip_lng = float(trip.departure_lng)
+        if _haversine_km(lat, lng, trip_lat, trip_lng) <= radius_km:
+            drivers.append(
+                NearbyDriverItem(
+                    trip_id=trip.id,
+                    driver_id=trip.driver_id,
+                    lat=trip_lat,
+                    lng=trip_lng,
+                    heading=trip.live_heading,
+                    speed_kph=float(trip.live_speed_kph) if trip.live_speed_kph is not None else None,
+                    seat_type=trip_seat_type,
+                    total_seats=trip.total_seats,
+                    available_seats=trip.available_seats,
+                    updated_at=trip.live_location_updated_at,
+                    expires_at=trip.live_location_expires_at,
+                    auto_repeat_weekly=trip.auto_repeat_weekly,
+                )
+            )
+
+    return NearbyDriversResponse(drivers=drivers)

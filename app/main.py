@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from .routes.items import router as items_router
 from .routes.meta import router as meta_router
@@ -11,10 +12,18 @@ app = FastAPI(
     description="A small FastAPI starter for learning how to build APIs.",
     servers=[
         {
-            "url": "http://127.0.0.1:8000",
+            "url": "http://192.168.1.176:8000",
             "description": "Local development server",
         }
     ],
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # app.include_router(meta_router)
