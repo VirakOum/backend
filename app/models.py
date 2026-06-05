@@ -26,6 +26,58 @@ def phnom_penh_now() -> datetime:
     return datetime.now(ZoneInfo("Asia/Phnom_Penh")).replace(tzinfo=None)
 
 
+class Address(Base):
+    __tablename__ = "addresses"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    code: Mapped[str] = mapped_column(String(20), unique=True, nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    type: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    parent_code: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    reference: Mapped[str | None] = mapped_column(Text, nullable=True)
+    official_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    note_by_checker: Mapped[str | None] = mapped_column(Text, nullable=True)
+    latitude: Mapped[float | None] = mapped_column(Numeric(10, 6), nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Numeric(10, 6), nullable=True)
+    lat_lng: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    o_b: Mapped[str | None] = mapped_column(String(10), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint(
+            "type IN ('country', 'province', 'district', 'commune', 'village', 'city', 'khan', 'sangkat', 'ក្រុង')",
+            name="address_type_check",
+        ),
+        Index("idx_addresses_type_parent_code", "type", "parent_code"),
+    )
+
+
+class AddressFormEntry(Base):
+    __tablename__ = "address_form_entries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    country_code: Mapped[str] = mapped_column(String(20), nullable=False)
+    country_name_en: Mapped[str] = mapped_column(String(255), nullable=False)
+    country_name_km: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    province_code: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    province_name_en: Mapped[str] = mapped_column(String(255), nullable=False)
+    province_name_km: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    district_code: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    district_name_en: Mapped[str] = mapped_column(String(255), nullable=False)
+    district_name_km: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    commune_code: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    commune_name_en: Mapped[str] = mapped_column(String(255), nullable=False)
+    commune_name_km: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    village_code: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    village_name_en: Mapped[str] = mapped_column(String(255), nullable=False)
+    village_name_km: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    detail_line: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    formatted_address_en: Mapped[str] = mapped_column(Text, nullable=False)
+    formatted_address_km: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, onupdate=phnom_penh_now)
+
+
 class User(Base):
     """
     Table: users (រក្សាទុកទិន្នន័យអ្នកប្រើប្រាស់)
@@ -77,7 +129,7 @@ class Vehicle(Base):
 
     # Relationships
     owner: Mapped["User"] = relationship("User", back_populates="vehicles")
-    trips: Mapped[list["Trip"]] = relationship("Trip", back_populates="vehicle", cascade="all, delete-orphan")
+    trips: Mapped[list["Trip"]] = relationship("Trip", back_populates="vehicle")
 
     __table_args__ = (
         CheckConstraint("seat_type IN (4, 15, 16, 23, 30, 45)", name='seat_type_check'),
@@ -103,9 +155,13 @@ class Trip(Base):
     live_speed_kph: Mapped[float | None] = mapped_column(Numeric(6, 2), nullable=True)
     live_location_updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     live_location_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    repeat_mode: Mapped[str] = mapped_column(String(20), default="none")
     auto_repeat_weekly: Mapped[bool] = mapped_column(Boolean, default=False)
     recurring_day_of_week: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 0=Mon .. 6=Sun
     recurring_departure_time: Mapped[time | None] = mapped_column(Time, nullable=True)
+    has_return_schedule: Mapped[bool] = mapped_column(Boolean, default=False)
+    return_departure_time: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    return_trip_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("trips.id", ondelete="SET NULL"), nullable=True)
     promotion_label: Mapped[str | None] = mapped_column(String(50), nullable=True)
     promotion_discount_percent: Mapped[int | None] = mapped_column(Integer, nullable=True)
     price_per_seat: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
@@ -121,6 +177,7 @@ class Trip(Base):
 
     __table_args__ = (
         CheckConstraint("status IN ('scheduled', 'active', 'completed', 'cancelled')", name='trip_status_check'),
+        CheckConstraint("repeat_mode IN ('none', 'daily', 'weekly')", name="trip_repeat_mode_check"),
         CheckConstraint(
             "recurring_day_of_week IS NULL OR (recurring_day_of_week >= 0 AND recurring_day_of_week <= 6)",
             name="trip_recurring_day_of_week_check",
@@ -153,6 +210,9 @@ class Booking(Base):
     seat_numbers: Mapped[list[int]] = mapped_column(ARRAY(Integer), nullable=False)  # e.g., [1, 2, 3]
     total_price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     payment_method: Mapped[str] = mapped_column(String(20), default="cash_on_arrival")
+    payment_status: Mapped[str] = mapped_column(String(20), default="pending")
+    pickup_status: Mapped[str] = mapped_column(String(30), default="pending")
+    driver_arrived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default='pending')  # 'pending', 'confirmed', 'cancelled'
     created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now)
 
@@ -160,10 +220,13 @@ class Booking(Base):
     trip: Mapped["Trip"] = relationship("Trip", back_populates="bookings")
     passenger: Mapped["User"] = relationship("User", back_populates="bookings")
     payments: Mapped[list["Payment"]] = relationship("Payment", back_populates="booking", cascade="all, delete-orphan")
+    payment_instruction: Mapped["BookingPaymentInstruction | None"] = relationship("BookingPaymentInstruction", back_populates="booking", cascade="all, delete-orphan")
 
     __table_args__ = (
         CheckConstraint("status IN ('pending', 'confirmed', 'cancelled')", name='booking_status_check'),
         CheckConstraint("payment_method IN ('khqr', 'cash_on_arrival')", name="booking_payment_method_check"),
+        CheckConstraint("payment_status IN ('pending', 'opened', 'paid', 'failed', 'cancelled')", name="booking_payment_status_check"),
+        CheckConstraint("pickup_status IN ('pending', 'driver_arrived', 'passenger_boarded', 'completed')", name="booking_pickup_status_check"),
     )
 
 
@@ -188,6 +251,33 @@ class Payment(Base):
 
     __table_args__ = (
         CheckConstraint("status IN ('pending', 'success', 'failed')", name='payment_status_check'),
+    )
+
+
+class BookingPaymentInstruction(Base):
+    __tablename__ = "booking_payment_instructions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    booking_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("bookings.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    source_type: Mapped[str] = mapped_column(String(30), default="none", nullable=False)
+    deep_link_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    qr_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    qr_payload: Mapped[str | None] = mapped_column(Text, nullable=True)
+    raw_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    parse_status: Mapped[str] = mapped_column(String(30), default="missing", nullable=False)
+    bank_provider: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    payment_status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False)
+    captured_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, onupdate=phnom_penh_now)
+
+    booking: Mapped["Booking"] = relationship("Booking", back_populates="payment_instruction")
+
+    __table_args__ = (
+        CheckConstraint("payment_status IN ('pending', 'opened', 'paid', 'failed', 'cancelled')", name="booking_payment_instruction_payment_status_check"),
+        CheckConstraint("parse_status IN ('missing', 'parsed', 'failed')", name="booking_payment_instruction_parse_status_check"),
+        CheckConstraint("source_type IN ('none', 'text', 'manual', 'qr_image', 'qr_payload')", name="booking_payment_instruction_source_type_check"),
     )
 
 

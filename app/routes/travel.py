@@ -1,4 +1,7 @@
 import os
+import re
+from base64 import b64decode
+from binascii import Error as Base64DecodeError
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, func
@@ -10,18 +13,22 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from ..auth import get_current_user, hash_password, issue_token, verify_password
 from ..db import get_db
-from ..models import Booking, NotificationPreference, Payment, SupportTicket, Trip, User, Vehicle, phnom_penh_now
+from ..models import Booking, BookingPaymentInstruction, NotificationPreference, Payment, SupportTicket, Trip, User, Vehicle, phnom_penh_now
 from ..schemas import (
 	ActiveBookingResponse,
 	AuthResponse,
 	BookingCreate,
 	BookingRead,
 	BookingWithTripRead,
+	DriverArrivedRequest,
 	LoginRequest,
 	NotificationPreferences,
 	NotificationPreferencesRead,
+	PaymentInstructionUploadRequest,
+	PaymentInstructionRead,
 	PaymentCreate,
 	PaymentRead,
+	PaymentStatusUpdate,
 	SafetyConfigResponse,
 	SupportConfigResponse,
 	SupportTicketCreate,
@@ -33,11 +40,13 @@ from ..schemas import (
 	TripLiveLocationUpdate,
 	TripPromotionInfo,
 	TripRead,
+	TripUpdate,
 	TripVehicleInfo,
 	UserCreate,
 	UserRead,
 	VehicleCreate,
 	VehicleRead,
+	VehicleUpdate,
 	WalletSummaryResponse,
 	WalletTransactionItem,
 )
@@ -46,6 +55,7 @@ router = APIRouter(prefix="/travel", tags=["travel"])
 
 BOOKING_SEAT_HOLD_STATUSES = {"pending", "confirmed"}
 DEFAULT_CURRENCY = "USD"
+ABA_PAYMENT_LINK_RE = re.compile(r"https://pay\.ababank\.com/[a-zA-Z0-9/]+")
 
 
 def _cleanup_expired_live_locations(db: Session) -> None:
@@ -130,6 +140,14 @@ def _booked_seat_numbers(trip: Trip) -> list[int]:
 	return sorted(booked)
 
 
+def _app_bookings_for_trip(trip: Trip) -> list[Booking]:
+	return [
+		booking
+		for booking in trip.bookings
+		if booking.status in BOOKING_SEAT_HOLD_STATUSES
+	]
+
+
 def _available_seat_numbers(trip: Trip) -> list[int]:
 	booked = set(_booked_seat_numbers(trip))
 	open_seats = [seat_number for seat_number in range(1, trip.total_seats + 1) if seat_number not in booked]
@@ -140,6 +158,8 @@ def _build_trip_read(trip: Trip) -> TripRead:
 	live_location = _build_live_location(trip)
 	booked_seat_numbers = _booked_seat_numbers(trip)
 	available_seat_numbers = _available_seat_numbers(trip)
+	app_bookings = _app_bookings_for_trip(trip)
+	app_booked_seat_count = sum(len(booking.seat_numbers) for booking in app_bookings)
 	driver = None
 	if trip.driver is not None:
 		driver = TripDriverInfo(
@@ -173,7 +193,39 @@ def _build_trip_read(trip: Trip) -> TripRead:
 			"live_location": live_location,
 			"booked_seat_numbers": booked_seat_numbers,
 			"available_seat_numbers": available_seat_numbers,
+			"appBookedSeatCount": app_booked_seat_count,
+			"appBookingCount": len(app_bookings),
 		}
+	)
+
+
+def _booking_payment_status(booking: Booking) -> str:
+	if any(payment.status == "success" for payment in booking.payments):
+		return "paid"
+	if any(payment.status == "failed" for payment in booking.payments):
+		return "failed"
+	return booking.payment_status
+
+
+def _build_payment_instruction_read(
+	booking: Booking,
+	instruction: BookingPaymentInstruction | None,
+) -> PaymentInstructionRead | None:
+	if instruction is None:
+		return None
+	return PaymentInstructionRead(
+		booking_id=booking.id,
+		trip_id=booking.trip_id,
+		source_type=instruction.source_type,
+		deep_link_url=instruction.deep_link_url,
+		qr_image_url=instruction.qr_image_url,
+		qr_payload=instruction.qr_payload,
+		raw_message=instruction.raw_message,
+		parse_status=instruction.parse_status,
+		bank_provider=instruction.bank_provider,
+		payment_status=_booking_payment_status(booking),
+		captured_at=instruction.captured_at,
+		expires_at=instruction.expires_at,
 	)
 
 
@@ -186,10 +238,245 @@ def _build_booking_with_trip_read(booking: Booking) -> BookingWithTripRead:
 		total_price=float(booking.total_price),
 		currency=DEFAULT_CURRENCY,
 		payment_method=booking.payment_method,
+		payment_status=_booking_payment_status(booking),
+		pickup_status=booking.pickup_status,
+		driver_arrived_at=booking.driver_arrived_at,
 		status=booking.status,
 		created_at=booking.created_at,
+		payment_instruction=_build_payment_instruction_read(booking, booking.payment_instruction),
 		trip=_build_trip_read(booking.trip) if booking.trip is not None else None,
 	)
+
+
+def _empty_payment_instruction(booking: Booking) -> PaymentInstructionRead:
+	return PaymentInstructionRead(
+		booking_id=booking.id,
+		trip_id=booking.trip_id,
+		source_type="none",
+		parse_status="missing",
+		payment_status=_booking_payment_status(booking),
+	)
+
+
+def _get_or_create_payment_instruction(
+	db: Session,
+	booking: Booking,
+) -> BookingPaymentInstruction:
+	if booking.payment_instruction is not None:
+		return booking.payment_instruction
+	instruction = BookingPaymentInstruction(
+		booking_id=booking.id,
+		source_type="none",
+		parse_status="missing",
+		payment_status=_booking_payment_status(booking),
+		captured_at=phnom_penh_now(),
+	)
+	db.add(instruction)
+	db.flush()
+	booking.payment_instruction = instruction
+	return instruction
+
+
+def _instruction_parse_status(
+	*,
+	deep_link_url: str | None,
+	qr_payload: str | None,
+	qr_image_url: str | None,
+	raw_message: str | None,
+) -> str:
+	if deep_link_url is not None or qr_payload is not None:
+		return "parsed"
+	if qr_image_url is not None or raw_message is not None:
+		return "failed"
+	return "missing"
+
+
+def _apply_payment_instruction_capture(
+	instruction: BookingPaymentInstruction,
+	payload: DriverArrivedRequest | None,
+) -> None:
+	raw_message = payload.raw_message.strip() if payload is not None and payload.raw_message else None
+	deep_link_url = payload.deep_link_url if payload is not None else None
+	if raw_message and deep_link_url is None:
+		match = ABA_PAYMENT_LINK_RE.search(raw_message)
+		if match is not None:
+			deep_link_url = match.group(0)
+
+	instruction.raw_message = raw_message
+	instruction.deep_link_url = deep_link_url
+	instruction.qr_image_url = payload.qr_image_url if payload is not None else None
+	instruction.qr_payload = payload.qr_payload if payload is not None else None
+	instruction.expires_at = payload.expires_at if payload is not None else None
+	instruction.captured_at = phnom_penh_now()
+
+	if payload is not None and payload.bank_provider is not None:
+		instruction.bank_provider = payload.bank_provider
+	elif deep_link_url is not None:
+		instruction.bank_provider = "ABA"
+	elif payload is not None and (payload.qr_payload is not None or payload.qr_image_url is not None):
+		instruction.bank_provider = "KHQR"
+	else:
+		instruction.bank_provider = None
+
+	if payload is not None and payload.source_type is not None:
+		instruction.source_type = payload.source_type
+	elif raw_message is not None:
+		instruction.source_type = "text"
+	elif payload is not None and payload.qr_payload is not None:
+		instruction.source_type = "qr_payload"
+	elif payload is not None and payload.qr_image_url is not None:
+		instruction.source_type = "qr_image"
+	elif deep_link_url is not None:
+		instruction.source_type = "manual"
+	else:
+		instruction.source_type = "none"
+
+	instruction.parse_status = _instruction_parse_status(
+		deep_link_url=instruction.deep_link_url,
+		qr_payload=instruction.qr_payload,
+		qr_image_url=instruction.qr_image_url,
+		raw_message=instruction.raw_message,
+	)
+
+
+def _assert_driver_vehicle_access(vehicle: Vehicle | None, current_user: User) -> Vehicle:
+	if vehicle is None:
+		raise HTTPException(status_code=404, detail="Vehicle not found")
+	if current_user.role != "driver" or vehicle.owner_id != current_user.id:
+		raise HTTPException(status_code=403, detail="You can only manage your own vehicles")
+	return vehicle
+
+
+def _assert_driver_trip_access(trip: Trip | None, current_user: User) -> Trip:
+	if trip is None:
+		raise HTTPException(status_code=404, detail="Trip not found")
+	if current_user.role != "driver" or trip.driver_id != current_user.id:
+		raise HTTPException(status_code=403, detail="You can only manage your own trips")
+	return trip
+
+
+def _load_trip_for_read(db: Session, trip_id: UUID) -> Trip | None:
+	return db.execute(
+		select(Trip)
+		.options(selectinload(Trip.driver), selectinload(Trip.vehicle), selectinload(Trip.bookings))
+		.where(Trip.id == trip_id)
+	).scalar_one_or_none()
+
+
+def _normalize_trip_schedule_data(data: dict) -> dict:
+	repeat_mode = data.get("repeat_mode")
+	if repeat_mode is None:
+		repeat_mode = "weekly" if data.get("auto_repeat_weekly") else "none"
+	data["repeat_mode"] = repeat_mode
+	data["auto_repeat_weekly"] = repeat_mode == "weekly"
+
+	departure_time_value = data.get("departure_time")
+	if repeat_mode == "weekly" and data.get("recurring_day_of_week") is None and departure_time_value is not None:
+		data["recurring_day_of_week"] = departure_time_value.weekday()
+	if repeat_mode in {"daily", "weekly"} and data.get("recurring_departure_time") is None and departure_time_value is not None:
+		data["recurring_departure_time"] = departure_time_value.time().replace(second=0, microsecond=0)
+	if repeat_mode == "none":
+		data["recurring_day_of_week"] = None
+		data["recurring_departure_time"] = None
+
+	if not data.get("has_return_schedule"):
+		data["has_return_schedule"] = False
+		data["return_departure_time"] = None
+	return data
+
+
+def _sync_return_trip(db: Session, trip: Trip) -> None:
+	if not trip.has_return_schedule or trip.return_departure_time is None:
+		if trip.return_trip_id is not None:
+			return_trip = db.get(Trip, trip.return_trip_id)
+			if return_trip is not None:
+				return_trip.status = "cancelled"
+				return_trip.return_trip_id = None
+		trip.return_trip_id = None
+		trip.return_departure_time = None
+		return
+
+	return_trip = db.get(Trip, trip.return_trip_id) if trip.return_trip_id is not None else None
+	return_data = {
+		"driver_id": trip.driver_id,
+		"vehicle_id": trip.vehicle_id,
+		"departure_province": trip.destination_province,
+		"destination_province": trip.departure_province,
+		"departure_time": trip.return_departure_time,
+		"departure_lat": None,
+		"departure_lng": None,
+		"live_heading": None,
+		"live_speed_kph": None,
+		"live_location_updated_at": None,
+		"live_location_expires_at": None,
+		"repeat_mode": trip.repeat_mode,
+		"auto_repeat_weekly": trip.repeat_mode == "weekly",
+		"recurring_day_of_week": trip.return_departure_time.weekday() if trip.repeat_mode == "weekly" else None,
+		"recurring_departure_time": trip.return_departure_time.time().replace(second=0, microsecond=0) if trip.repeat_mode in {"daily", "weekly"} else None,
+		"has_return_schedule": False,
+		"return_departure_time": None,
+		"promotion_label": trip.promotion_label,
+		"promotion_discount_percent": trip.promotion_discount_percent,
+		"price_per_seat": trip.price_per_seat,
+		"total_seats": trip.total_seats,
+		"available_seats": trip.total_seats,
+		"status": trip.status,
+	}
+	if return_trip is None:
+		return_trip = Trip(**return_data)
+		db.add(return_trip)
+		db.flush()
+		trip.return_trip_id = return_trip.id
+	else:
+		for field, value in return_data.items():
+			setattr(return_trip, field, value)
+	return_trip.return_trip_id = trip.id
+
+
+def _apply_trip_update(db: Session, trip: Trip, payload: TripUpdate, current_user: User) -> None:
+	update_data = payload.model_dump(exclude_unset=True)
+	for required_field in [
+		"departure_province",
+		"destination_province",
+		"departure_time",
+		"price_per_seat",
+		"total_seats",
+		"available_seats",
+		"status",
+	]:
+		if required_field in update_data and update_data[required_field] is None:
+			raise HTTPException(status_code=422, detail=f"{required_field} cannot be null")
+	if "vehicle_id" in update_data and update_data["vehicle_id"] is not None:
+		vehicle = db.get(Vehicle, update_data["vehicle_id"])
+		_assert_driver_vehicle_access(vehicle, current_user)
+	normalized = _normalize_trip_schedule_data(
+		{
+			"repeat_mode": trip.repeat_mode,
+			"auto_repeat_weekly": trip.auto_repeat_weekly,
+			"recurring_day_of_week": trip.recurring_day_of_week,
+			"recurring_departure_time": trip.recurring_departure_time,
+			"has_return_schedule": trip.has_return_schedule,
+			"return_departure_time": trip.return_departure_time,
+			"departure_time": trip.departure_time,
+			**update_data,
+		}
+	)
+	for field in [
+		"repeat_mode",
+		"auto_repeat_weekly",
+		"recurring_day_of_week",
+		"recurring_departure_time",
+		"has_return_schedule",
+		"return_departure_time",
+	]:
+		if field in normalized:
+			update_data[field] = normalized[field]
+	if update_data.get("has_return_schedule") and update_data.get("return_departure_time") is None:
+		raise HTTPException(status_code=422, detail="return_departure_time is required when has_return_schedule is true")
+	for field, value in update_data.items():
+		setattr(trip, field, value)
+	if trip.available_seats > trip.total_seats:
+		raise HTTPException(status_code=400, detail="available_seats cannot exceed total_seats")
 
 
 def _get_or_create_notification_preferences(db: Session, user: User) -> NotificationPreference:
@@ -285,6 +572,64 @@ def get_vehicle(
 	return VehicleRead.model_validate(vehicle)
 
 
+@router.get("/driver/vehicles", response_model=list[VehicleRead])
+def list_driver_vehicles(
+	db: Session = Depends(get_db),
+	current_user: User = Depends(get_current_user),
+) -> list[VehicleRead]:
+	if current_user.role != "driver":
+		raise HTTPException(status_code=403, detail="Only drivers can list their vehicles")
+	rows = db.execute(
+		select(Vehicle)
+		.where(Vehicle.owner_id == current_user.id)
+		.order_by(Vehicle.created_at.desc())
+	).scalars().all()
+	return [VehicleRead.model_validate(row) for row in rows]
+
+
+@router.put("/vehicles/{vehicle_id}", response_model=VehicleRead)
+@router.patch("/vehicles/{vehicle_id}", response_model=VehicleRead)
+def update_vehicle(
+	vehicle_id: UUID,
+	payload: VehicleUpdate,
+	db: Session = Depends(get_db),
+	current_user: User = Depends(get_current_user),
+) -> VehicleRead:
+	vehicle = _assert_driver_vehicle_access(db.get(Vehicle, vehicle_id), current_user)
+	update_data = payload.model_dump(exclude_unset=True)
+	if "plate_number" in update_data and update_data["plate_number"] is None:
+		raise HTTPException(status_code=422, detail="plate_number cannot be null")
+	if "seat_type" in update_data and update_data["seat_type"] is None:
+		raise HTTPException(status_code=422, detail="seat_type cannot be null")
+	if "seat_type" in update_data and update_data["seat_type"] not in {4, 15, 16, 23, 30, 45}:
+		raise HTTPException(status_code=422, detail="Invalid seat_type")
+	if "plate_number" in update_data and update_data["plate_number"] != vehicle.plate_number:
+		existing_plate = db.execute(
+			select(Vehicle).where(Vehicle.plate_number == update_data["plate_number"])
+		).scalar_one_or_none()
+		if existing_plate is not None:
+			raise HTTPException(status_code=409, detail="Plate number already exists")
+	for field, value in update_data.items():
+		setattr(vehicle, field, value)
+	db.commit()
+	db.refresh(vehicle)
+	return VehicleRead.model_validate(vehicle)
+
+
+@router.delete("/vehicles/{vehicle_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_vehicle(
+	vehicle_id: UUID,
+	db: Session = Depends(get_db),
+	current_user: User = Depends(get_current_user),
+) -> None:
+	vehicle = _assert_driver_vehicle_access(db.get(Vehicle, vehicle_id), current_user)
+	for trip in db.execute(select(Trip).where(Trip.vehicle_id == vehicle.id)).scalars().all():
+		trip.vehicle_id = None
+	db.delete(vehicle)
+	db.commit()
+	return None
+
+
 @router.post("/trips", response_model=TripRead, status_code=status.HTTP_201_CREATED)
 def create_trip(
 	payload: TripCreate,
@@ -304,13 +649,17 @@ def create_trip(
 	if payload.available_seats > payload.total_seats:
 		raise HTTPException(status_code=400, detail="available_seats cannot exceed total_seats")
 
-	trip_data = payload.model_dump()
+	trip_data = _normalize_trip_schedule_data(payload.model_dump())
+	if trip_data["has_return_schedule"] and trip_data.get("return_departure_time") is None:
+		raise HTTPException(status_code=422, detail="return_departure_time is required when has_return_schedule is true")
 	if trip_data.get("departure_lat") is not None and trip_data.get("departure_lng") is not None:
 		if trip_data.get("live_location_expires_at") is None:
 			trip_data["live_location_expires_at"] = payload.departure_time + timedelta(hours=24)
 		trip_data["live_location_updated_at"] = phnom_penh_now()
 	trip = Trip(**trip_data, driver_id=current_user.id)
 	db.add(trip)
+	db.flush()
+	_sync_return_trip(db, trip)
 	db.commit()
 	created_trip = db.execute(
 		select(Trip)
@@ -318,6 +667,43 @@ def create_trip(
 		.where(Trip.id == trip.id)
 	).scalar_one()
 	return _build_trip_read(created_trip)
+
+
+@router.get("/driver/trips", response_model=list[TripRead])
+def list_driver_trips(
+	status_filter: str | None = Query(default=None, alias="status", pattern="^(scheduled|active|completed|cancelled)$"),
+	db: Session = Depends(get_db),
+	current_user: User = Depends(get_current_user),
+) -> list[TripRead]:
+	if current_user.role != "driver":
+		raise HTTPException(status_code=403, detail="Only drivers can list their trips")
+	query = (
+		select(Trip)
+		.options(selectinload(Trip.driver), selectinload(Trip.vehicle), selectinload(Trip.bookings))
+		.where(Trip.driver_id == current_user.id)
+	)
+	if status_filter is not None:
+		query = query.where(Trip.status == status_filter)
+	rows = db.execute(query.order_by(Trip.departure_time.desc())).scalars().all()
+	return [_build_trip_read(row) for row in rows]
+
+
+@router.put("/trips/{trip_id}", response_model=TripRead)
+@router.patch("/trips/{trip_id}", response_model=TripRead)
+def update_trip(
+	trip_id: UUID,
+	payload: TripUpdate,
+	db: Session = Depends(get_db),
+	current_user: User = Depends(get_current_user),
+) -> TripRead:
+	trip = _assert_driver_trip_access(db.get(Trip, trip_id), current_user)
+	_apply_trip_update(db, trip, payload, current_user)
+	_sync_return_trip(db, trip)
+	db.commit()
+	updated_trip = _load_trip_for_read(db, trip.id)
+	if updated_trip is None:
+		raise HTTPException(status_code=404, detail="Trip not found")
+	return _build_trip_read(updated_trip)
 
 
 @router.get("/trips/search", response_model=list[TripRead])
@@ -575,6 +961,8 @@ def list_bookings(
 		selectinload(Booking.trip).selectinload(Trip.driver),
 		selectinload(Booking.trip).selectinload(Trip.vehicle),
 		selectinload(Booking.trip).selectinload(Trip.bookings),
+		selectinload(Booking.payment_instruction),
+		selectinload(Booking.payments),
 	)
 
 	if current_user.role == "passenger":
@@ -604,6 +992,8 @@ def get_active_booking(
 			selectinload(Booking.trip).selectinload(Trip.driver),
 			selectinload(Booking.trip).selectinload(Trip.vehicle),
 			selectinload(Booking.trip).selectinload(Trip.bookings),
+			selectinload(Booking.payment_instruction),
+			selectinload(Booking.payments),
 		)
 		.join(Trip, Booking.trip_id == Trip.id)
 		.where(
@@ -639,6 +1029,8 @@ def get_booking(
 			selectinload(Booking.trip).selectinload(Trip.driver),
 			selectinload(Booking.trip).selectinload(Trip.vehicle),
 			selectinload(Booking.trip).selectinload(Trip.bookings),
+			selectinload(Booking.payment_instruction),
+			selectinload(Booking.payments),
 		)
 		.where(Booking.id == booking_id)
 	).scalar_one_or_none()
@@ -650,13 +1042,210 @@ def get_booking(
 	return _build_booking_with_trip_read(booking)
 
 
+@router.post("/bookings/{booking_id}/driver-arrived", response_model=BookingWithTripRead)
+def mark_driver_arrived(
+	booking_id: UUID,
+	payload: DriverArrivedRequest | None = None,
+	db: Session = Depends(get_db),
+	current_user: User = Depends(get_current_user),
+) -> BookingWithTripRead:
+	if current_user.role != "driver":
+		raise HTTPException(status_code=403, detail="Only drivers can mark arrival")
+
+	booking = db.execute(
+		select(Booking)
+		.options(
+			selectinload(Booking.trip).selectinload(Trip.driver),
+			selectinload(Booking.trip).selectinload(Trip.vehicle),
+			selectinload(Booking.trip).selectinload(Trip.bookings),
+			selectinload(Booking.payment_instruction),
+			selectinload(Booking.payments),
+		)
+		.where(Booking.id == booking_id)
+	).scalar_one_or_none()
+	if booking is None:
+		raise HTTPException(status_code=404, detail="Booking not found")
+	if booking.trip is None or booking.trip.driver_id != current_user.id:
+		raise HTTPException(status_code=403, detail="You can only mark arrival for your own trip")
+	if booking.status == "cancelled":
+		raise HTTPException(status_code=400, detail="Cancelled bookings cannot be marked arrived")
+
+	booking.pickup_status = "driver_arrived"
+	booking.driver_arrived_at = phnom_penh_now()
+
+	instruction = _get_or_create_payment_instruction(db, booking)
+	_apply_payment_instruction_capture(instruction, payload)
+	instruction.payment_status = _booking_payment_status(booking)
+	booking.payment_status = instruction.payment_status
+
+	db.commit()
+	updated_booking = db.execute(
+		select(Booking)
+		.options(
+			selectinload(Booking.trip).selectinload(Trip.driver),
+			selectinload(Booking.trip).selectinload(Trip.vehicle),
+			selectinload(Booking.trip).selectinload(Trip.bookings),
+			selectinload(Booking.payment_instruction),
+			selectinload(Booking.payments),
+		)
+		.where(Booking.id == booking_id)
+	).scalar_one()
+	return _build_booking_with_trip_read(updated_booking)
+
+
+@router.get("/bookings/{booking_id}/payment-instruction", response_model=PaymentInstructionRead)
+def get_booking_payment_instruction(
+	booking_id: UUID,
+	db: Session = Depends(get_db),
+	current_user: User = Depends(get_current_user),
+) -> PaymentInstructionRead:
+	booking = db.execute(
+		select(Booking)
+		.options(
+			selectinload(Booking.trip),
+			selectinload(Booking.payment_instruction),
+			selectinload(Booking.payments),
+		)
+		.where(Booking.id == booking_id)
+	).scalar_one_or_none()
+	if booking is None:
+		raise HTTPException(status_code=404, detail="Booking not found")
+	trip = booking.trip
+	if booking.passenger_id != current_user.id and (trip is None or trip.driver_id != current_user.id):
+		raise HTTPException(status_code=403, detail="You do not have access to this booking")
+	if booking.payment_instruction is None:
+		return _empty_payment_instruction(booking)
+	instruction = _build_payment_instruction_read(booking, booking.payment_instruction)
+	if instruction is None:
+		return _empty_payment_instruction(booking)
+	return instruction
+
+
+@router.post("/bookings/{booking_id}/payment-instruction/upload", response_model=PaymentInstructionRead)
+def upload_booking_payment_instruction_image(
+	booking_id: UUID,
+	payload: PaymentInstructionUploadRequest,
+	db: Session = Depends(get_db),
+	current_user: User = Depends(get_current_user),
+) -> PaymentInstructionRead:
+	booking = db.execute(
+		select(Booking)
+		.options(
+			selectinload(Booking.trip),
+			selectinload(Booking.payment_instruction),
+			selectinload(Booking.payments),
+		)
+		.where(Booking.id == booking_id)
+	).scalar_one_or_none()
+	if booking is None:
+		raise HTTPException(status_code=404, detail="Booking not found")
+	trip = booking.trip
+	if trip is None or trip.driver_id != current_user.id:
+		raise HTTPException(status_code=403, detail="Only the trip driver can upload payment instructions")
+
+	image_base64 = payload.qr_image_base64.strip()
+	if "," in image_base64 and image_base64.split(",", 1)[0].startswith("data:"):
+		header, image_base64 = image_base64.split(",", 1)
+		if ";base64" in header and payload.content_type == "image/png":
+			payload.content_type = header.removeprefix("data:").removesuffix(";base64")
+	try:
+		b64decode(image_base64, validate=True)
+	except Base64DecodeError:
+		raise HTTPException(status_code=422, detail="qr_image_base64 must be valid base64")
+
+	instruction = _get_or_create_payment_instruction(db, booking)
+	instruction.source_type = "qr_image"
+	instruction.qr_image_url = f"data:{payload.content_type};base64,{image_base64}"
+	instruction.qr_payload = None
+	instruction.deep_link_url = None
+	instruction.raw_message = payload.raw_message
+	instruction.parse_status = "failed"
+	instruction.bank_provider = payload.bank_provider or "KHQR"
+	instruction.payment_status = _booking_payment_status(booking)
+	instruction.captured_at = phnom_penh_now()
+	instruction.expires_at = payload.expires_at
+	booking.payment_status = instruction.payment_status
+	db.commit()
+	db.refresh(instruction)
+	return _build_payment_instruction_read(booking, instruction) or _empty_payment_instruction(booking)
+
+
+@router.patch("/bookings/{booking_id}/payment-status", response_model=BookingWithTripRead)
+def update_booking_payment_status(
+	booking_id: UUID,
+	payload: PaymentStatusUpdate,
+	db: Session = Depends(get_db),
+	current_user: User = Depends(get_current_user),
+) -> BookingWithTripRead:
+	booking = db.execute(
+		select(Booking)
+		.options(
+			selectinload(Booking.trip).selectinload(Trip.driver),
+			selectinload(Booking.trip).selectinload(Trip.vehicle),
+			selectinload(Booking.trip).selectinload(Trip.bookings),
+			selectinload(Booking.payment_instruction),
+			selectinload(Booking.payments),
+		)
+		.where(Booking.id == booking_id)
+	).scalar_one_or_none()
+	if booking is None:
+		raise HTTPException(status_code=404, detail="Booking not found")
+	trip = booking.trip
+	if booking.passenger_id != current_user.id and (trip is None or trip.driver_id != current_user.id):
+		raise HTTPException(status_code=403, detail="You do not have access to this booking")
+
+	booking.payment_status = payload.payment_status
+	if booking.payment_instruction is not None:
+		booking.payment_instruction.payment_status = payload.payment_status
+	db.commit()
+	updated_booking = db.execute(
+		select(Booking)
+		.options(
+			selectinload(Booking.trip).selectinload(Trip.driver),
+			selectinload(Booking.trip).selectinload(Trip.vehicle),
+			selectinload(Booking.trip).selectinload(Trip.bookings),
+			selectinload(Booking.payment_instruction),
+			selectinload(Booking.payments),
+		)
+		.where(Booking.id == booking_id)
+	).scalar_one()
+	return _build_booking_with_trip_read(updated_booking)
+
+
 @router.get("/wallet/summary", response_model=WalletSummaryResponse)
 def get_wallet_summary(
 	db: Session = Depends(get_db),
 	current_user: User = Depends(get_current_user),
 ) -> WalletSummaryResponse:
-	if current_user.role != "passenger":
-		raise HTTPException(status_code=403, detail="Only passengers can access wallet summary")
+	if current_user.role not in {"passenger", "driver"}:
+		raise HTTPException(status_code=403, detail="Only passengers and drivers can access wallet summary")
+
+	if current_user.role == "driver":
+		total_spent = db.execute(
+			select(func.coalesce(func.sum(Booking.total_price), 0))
+			.join(Trip, Booking.trip_id == Trip.id)
+			.where(
+				Trip.driver_id == current_user.id,
+				Booking.status == "confirmed",
+			)
+		).scalar_one()
+		confirmed_payments_count = db.execute(
+			select(func.count(Payment.id))
+			.join(Booking, Payment.booking_id == Booking.id)
+			.join(Trip, Booking.trip_id == Trip.id)
+			.where(
+				Trip.driver_id == current_user.id,
+				Payment.status == "success",
+			)
+		).scalar_one()
+		return WalletSummaryResponse(
+			total_spent=float(total_spent or 0),
+			currency=DEFAULT_CURRENCY,
+			confirmed_payments_count=confirmed_payments_count,
+			wallet_balance=float(total_spent or 0),
+			refund_total=0.0,
+			promo_credit=0.0,
+		)
 
 	total_spent = db.execute(
 		select(func.coalesce(func.sum(Booking.total_price), 0)).where(
@@ -830,7 +1419,11 @@ def create_payment(
 	db: Session = Depends(get_db),
 	current_user: User = Depends(get_current_user),
 ) -> PaymentRead:
-	booking = db.get(Booking, payload.booking_id)
+	booking = db.execute(
+		select(Booking)
+		.options(selectinload(Booking.payment_instruction), selectinload(Booking.payments))
+		.where(Booking.id == payload.booking_id)
+	).scalar_one_or_none()
 	if booking is None:
 		raise HTTPException(status_code=404, detail="Booking not found")
 	if booking.passenger_id != current_user.id:
@@ -844,6 +1437,14 @@ def create_payment(
 
 	payment = Payment(**payload.model_dump())
 	db.add(payment)
+	if payload.status == "success":
+		booking.payment_status = "paid"
+	elif payload.status == "failed":
+		booking.payment_status = "failed"
+	else:
+		booking.payment_status = "pending"
+	if booking.payment_instruction is not None:
+		booking.payment_instruction.payment_status = booking.payment_status
 	db.commit()
 	db.refresh(payment)
 	return PaymentRead.model_validate(payment)

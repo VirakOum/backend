@@ -7,6 +7,61 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 BookingPaymentMethod = Literal["khqr", "cash_on_arrival"]
+BookingPaymentStatus = Literal["pending", "opened", "paid", "failed", "cancelled"]
+BookingPickupStatus = Literal["pending", "driver_arrived", "passenger_boarded", "completed"]
+PaymentInstructionSourceType = Literal["none", "text", "manual", "qr_image", "qr_payload"]
+PaymentInstructionParseStatus = Literal["missing", "parsed", "failed"]
+TripRepeatMode = Literal["none", "daily", "weekly"]
+
+
+class AddressRead(BaseModel):
+    id: int
+    code: str
+    name: str
+    description: str | None = None
+    type: str
+    parent_code: str | None = None
+    reference: str | None = None
+    official_note: str | None = None
+    note_by_checker: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    lat_lng: str | None = None
+    o_b: str | None = None
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AddressFormCreate(BaseModel):
+    province_code: str = Field(min_length=1, max_length=20)
+    district_code: str = Field(min_length=1, max_length=20)
+    commune_code: str = Field(min_length=1, max_length=20)
+    village_code: str = Field(min_length=1, max_length=20)
+    detail_line: str | None = Field(default=None, max_length=255)
+
+
+class AddressFormRead(BaseModel):
+    id: int
+    country_code: str
+    country_name_en: str
+    country_name_km: str | None = None
+    province_code: str
+    province_name_en: str
+    province_name_km: str | None = None
+    district_code: str
+    district_name_en: str
+    district_name_km: str | None = None
+    commune_code: str
+    commune_name_en: str
+    commune_name_km: str | None = None
+    village_code: str
+    village_name_en: str
+    village_name_km: str | None = None
+    detail_line: str | None = None
+    formatted_address_en: str
+    formatted_address_km: str | None = None
+    created_at: datetime
+    updated_at: datetime
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ItemCreate(BaseModel):
@@ -65,6 +120,15 @@ class VehicleCreate(BaseModel):
     company_name: str | None = Field(default=None, max_length=100)
 
 
+class VehicleUpdate(BaseModel):
+    plate_number: str | None = Field(default=None, min_length=1, max_length=20)
+    seat_type: int | None = None
+    vehicle_type: str | None = Field(default=None, max_length=50)
+    model: str | None = Field(default=None, max_length=50)
+    color: str | None = Field(default=None, max_length=30)
+    company_name: str | None = Field(default=None, max_length=100)
+
+
 class VehicleRead(BaseModel):
     id: UUID
     owner_id: UUID
@@ -86,15 +150,40 @@ class TripCreate(BaseModel):
     departure_lat: float | None = None
     departure_lng: float | None = None
     live_location_expires_at: datetime | None = None
+    repeat_mode: TripRepeatMode = "none"
     auto_repeat_weekly: bool = False
     recurring_day_of_week: int | None = Field(default=None, ge=0, le=6)
     recurring_departure_time: time | None = None
+    has_return_schedule: bool = False
+    return_departure_time: datetime | None = None
     promotion_label: str | None = Field(default=None, max_length=50)
     promotion_discount_percent: int | None = Field(default=None, ge=0, le=100)
     price_per_seat: Decimal = Field(gt=0)
     total_seats: int = Field(gt=0)
     available_seats: int = Field(ge=0)
     status: str = Field(default="scheduled", pattern="^(scheduled|active|completed|cancelled)$")
+
+
+class TripUpdate(BaseModel):
+    vehicle_id: UUID | None = None
+    departure_province: str | None = Field(default=None, min_length=1, max_length=50)
+    destination_province: str | None = Field(default=None, min_length=1, max_length=50)
+    departure_time: datetime | None = None
+    departure_lat: float | None = None
+    departure_lng: float | None = None
+    live_location_expires_at: datetime | None = None
+    repeat_mode: TripRepeatMode | None = None
+    auto_repeat_weekly: bool | None = None
+    recurring_day_of_week: int | None = Field(default=None, ge=0, le=6)
+    recurring_departure_time: time | None = None
+    has_return_schedule: bool | None = None
+    return_departure_time: datetime | None = None
+    promotion_label: str | None = Field(default=None, max_length=50)
+    promotion_discount_percent: int | None = Field(default=None, ge=0, le=100)
+    price_per_seat: Decimal | None = Field(default=None, gt=0)
+    total_seats: int | None = Field(default=None, gt=0)
+    available_seats: int | None = Field(default=None, ge=0)
+    status: str | None = Field(default=None, pattern="^(scheduled|active|completed|cancelled)$")
 
 
 class TripDriverInfo(BaseModel):
@@ -150,15 +239,21 @@ class TripRead(BaseModel):
     live_speed_kph: float | None
     live_location_updated_at: datetime | None
     live_location_expires_at: datetime | None
+    repeat_mode: TripRepeatMode = "none"
     auto_repeat_weekly: bool
     recurring_day_of_week: int | None
     recurring_departure_time: time | None
+    has_return_schedule: bool = False
+    return_departure_time: datetime | None = None
+    return_trip_id: UUID | None = None
     price_per_seat: float
     currency: str = "USD"
     total_seats: int
     available_seats: int
     booked_seat_numbers: list[int] = Field(default_factory=list)
     available_seat_numbers: list[int] = Field(default_factory=list)
+    appBookedSeatCount: int = 0
+    appBookingCount: int = 0
     status: str
     created_at: datetime
     driver: TripDriverInfo | None = None
@@ -176,6 +271,43 @@ class BookingCreate(BaseModel):
     status: str = Field(default="pending", pattern="^(pending|confirmed|cancelled)$")
 
 
+class PaymentInstructionRead(BaseModel):
+    booking_id: UUID
+    trip_id: UUID | None = None
+    source_type: PaymentInstructionSourceType = "none"
+    deep_link_url: str | None = None
+    qr_image_url: str | None = None
+    qr_payload: str | None = None
+    raw_message: str | None = None
+    parse_status: PaymentInstructionParseStatus = "missing"
+    bank_provider: str | None = None
+    payment_status: BookingPaymentStatus = "pending"
+    captured_at: datetime | None = None
+    expires_at: datetime | None = None
+
+
+class DriverArrivedRequest(BaseModel):
+    source_type: PaymentInstructionSourceType | None = None
+    deep_link_url: str | None = Field(default=None, max_length=1000)
+    qr_image_url: str | None = Field(default=None, max_length=1000)
+    qr_payload: str | None = None
+    raw_message: str | None = None
+    bank_provider: str | None = Field(default=None, max_length=50)
+    expires_at: datetime | None = None
+
+
+class PaymentInstructionUploadRequest(BaseModel):
+    qr_image_base64: str = Field(min_length=1)
+    content_type: str = Field(default="image/png", max_length=100)
+    raw_message: str | None = None
+    bank_provider: str | None = Field(default=None, max_length=50)
+    expires_at: datetime | None = None
+
+
+class PaymentStatusUpdate(BaseModel):
+    payment_status: BookingPaymentStatus
+
+
 class BookingRead(BaseModel):
     id: UUID
     trip_id: UUID
@@ -184,8 +316,12 @@ class BookingRead(BaseModel):
     total_price: float
     currency: str = "USD"
     payment_method: BookingPaymentMethod
+    payment_status: BookingPaymentStatus = "pending"
+    pickup_status: BookingPickupStatus = "pending"
+    driver_arrived_at: datetime | None = None
     status: str
     created_at: datetime
+    payment_instruction: PaymentInstructionRead | None = None
     model_config = ConfigDict(from_attributes=True)
 
 

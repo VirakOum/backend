@@ -89,6 +89,14 @@ The app starts on `http://127.0.0.1:8000` and runs `alembic upgrade head` before
 - `GET /passenger/profile/places`
 - `PUT /passenger/profile/places/{key}`
 - `GET /passenger/trips/search-config`
+- `GET /addresses/provinces`
+- `GET /addresses/districts/{province_code}`
+- `GET /addresses/communes/{district_code}`
+- `GET /addresses/villages/{commune_code}`
+- `GET /addresses/by-type/{address_type}`
+- `GET /addresses/by-parent/{parent_code}`
+- `GET /addresses/code/{code}`
+- `POST /addresses/forms`
 
 Open `http://127.0.0.1:8000/docs` for interactive API docs.
 
@@ -134,6 +142,8 @@ alembic revision --autogenerate -m "add design travel"
 alembic upgrade head
 alembic downgrade -1
 ```
+
+The `addresses` table is seeded automatically from [`addresses.json`](addresses.json) when you run `alembic upgrade head`.
 ## add a reusable generator script that creates model + route + CRUD wiring in your exact project style
 
 Example:
