@@ -2,6 +2,7 @@ import os
 import re
 from base64 import b64decode
 from binascii import Error as Base64DecodeError
+from copy import deepcopy
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, func
@@ -363,6 +364,44 @@ def _load_trip_for_read(db: Session, trip_id: UUID) -> Trip | None:
 	).scalar_one_or_none()
 
 
+def _clone_json_value(value: dict | None) -> dict | None:
+    return deepcopy(value) if value is not None else None
+
+
+def _validate_trip_route_stop_pair(
+    *,
+    route_data: dict | None,
+    stop_data: dict | None,
+    route_field_name: str,
+    stop_field_name: str,
+) -> None:
+    if route_data is None or stop_data is None:
+        return
+
+    route_commune_code = route_data.get("commune_code")
+    stop_commune_code = stop_data.get("commune_code")
+    if route_commune_code and stop_commune_code and route_commune_code != stop_commune_code:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{stop_field_name}.commune_code must match {route_field_name}.commune_code",
+        )
+
+
+def _validate_trip_route_stop_payload(data: dict) -> None:
+    _validate_trip_route_stop_pair(
+        route_data=data.get("departure_route"),
+        stop_data=data.get("pickup_stop"),
+        route_field_name="departure_route",
+        stop_field_name="pickup_stop",
+    )
+    _validate_trip_route_stop_pair(
+        route_data=data.get("destination_route"),
+        stop_data=data.get("dropoff_stop"),
+        route_field_name="destination_route",
+        stop_field_name="dropoff_stop",
+    )
+
+
 def _normalize_trip_schedule_data(data: dict) -> dict:
 	repeat_mode = data.get("repeat_mode")
 	if repeat_mode is None:
@@ -386,97 +425,106 @@ def _normalize_trip_schedule_data(data: dict) -> dict:
 
 
 def _sync_return_trip(db: Session, trip: Trip) -> None:
-	if not trip.has_return_schedule or trip.return_departure_time is None:
-		if trip.return_trip_id is not None:
-			return_trip = db.get(Trip, trip.return_trip_id)
-			if return_trip is not None:
-				return_trip.status = "cancelled"
-				return_trip.return_trip_id = None
-		trip.return_trip_id = None
-		trip.return_departure_time = None
-		return
+    if not trip.has_return_schedule or trip.return_departure_time is None:
+        if trip.return_trip_id is not None:
+            return_trip = db.get(Trip, trip.return_trip_id)
+            if return_trip is not None:
+                return_trip.status = "cancelled"
+                return_trip.return_trip_id = None
+        trip.return_trip_id = None
+        trip.return_departure_time = None
+        return
 
-	return_trip = db.get(Trip, trip.return_trip_id) if trip.return_trip_id is not None else None
-	return_data = {
-		"driver_id": trip.driver_id,
-		"vehicle_id": trip.vehicle_id,
-		"departure_province": trip.destination_province,
-		"destination_province": trip.departure_province,
-		"departure_time": trip.return_departure_time,
-		"departure_lat": None,
-		"departure_lng": None,
-		"live_heading": None,
-		"live_speed_kph": None,
-		"live_location_updated_at": None,
-		"live_location_expires_at": None,
-		"repeat_mode": trip.repeat_mode,
-		"auto_repeat_weekly": trip.repeat_mode == "weekly",
-		"recurring_day_of_week": trip.return_departure_time.weekday() if trip.repeat_mode == "weekly" else None,
-		"recurring_departure_time": trip.return_departure_time.time().replace(second=0, microsecond=0) if trip.repeat_mode in {"daily", "weekly"} else None,
-		"has_return_schedule": False,
-		"return_departure_time": None,
-		"promotion_label": trip.promotion_label,
-		"promotion_discount_percent": trip.promotion_discount_percent,
-		"price_per_seat": trip.price_per_seat,
-		"total_seats": trip.total_seats,
-		"available_seats": trip.total_seats,
-		"status": trip.status,
-	}
-	if return_trip is None:
-		return_trip = Trip(**return_data)
-		db.add(return_trip)
-		db.flush()
-		trip.return_trip_id = return_trip.id
-	else:
-		for field, value in return_data.items():
-			setattr(return_trip, field, value)
-	return_trip.return_trip_id = trip.id
+    return_trip = db.get(Trip, trip.return_trip_id) if trip.return_trip_id is not None else None
+    return_data = {
+        "driver_id": trip.driver_id,
+        "vehicle_id": trip.vehicle_id,
+        "departure_province": trip.destination_province,
+        "destination_province": trip.departure_province,
+        "departure_time": trip.return_departure_time,
+        "departure_lat": None,
+        "departure_lng": None,
+        "departure_route": _clone_json_value(trip.destination_route),
+        "destination_route": _clone_json_value(trip.departure_route),
+        "pickup_stop": _clone_json_value(trip.dropoff_stop),
+        "dropoff_stop": _clone_json_value(trip.pickup_stop),
+        "live_heading": None,
+        "live_speed_kph": None,
+        "live_location_updated_at": None,
+        "live_location_expires_at": None,
+        "repeat_mode": trip.repeat_mode,
+        "auto_repeat_weekly": trip.repeat_mode == "weekly",
+        "recurring_day_of_week": trip.return_departure_time.weekday() if trip.repeat_mode == "weekly" else None,
+        "recurring_departure_time": trip.return_departure_time.time().replace(second=0, microsecond=0) if trip.repeat_mode in {"daily", "weekly"} else None,
+        "has_return_schedule": False,
+        "return_departure_time": None,
+        "promotion_label": trip.promotion_label,
+        "promotion_discount_percent": trip.promotion_discount_percent,
+        "price_per_seat": trip.price_per_seat,
+        "total_seats": trip.total_seats,
+        "available_seats": trip.total_seats,
+        "status": trip.status,
+    }
+    if return_trip is None:
+        return_trip = Trip(**return_data)
+        db.add(return_trip)
+        db.flush()
+        trip.return_trip_id = return_trip.id
+    else:
+        for field, value in return_data.items():
+            setattr(return_trip, field, value)
+    return_trip.return_trip_id = trip.id
 
 
 def _apply_trip_update(db: Session, trip: Trip, payload: TripUpdate, current_user: User) -> None:
-	update_data = payload.model_dump(exclude_unset=True)
-	for required_field in [
-		"departure_province",
-		"destination_province",
-		"departure_time",
-		"price_per_seat",
-		"total_seats",
-		"available_seats",
-		"status",
-	]:
-		if required_field in update_data and update_data[required_field] is None:
-			raise HTTPException(status_code=422, detail=f"{required_field} cannot be null")
-	if "vehicle_id" in update_data and update_data["vehicle_id"] is not None:
-		vehicle = db.get(Vehicle, update_data["vehicle_id"])
-		_assert_driver_vehicle_access(vehicle, current_user)
-	normalized = _normalize_trip_schedule_data(
-		{
-			"repeat_mode": trip.repeat_mode,
-			"auto_repeat_weekly": trip.auto_repeat_weekly,
-			"recurring_day_of_week": trip.recurring_day_of_week,
-			"recurring_departure_time": trip.recurring_departure_time,
-			"has_return_schedule": trip.has_return_schedule,
-			"return_departure_time": trip.return_departure_time,
-			"departure_time": trip.departure_time,
-			**update_data,
-		}
-	)
-	for field in [
-		"repeat_mode",
-		"auto_repeat_weekly",
-		"recurring_day_of_week",
-		"recurring_departure_time",
-		"has_return_schedule",
-		"return_departure_time",
-	]:
-		if field in normalized:
-			update_data[field] = normalized[field]
-	if update_data.get("has_return_schedule") and update_data.get("return_departure_time") is None:
-		raise HTTPException(status_code=422, detail="return_departure_time is required when has_return_schedule is true")
-	for field, value in update_data.items():
-		setattr(trip, field, value)
-	if trip.available_seats > trip.total_seats:
-		raise HTTPException(status_code=400, detail="available_seats cannot exceed total_seats")
+    update_data = payload.model_dump(exclude_unset=True)
+    for required_field in [
+        "departure_province",
+        "destination_province",
+        "departure_time",
+        "price_per_seat",
+        "total_seats",
+        "available_seats",
+        "status",
+    ]:
+        if required_field in update_data and update_data[required_field] is None:
+            raise HTTPException(status_code=422, detail=f"{required_field} cannot be null")
+    if "vehicle_id" in update_data and update_data["vehicle_id"] is not None:
+        vehicle = db.get(Vehicle, update_data["vehicle_id"])
+        _assert_driver_vehicle_access(vehicle, current_user)
+    normalized = _normalize_trip_schedule_data(
+        {
+            "repeat_mode": trip.repeat_mode,
+            "auto_repeat_weekly": trip.auto_repeat_weekly,
+            "recurring_day_of_week": trip.recurring_day_of_week,
+            "recurring_departure_time": trip.recurring_departure_time,
+            "has_return_schedule": trip.has_return_schedule,
+            "return_departure_time": trip.return_departure_time,
+            "departure_time": trip.departure_time,
+            "departure_route": _clone_json_value(trip.departure_route),
+            "destination_route": _clone_json_value(trip.destination_route),
+            "pickup_stop": _clone_json_value(trip.pickup_stop),
+            "dropoff_stop": _clone_json_value(trip.dropoff_stop),
+            **update_data,
+        }
+    )
+    _validate_trip_route_stop_payload(normalized)
+    for field in [
+        "repeat_mode",
+        "auto_repeat_weekly",
+        "recurring_day_of_week",
+        "recurring_departure_time",
+        "has_return_schedule",
+        "return_departure_time",
+    ]:
+        if field in normalized:
+            update_data[field] = normalized[field]
+    if update_data.get("has_return_schedule") and update_data.get("return_departure_time") is None:
+        raise HTTPException(status_code=422, detail="return_departure_time is required when has_return_schedule is true")
+    for field, value in update_data.items():
+        setattr(trip, field, value)
+    if trip.available_seats > trip.total_seats:
+        raise HTTPException(status_code=400, detail="available_seats cannot exceed total_seats")
 
 
 def _get_or_create_notification_preferences(db: Session, user: User) -> NotificationPreference:
@@ -636,37 +684,38 @@ def create_trip(
 	db: Session = Depends(get_db),
 	current_user: User = Depends(get_current_user),
 ) -> TripRead:
-	if current_user.role != "driver":
-		raise HTTPException(status_code=403, detail="Only drivers can create trips")
+    if current_user.role != "driver":
+        raise HTTPException(status_code=403, detail="Only drivers can create trips")
 
-	if payload.vehicle_id is not None:
-		vehicle = db.get(Vehicle, payload.vehicle_id)
-		if vehicle is None:
-			raise HTTPException(status_code=404, detail="Vehicle not found")
-		if vehicle.owner_id != current_user.id:
-			raise HTTPException(status_code=403, detail="Vehicle does not belong to the current user")
+    if payload.vehicle_id is not None:
+        vehicle = db.get(Vehicle, payload.vehicle_id)
+        if vehicle is None:
+            raise HTTPException(status_code=404, detail="Vehicle not found")
+        if vehicle.owner_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Vehicle does not belong to the current user")
 
-	if payload.available_seats > payload.total_seats:
-		raise HTTPException(status_code=400, detail="available_seats cannot exceed total_seats")
+    if payload.available_seats > payload.total_seats:
+        raise HTTPException(status_code=400, detail="available_seats cannot exceed total_seats")
 
-	trip_data = _normalize_trip_schedule_data(payload.model_dump())
-	if trip_data["has_return_schedule"] and trip_data.get("return_departure_time") is None:
-		raise HTTPException(status_code=422, detail="return_departure_time is required when has_return_schedule is true")
-	if trip_data.get("departure_lat") is not None and trip_data.get("departure_lng") is not None:
-		if trip_data.get("live_location_expires_at") is None:
-			trip_data["live_location_expires_at"] = payload.departure_time + timedelta(hours=24)
-		trip_data["live_location_updated_at"] = phnom_penh_now()
-	trip = Trip(**trip_data, driver_id=current_user.id)
-	db.add(trip)
-	db.flush()
-	_sync_return_trip(db, trip)
-	db.commit()
-	created_trip = db.execute(
-		select(Trip)
-		.options(selectinload(Trip.driver), selectinload(Trip.vehicle), selectinload(Trip.bookings))
-		.where(Trip.id == trip.id)
-	).scalar_one()
-	return _build_trip_read(created_trip)
+    trip_data = _normalize_trip_schedule_data(payload.model_dump())
+    _validate_trip_route_stop_payload(trip_data)
+    if trip_data["has_return_schedule"] and trip_data.get("return_departure_time") is None:
+        raise HTTPException(status_code=422, detail="return_departure_time is required when has_return_schedule is true")
+    if trip_data.get("departure_lat") is not None and trip_data.get("departure_lng") is not None:
+        if trip_data.get("live_location_expires_at") is None:
+            trip_data["live_location_expires_at"] = payload.departure_time + timedelta(hours=24)
+        trip_data["live_location_updated_at"] = phnom_penh_now()
+    trip = Trip(**trip_data, driver_id=current_user.id)
+    db.add(trip)
+    db.flush()
+    _sync_return_trip(db, trip)
+    db.commit()
+    created_trip = db.execute(
+        select(Trip)
+        .options(selectinload(Trip.driver), selectinload(Trip.vehicle), selectinload(Trip.bookings))
+        .where(Trip.id == trip.id)
+    ).scalar_one()
+    return _build_trip_read(created_trip)
 
 
 @router.get("/driver/trips", response_model=list[TripRead])

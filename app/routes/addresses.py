@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..models import Address, AddressFormEntry
-from ..schemas import AddressFormCreate, AddressFormRead, AddressRead
+from ..schemas import AddressFormCreate, AddressFormRead, AddressRead, AddressStopRead
 
 
 AddressType = Literal["country", "province", "district", "commune", "village", "city", "khan", "sangkat", "ក្រុង"]
@@ -42,6 +42,20 @@ def _en_name(address: Address) -> str:
 def _join_address_parts(parts: list[str | None]) -> str | None:
     joined = ", ".join(part.strip() for part in parts if part and part.strip())
     return joined or None
+
+
+def _get_parent_address(address: Address, db: Session) -> Address | None:
+    if not address.parent_code:
+        return None
+    return db.execute(select(Address).where(Address.code == address.parent_code)).scalar_one_or_none()
+
+
+def _best_stop_label(address: Address) -> str:
+    return address.description or address.name
+
+
+def _best_stop_landmark(address: Address) -> str | None:
+    return address.reference or address.official_note or address.note_by_checker or None
 
 
 @router.get("/provinces", response_model=list[AddressRead])
@@ -95,6 +109,52 @@ def get_villages(
             Address.parent_code == commune_code,
         )
     ).scalars().all()
+
+
+@router.get("/stops/communes/{commune_code}", response_model=list[AddressStopRead])
+def get_commune_stops(
+    commune_code: str = Path(min_length=5, max_length=20),
+    db: Session = Depends(get_db),
+) -> list[AddressStopRead]:
+    commune = _get_address_or_404(commune_code, db)
+    if commune.type not in THIRD_LEVEL_TYPES:
+        raise HTTPException(status_code=400, detail="commune_code must belong to a commune or sangkat")
+
+    district = _get_parent_address(commune, db)
+    province = _get_parent_address(district, db) if district is not None else None
+
+    villages = db.execute(
+        _ordered_addresses_query(
+            Address.type == "village",
+            Address.parent_code == commune_code,
+        )
+    ).scalars().all()
+
+    stops: list[AddressStopRead] = []
+    for village in villages:
+        latitude = float(village.latitude) if village.latitude is not None else None
+        longitude = float(village.longitude) if village.longitude is not None else None
+        if latitude is None or longitude is None:
+            continue
+
+        stops.append(
+            AddressStopRead(
+                id=village.id,
+                source="catalog",
+                label=_best_stop_label(village),
+                landmark_note=_best_stop_landmark(village),
+                latitude=latitude,
+                longitude=longitude,
+                commune_code=commune.code,
+                commune_name=_best_stop_label(commune),
+                district_code=district.code if district is not None else None,
+                district_name=_best_stop_label(district) if district is not None else None,
+                province_code=province.code if province is not None else None,
+                province_name=_best_stop_label(province) if province is not None else None,
+            )
+        )
+
+    return stops
 
 
 @router.get("/by-type/{address_type}", response_model=list[AddressRead])

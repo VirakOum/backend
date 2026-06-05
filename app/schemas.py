@@ -12,6 +12,7 @@ BookingPickupStatus = Literal["pending", "driver_arrived", "passenger_boarded", 
 PaymentInstructionSourceType = Literal["none", "text", "manual", "qr_image", "qr_payload"]
 PaymentInstructionParseStatus = Literal["missing", "parsed", "failed"]
 TripRepeatMode = Literal["none", "daily", "weekly"]
+TripStopSourceType = Literal["catalog", "manual_pin"]
 
 
 class AddressRead(BaseModel):
@@ -62,6 +63,45 @@ class AddressFormRead(BaseModel):
     created_at: datetime
     updated_at: datetime
     model_config = ConfigDict(from_attributes=True)
+
+
+class AddressStopRead(BaseModel):
+    id: int | None = None
+    source: TripStopSourceType = "catalog"
+    label: str
+    landmark_note: str | None = None
+    latitude: float
+    longitude: float
+    commune_code: str
+    commune_name: str
+    district_code: str | None = None
+    district_name: str | None = None
+    province_code: str | None = None
+    province_name: str | None = None
+
+
+class TripRoutePayload(BaseModel):
+    province_code: str = Field(min_length=1, max_length=20)
+    province_name: str = Field(min_length=1, max_length=255)
+    district_code: str = Field(min_length=1, max_length=20)
+    district_name: str = Field(min_length=1, max_length=255)
+    commune_code: str = Field(min_length=1, max_length=20)
+    commune_name: str = Field(min_length=1, max_length=255)
+
+
+class TripStopPayload(BaseModel):
+    id: int | None = None
+    source: TripStopSourceType
+    label: str = Field(min_length=1, max_length=255)
+    landmark_note: str | None = Field(default=None, max_length=255)
+    latitude: float
+    longitude: float
+    commune_code: str = Field(min_length=1, max_length=20)
+    commune_name: str = Field(min_length=1, max_length=255)
+    district_code: str | None = Field(default=None, min_length=1, max_length=20)
+    district_name: str | None = Field(default=None, min_length=1, max_length=255)
+    province_code: str | None = Field(default=None, min_length=1, max_length=20)
+    province_name: str | None = Field(default=None, min_length=1, max_length=255)
 
 
 class ItemCreate(BaseModel):
@@ -149,6 +189,10 @@ class TripCreate(BaseModel):
     departure_time: datetime
     departure_lat: float | None = None
     departure_lng: float | None = None
+    departure_route: TripRoutePayload | None = None
+    destination_route: TripRoutePayload | None = None
+    pickup_stop: TripStopPayload | None = None
+    dropoff_stop: TripStopPayload | None = None
     live_location_expires_at: datetime | None = None
     repeat_mode: TripRepeatMode = "none"
     auto_repeat_weekly: bool = False
@@ -171,6 +215,10 @@ class TripUpdate(BaseModel):
     departure_time: datetime | None = None
     departure_lat: float | None = None
     departure_lng: float | None = None
+    departure_route: TripRoutePayload | None = None
+    destination_route: TripRoutePayload | None = None
+    pickup_stop: TripStopPayload | None = None
+    dropoff_stop: TripStopPayload | None = None
     live_location_expires_at: datetime | None = None
     repeat_mode: TripRepeatMode | None = None
     auto_repeat_weekly: bool | None = None
@@ -233,6 +281,10 @@ class TripRead(BaseModel):
     departure_time: datetime
     departure_lat: float | None
     departure_lng: float | None
+    departure_route: TripRoutePayload | None = None
+    destination_route: TripRoutePayload | None = None
+    pickup_stop: TripStopPayload | None = None
+    dropoff_stop: TripStopPayload | None = None
     live_lat: float | None = None
     live_lng: float | None = None
     live_heading: int | None

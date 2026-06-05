@@ -32,6 +32,7 @@ client = TestClient(app)
 
 
 def setup_function() -> None:
+    app.dependency_overrides[get_db] = override_get_db
     AddressFormEntry.__table__.drop(bind=test_engine, checkfirst=True)
     Address.__table__.drop(bind=test_engine, checkfirst=True)
     Address.__table__.create(bind=test_engine)
@@ -73,6 +74,17 @@ def setup_function() -> None:
                     description="ភូមិ A",
                     type="village",
                     parent_code="60101",
+                    reference="Near pagoda gate",
+                    latitude=12.345678,
+                    longitude=104.987654,
+                ),
+                Address(
+                    id=6,
+                    code="60102",
+                    name="Prek Same",
+                    description="ព្រែកសាម",
+                    type="commune",
+                    parent_code="601",
                 ),
             ]
         )
@@ -163,3 +175,27 @@ def test_create_address_form_entry_rejects_invalid_hierarchy() -> None:
 
     assert response.status_code == 400
     assert response.json()["detail"] == "village_code must belong to the selected commune"
+
+
+def test_get_commune_stops_returns_catalog_stops() -> None:
+    response = client.get("/addresses/stops/communes/60101")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["id"] == 5
+    assert body[0]["source"] == "catalog"
+    assert body[0]["label"] == "ភូមិ A"
+    assert body[0]["landmark_note"] == "Near pagoda gate"
+    assert body[0]["latitude"] == 12.345678
+    assert body[0]["longitude"] == 104.987654
+    assert body[0]["commune_code"] == "60101"
+    assert body[0]["district_code"] == "601"
+    assert body[0]["province_code"] == "06"
+
+
+def test_get_commune_stops_returns_empty_list_when_no_catalog_stops_exist() -> None:
+    response = client.get("/addresses/stops/communes/60102")
+
+    assert response.status_code == 200
+    assert response.json() == []
