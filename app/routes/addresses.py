@@ -1,8 +1,10 @@
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Path, status
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from math import asin, cos, radians, sin, sqrt
 
 from ..db import get_db
 from ..models import Address, AddressFormEntry
@@ -14,6 +16,20 @@ SECOND_LEVEL_TYPES = {"district", "city", "khan", "ក្រុង"}
 THIRD_LEVEL_TYPES = {"commune", "sangkat"}
 
 router = APIRouter(prefix="/addresses", tags=["addresses"])
+
+
+class AddressStopResolveRequest(BaseModel):
+    latitude: float
+    longitude: float
+    google_label: str | None = Field(default=None, max_length=255)
+    google_landmark_note: str | None = Field(default=None, max_length=255)
+
+
+class AddressStopResolveResponse(BaseModel):
+    province: AddressRead
+    district: AddressRead
+    commune: AddressRead
+    stop: AddressStopRead
 
 
 def _ordered_addresses_query(*conditions: object):
@@ -56,6 +72,95 @@ def _best_stop_label(address: Address) -> str:
 
 def _best_stop_landmark(address: Address) -> str | None:
     return address.reference or address.official_note or address.note_by_checker or None
+
+
+def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    earth_radius_km = 6371.0
+    dlat = radians(lat2 - lat1)
+    dlng = radians(lng2 - lng1)
+    a = sin(dlat / 2) ** 2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlng / 2) ** 2
+    return 2 * earth_radius_km * asin(sqrt(a))
+
+
+def _preferred_resolved_landmark(
+    address: Address,
+    google_label: str | None,
+    google_landmark_note: str | None,
+) -> str | None:
+    db_landmark = _best_stop_landmark(address)
+    preferred_label = _best_stop_label(address)
+    parts: list[str] = []
+    for value in [db_landmark, google_landmark_note, google_label]:
+        if value is None:
+            continue
+        cleaned = value.strip()
+        if not cleaned:
+            continue
+        if cleaned == preferred_label:
+            continue
+        if cleaned not in parts:
+            parts.append(cleaned)
+    return ", ".join(parts) if parts else None
+
+
+def _resolve_stop_from_coordinates(
+    *,
+    latitude: float,
+    longitude: float,
+    google_label: str | None,
+    google_landmark_note: str | None,
+    db: Session,
+) -> AddressStopResolveResponse:
+    villages = db.execute(
+        _ordered_addresses_query(
+            Address.type == "village",
+            Address.latitude.is_not(None),
+            Address.longitude.is_not(None),
+        )
+    ).scalars().all()
+    if not villages:
+        raise HTTPException(status_code=404, detail="No stop candidates available")
+
+    nearest_village = min(
+        villages,
+        key=lambda village: _haversine_km(
+            latitude,
+            longitude,
+            float(village.latitude),
+            float(village.longitude),
+        ),
+    )
+
+    commune = _get_parent_address(nearest_village, db)
+    district = _get_parent_address(commune, db) if commune is not None else None
+    province = _get_parent_address(district, db) if district is not None else None
+    if commune is None or district is None or province is None:
+        raise HTTPException(status_code=404, detail="Resolved stop is missing address hierarchy")
+
+    stop = AddressStopRead(
+        id=nearest_village.id,
+        source="catalog",
+        label=_best_stop_label(nearest_village),
+        landmark_note=_preferred_resolved_landmark(
+            nearest_village,
+            google_label,
+            google_landmark_note,
+        ),
+        latitude=float(nearest_village.latitude),
+        longitude=float(nearest_village.longitude),
+        commune_code=commune.code,
+        commune_name=_best_stop_label(commune),
+        district_code=district.code,
+        district_name=_best_stop_label(district),
+        province_code=province.code,
+        province_name=_best_stop_label(province),
+    )
+    return AddressStopResolveResponse(
+        province=AddressRead.model_validate(province),
+        district=AddressRead.model_validate(district),
+        commune=AddressRead.model_validate(commune),
+        stop=stop,
+    )
 
 
 @router.get("/provinces", response_model=list[AddressRead])
@@ -155,6 +260,20 @@ def get_commune_stops(
         )
 
     return stops
+
+
+@router.post("/resolve-stop", response_model=AddressStopResolveResponse)
+def resolve_stop(
+    payload: AddressStopResolveRequest,
+    db: Session = Depends(get_db),
+) -> AddressStopResolveResponse:
+    return _resolve_stop_from_coordinates(
+        latitude=payload.latitude,
+        longitude=payload.longitude,
+        google_label=payload.google_label,
+        google_landmark_note=payload.google_landmark_note,
+        db=db,
+    )
 
 
 @router.get("/by-type/{address_type}", response_model=list[AddressRead])
