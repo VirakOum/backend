@@ -6,6 +6,7 @@ from .routes.meta import router as meta_router
 from .routes.travel import router as travel_router
 from .routes.passenger import router as passenger_router
 from .routes.addresses import router as addresses_router
+from .routes.driver_fee import router as driver_fee_router
 
 app = FastAPI(
     title="Learning FastAPI",
@@ -32,3 +33,4 @@ app.add_middleware(
 app.include_router(travel_router)
 app.include_router(passenger_router)
 app.include_router(addresses_router)
+app.include_router(driver_fee_router)
