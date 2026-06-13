@@ -1,5 +1,5 @@
 from collections import defaultdict
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -40,7 +40,6 @@ from ..schemas import (
 router = APIRouter(prefix="/travel/wallet", tags=["driver-wallet"])
 
 DEFAULT_TIMEZONE = "Asia/Phnom_Penh"
-USD_TO_KHR = 4000
 SETTLEMENT_ENTRY_STATUSES = {"owed", "settled"}
 UNPAID_INVOICE_STATUSES = {"pending", "issued", "overdue", "failed"}
 
@@ -98,12 +97,7 @@ def _to_int(value: int | Decimal | None) -> int:
 
 
 def snapshot_booking_fees(db: Session, booking: Booking) -> None:
-    """Snapshot the driver's current membership fee onto a booking.
-
-    Call this when a booking becomes billable for wallet debt posting.
-    The snapshot ensures historical bookings are never recalculated using a
-    newer membership tier.
-    """
+    """Snapshot the driver's membership fee onto a booking once it becomes billable."""
     if booking.fee_snapshotted_at is not None:
         return
 
@@ -156,6 +150,7 @@ def _get_runtime_settings(db: Session) -> AppRuntimeSetting:
             driver_cash_debt_limit_usd=DEFAULT_DRIVER_CASH_DEBT_LIMIT_USD,
             driver_cash_debt_limit_khr=DEFAULT_DRIVER_CASH_DEBT_LIMIT_KHR,
         )
+
     if settings is not None:
         return settings
 
@@ -194,6 +189,7 @@ def _get_or_create_driver_wallet(db: Session, *, driver_id) -> DriverWallet:
             subscription_fee_owed_usd=0,
             subscription_fee_owed_khr=0,
         )
+
     if wallet is not None:
         return wallet
 
@@ -229,7 +225,9 @@ def evaluate_driver_wallet_lock(
     )
     if settings.auto_lock_on_limit and over_limit:
         wallet.is_locked = True
-        wallet.locked_reason = "Driver debt limit reached. Please settle wallet debt before publishing new trips."
+        wallet.locked_reason = (
+            "Driver debt limit reached. Please settle wallet debt before publishing new trips."
+        )
     else:
         wallet.is_locked = False
         wallet.locked_reason = None
@@ -266,15 +264,6 @@ def _build_membership_summary(membership: DriverMembership | None) -> DriverMemb
         started_at=membership.started_at,
         next_billing_at=membership.next_billing_at,
         status=membership.status,
-    )
-
-
-def _empty_aggregate() -> DriverFeeAggregate:
-    return DriverFeeAggregate(
-        completed_bookings=0,
-        confirmed_passengers=0,
-        service_fee_usd=0.0,
-        service_fee_khr=0,
     )
 
 
