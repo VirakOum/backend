@@ -1,4 +1,4 @@
-from datetime import datetime, time
+from datetime import date, datetime, time
 from decimal import Decimal
 from uuid import UUID
 from typing import Any, Literal
@@ -6,8 +6,8 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 
-BookingPaymentMethod = Literal["khqr", "cash_on_arrival"]
-BookingPaymentStatus = Literal["pending", "opened", "paid", "failed", "cancelled"]
+BookingPaymentMethod = Literal["cash", "aba", "wing"]
+BookingPaymentStatus = Literal["pending", "paid", "postpaid"]
 BookingPickupStatus = Literal["pending", "driver_arrived", "passenger_boarded", "completed"]
 PaymentInstructionSourceType = Literal["none", "text", "manual", "qr_image", "qr_payload"]
 PaymentInstructionParseStatus = Literal["missing", "parsed", "failed"]
@@ -318,7 +318,7 @@ class TripRead(BaseModel):
 class BookingCreate(BaseModel):
     trip_id: UUID
     seat_numbers: list[int] = Field(min_length=1)
-    payment_method: BookingPaymentMethod = "cash_on_arrival"
+    payment_method: BookingPaymentMethod = "cash"
     total_price: Decimal | None = Field(default=None, gt=0)
     status: str = Field(default="pending", pattern="^(pending|confirmed|cancelled)$")
 
@@ -573,3 +573,99 @@ class NotificationPreferences(BaseModel):
 class NotificationPreferencesRead(NotificationPreferences):
     user_id: UUID
     updated_at: datetime | None = None
+
+
+DriverMembershipCode = Literal["normal", "pro", "vip"]
+DriverMembershipStatus = Literal["active", "expired", "cancelled", "scheduled"]
+DriverInvoiceType = Literal["service_fee", "subscription"]
+DriverInvoiceStatus = Literal["pending", "issued", "paid", "overdue", "failed", "void"]
+
+
+class DriverMembershipSummary(BaseModel):
+    code: DriverMembershipCode
+    label: str
+    monthly_subscription_usd: float
+    monthly_subscription_khr: int
+    service_fee_per_passenger_usd: float
+    service_fee_per_passenger_khr: int
+    verified_badge: bool = False
+    priority_bookings: bool = False
+    started_at: datetime | None = None
+    next_billing_at: datetime | None = None
+    status: DriverMembershipStatus = "active"
+
+
+class DriverWalletSummary(BaseModel):
+    service_fee_owed_usd: float = 0.0
+    service_fee_owed_khr: int = 0
+    subscription_fee_owed_usd: float = 0.0
+    subscription_fee_owed_khr: int = 0
+    total_owed_usd: float = 0.0
+    total_owed_khr: int = 0
+    credit_limit_usd: float = 0.0
+    credit_limit_khr: int = 0
+    is_locked: bool = False
+    locked_reason: str | None = None
+    last_entry_posted_at: datetime | None = None
+    last_settled_at: datetime | None = None
+
+
+class DriverFeeAggregate(BaseModel):
+    completed_bookings: int = 0
+    confirmed_passengers: int = 0
+    service_fee_usd: float = 0.0
+    service_fee_khr: int = 0
+
+
+class DriverDailyFeeSummaryRead(BaseModel):
+    date: date
+    completed_bookings: int = 0
+    confirmed_passengers: int = 0
+    service_fee_usd: float = 0.0
+    service_fee_khr: int = 0
+    membership_label: str
+    invoice_status: DriverInvoiceStatus = "pending"
+
+
+class DriverInvoiceSummaryRead(BaseModel):
+    id: UUID
+    type: DriverInvoiceType
+    status: DriverInvoiceStatus
+    period_label: str
+    total_usd: float
+    total_khr: int
+    issued_at: datetime | None = None
+    due_at: datetime | None = None
+    paid_at: datetime | None = None
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DriverWalletEntryRead(BaseModel):
+    entry_id: UUID
+    trip_id: UUID
+    booking_id: UUID
+    payment_method: str
+    entry_type: str
+    membership_tier: str
+    membership_label: str
+    passenger_count: int
+    cash_collected_khr: int
+    service_fee_usd: float
+    service_fee_khr: int
+    status: str
+    posted_at: datetime
+    settled_at: datetime | None = None
+
+
+class DriverFeeSummaryResponse(BaseModel):
+    driver_id: UUID
+    as_of: datetime
+    timezone: str = "Asia/Phnom_Penh"
+    membership: DriverMembershipSummary
+    wallet: DriverWalletSummary
+    today: DriverFeeAggregate
+    period: DriverFeeAggregate
+    daily_summaries: list[DriverDailyFeeSummaryRead]
+    invoices: list[DriverInvoiceSummaryRead]
+    digital_payment_enabled: bool = False
+    recent_entries: list[DriverWalletEntryRead] = Field(default_factory=list)

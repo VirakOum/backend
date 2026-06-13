@@ -5,7 +5,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.main import app
 from app.db import get_db
-from app.models import AuthToken, Trip, User, Vehicle
+from app.models import AppRuntimeSetting, AuthToken, DriverWallet, Trip, User, Vehicle
 
 
 test_engine = create_engine(
@@ -29,6 +29,8 @@ User.__table__.create(bind=test_engine)
 AuthToken.__table__.create(bind=test_engine)
 Vehicle.__table__.create(bind=test_engine)
 Trip.__table__.create(bind=test_engine)
+DriverWallet.__table__.create(bind=test_engine)
+AppRuntimeSetting.__table__.create(bind=test_engine)
 
 client = TestClient(app)
 
@@ -48,7 +50,15 @@ def _create_bookings_table() -> None:
                 pickup_status TEXT,
                 driver_arrived_at DATETIME,
                 status TEXT,
-                created_at DATETIME
+                created_at DATETIME,
+                membership_code_snapshot TEXT,
+                membership_label_snapshot TEXT,
+                service_fee_per_passenger_usd NUMERIC,
+                service_fee_per_passenger_khr INTEGER,
+                service_fee_total_usd NUMERIC,
+                service_fee_total_khr INTEGER,
+                fee_snapshotted_at DATETIME,
+                settlement_summary_date DATE
             )
             """
         )
@@ -60,12 +70,16 @@ def setup_function() -> None:
         connection.exec_driver_sql("DROP TABLE IF EXISTS bookings")
     Trip.__table__.drop(bind=test_engine, checkfirst=True)
     Vehicle.__table__.drop(bind=test_engine, checkfirst=True)
+    DriverWallet.__table__.drop(bind=test_engine, checkfirst=True)
+    AppRuntimeSetting.__table__.drop(bind=test_engine, checkfirst=True)
     AuthToken.__table__.drop(bind=test_engine, checkfirst=True)
     User.__table__.drop(bind=test_engine, checkfirst=True)
     User.__table__.create(bind=test_engine)
     AuthToken.__table__.create(bind=test_engine)
     Vehicle.__table__.create(bind=test_engine)
     Trip.__table__.create(bind=test_engine)
+    DriverWallet.__table__.create(bind=test_engine)
+    AppRuntimeSetting.__table__.create(bind=test_engine)
     _create_bookings_table()
 
 

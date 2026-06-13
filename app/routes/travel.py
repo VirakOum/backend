@@ -13,8 +13,15 @@ from decimal import Decimal, ROUND_HALF_UP
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from ..auth import get_current_user, hash_password, issue_token, verify_password
+from ..config import ENABLE_DIGITAL_PAYMENT
 from ..db import get_db
-from ..models import Booking, BookingPaymentInstruction, NotificationPreference, Payment, SupportTicket, Trip, User, Vehicle, phnom_penh_now
+from ..models import Booking, BookingPaymentInstruction, DriverWalletEntry, NotificationPreference, Payment, SupportTicket, Trip, User, Vehicle, phnom_penh_now
+from .driver_fee import (
+    evaluate_driver_wallet_lock,
+    get_or_create_driver_wallet,
+    get_runtime_settings,
+    snapshot_booking_fees,
+)
 from ..schemas import (
 	ActiveBookingResponse,
 	AuthResponse,
@@ -57,6 +64,16 @@ router = APIRouter(prefix="/travel", tags=["travel"])
 BOOKING_SEAT_HOLD_STATUSES = {"pending", "confirmed"}
 DEFAULT_CURRENCY = "USD"
 ABA_PAYMENT_LINK_RE = re.compile(r"https://pay\.ababank\.com/[a-zA-Z0-9/]+")
+
+LEGACY_PAYMENT_METHOD_MAP = {
+	"cash_on_arrival": "cash",
+	"khqr": "aba",
+}
+LEGACY_PAYMENT_STATUS_MAP = {
+	"opened": "pending",
+	"failed": "pending",
+	"cancelled": "pending",
+}
 
 
 def _cleanup_expired_live_locations(db: Session) -> None:
@@ -208,6 +225,108 @@ def _booking_payment_status(booking: Booking) -> str:
 	return booking.payment_status
 
 
+def _normalized_payment_method(value: str | None) -> str:
+	if value is None:
+		return "cash"
+	return LEGACY_PAYMENT_METHOD_MAP.get(value, value)
+
+
+def _normalized_payment_status(value: str | None) -> str:
+	if value is None:
+		return "pending"
+	return LEGACY_PAYMENT_STATUS_MAP.get(value, value)
+
+
+def _digital_payment_enabled(db: Session) -> bool:
+	return get_runtime_settings(db).enable_digital_payment
+
+
+def _assert_digital_payment_enabled(db: Session) -> None:
+	if not _digital_payment_enabled(db):
+		raise HTTPException(
+			status_code=403,
+			detail="Digital payment is coming soon. Cash payment is the only live method right now.",
+		)
+
+
+def _sync_booking_completion_from_trip(
+	db: Session,
+	*,
+	trip: Trip,
+) -> None:
+	boarded_bookings = [
+		booking
+		for booking in trip.bookings
+		if booking.status == "confirmed"
+		and booking.pickup_status == "passenger_boarded"
+	]
+	no_show_bookings = [
+		booking
+		for booking in trip.bookings
+		if booking.status == "confirmed"
+		and booking.pickup_status != "passenger_boarded"
+	]
+
+	if not boarded_bookings and no_show_bookings:
+		for booking in no_show_bookings:
+			trip.available_seats += len(booking.seat_numbers or [])
+			booking.status = "cancelled"
+			booking.payment_status = "pending"
+
+	for booking in boarded_bookings:
+		snapshot_booking_fees(db, booking)
+		if booking.wallet_entries:
+			booking.pickup_status = "completed"
+			booking.payment_status = "postpaid"
+			continue
+
+		trip_price = Decimal(str(booking.total_price or 0))
+		cash_collected_khr = int(_money(trip_price) * Decimal("4000"))
+		driver_wallet = get_or_create_driver_wallet(db, driver_id=trip.driver_id)
+		wallet_entry = DriverWalletEntry(
+			driver_id=trip.driver_id,
+			trip_id=trip.id,
+			booking_id=booking.id,
+			entry_type="trip_service_fee",
+			payment_method=_normalized_payment_method(booking.payment_method),
+			membership_code_snapshot=booking.membership_code_snapshot or "normal",
+			membership_label_snapshot=booking.membership_label_snapshot or "Normal User",
+			passenger_count=len(booking.seat_numbers or []),
+			cash_collected_khr=cash_collected_khr,
+			service_fee_usd=float(booking.service_fee_total_usd or 0),
+			service_fee_khr=int(booking.service_fee_total_khr or 0),
+			status="owed",
+			notes="Auto-posted when driver completed the trip.",
+		)
+		db.add(wallet_entry)
+
+		driver_wallet.service_fee_owed_usd = float(
+			Decimal(str(driver_wallet.service_fee_owed_usd or 0))
+			+ Decimal(str(booking.service_fee_total_usd or 0)),
+		)
+		driver_wallet.service_fee_owed_khr = int(driver_wallet.service_fee_owed_khr or 0) + int(
+			booking.service_fee_total_khr or 0
+		)
+		driver_wallet.total_owed_usd = float(
+			Decimal(str(driver_wallet.total_owed_usd or 0))
+			+ Decimal(str(booking.service_fee_total_usd or 0)),
+		)
+		driver_wallet.total_owed_khr = int(driver_wallet.total_owed_khr or 0) + int(
+			booking.service_fee_total_khr or 0
+		)
+		driver_wallet.last_entry_posted_at = phnom_penh_now()
+
+		booking.pickup_status = "completed"
+		booking.payment_status = "postpaid"
+
+	settings = get_runtime_settings(db)
+	evaluate_driver_wallet_lock(
+		db,
+		wallet=get_or_create_driver_wallet(db, driver_id=trip.driver_id),
+		settings=settings,
+	)
+
+
 def _build_payment_instruction_read(
 	booking: Booking,
 	instruction: BookingPaymentInstruction | None,
@@ -224,7 +343,7 @@ def _build_payment_instruction_read(
 		raw_message=instruction.raw_message,
 		parse_status=instruction.parse_status,
 		bank_provider=instruction.bank_provider,
-		payment_status=_booking_payment_status(booking),
+		payment_status=_normalized_payment_status(_booking_payment_status(booking)),
 		captured_at=instruction.captured_at,
 		expires_at=instruction.expires_at,
 	)
@@ -238,8 +357,8 @@ def _build_booking_with_trip_read(booking: Booking) -> BookingWithTripRead:
 		seat_numbers=booking.seat_numbers,
 		total_price=float(booking.total_price),
 		currency=DEFAULT_CURRENCY,
-		payment_method=booking.payment_method,
-		payment_status=_booking_payment_status(booking),
+		payment_method=_normalized_payment_method(booking.payment_method),
+		payment_status=_normalized_payment_status(_booking_payment_status(booking)),
 		pickup_status=booking.pickup_status,
 		driver_arrived_at=booking.driver_arrived_at,
 		status=booking.status,
@@ -255,7 +374,7 @@ def _empty_payment_instruction(booking: Booking) -> PaymentInstructionRead:
 		trip_id=booking.trip_id,
 		source_type="none",
 		parse_status="missing",
-		payment_status=_booking_payment_status(booking),
+		payment_status=_normalized_payment_status(_booking_payment_status(booking)),
 	)
 
 
@@ -686,6 +805,10 @@ def create_trip(
 ) -> TripRead:
     if current_user.role != "driver":
         raise HTTPException(status_code=403, detail="Only drivers can create trips")
+    driver_wallet = get_or_create_driver_wallet(db, driver_id=current_user.id)
+    evaluate_driver_wallet_lock(db, wallet=driver_wallet, settings=get_runtime_settings(db))
+    if driver_wallet.is_locked:
+        raise HTTPException(status_code=403, detail=driver_wallet.locked_reason)
 
     if payload.vehicle_id is not None:
         vehicle = db.get(Vehicle, payload.vehicle_id)
@@ -746,6 +869,11 @@ def update_trip(
 	current_user: User = Depends(get_current_user),
 ) -> TripRead:
 	trip = _assert_driver_trip_access(db.get(Trip, trip_id), current_user)
+	if payload.status in {"scheduled", "active"}:
+		driver_wallet = get_or_create_driver_wallet(db, driver_id=current_user.id)
+		evaluate_driver_wallet_lock(db, wallet=driver_wallet, settings=get_runtime_settings(db))
+		if driver_wallet.is_locked:
+			raise HTTPException(status_code=403, detail=driver_wallet.locked_reason)
 	_apply_trip_update(db, trip, payload, current_user)
 	_sync_return_trip(db, trip)
 	db.commit()
@@ -984,13 +1112,17 @@ def create_booking(
 		raise HTTPException(status_code=400, detail="Not enough available seats")
 
 	total_price = _money(_final_price_per_seat(trip) * requested)
+	payment_method = _normalized_payment_method(payload.payment_method)
+	if payment_method != "cash":
+		_assert_digital_payment_enabled(db)
 	booking = Booking(
 		trip_id=payload.trip_id,
 		passenger_id=current_user.id,
 		seat_numbers=payload.seat_numbers,
 		total_price=total_price,
-		payment_method=payload.payment_method,
-		status="pending",
+		payment_method=payment_method,
+		status="confirmed",
+		payment_status="pending",
 	)
 	trip.available_seats -= requested
 	db.add(booking)
@@ -1121,11 +1253,14 @@ def mark_driver_arrived(
 
 	booking.pickup_status = "driver_arrived"
 	booking.driver_arrived_at = phnom_penh_now()
-
-	instruction = _get_or_create_payment_instruction(db, booking)
-	_apply_payment_instruction_capture(instruction, payload)
-	instruction.payment_status = _booking_payment_status(booking)
-	booking.payment_status = instruction.payment_status
+	if _normalized_payment_method(booking.payment_method) != "cash":
+		_assert_digital_payment_enabled(db)
+		instruction = _get_or_create_payment_instruction(db, booking)
+		_apply_payment_instruction_capture(instruction, payload)
+		instruction.payment_status = _booking_payment_status(booking)
+		booking.payment_status = instruction.payment_status
+	else:
+		booking.payment_status = "pending"
 
 	db.commit()
 	updated_booking = db.execute(
@@ -1170,6 +1305,41 @@ def get_booking_payment_instruction(
 	return instruction
 
 
+@router.post("/bookings/{booking_id}/passenger-boarded", response_model=BookingWithTripRead)
+def mark_passenger_boarded(
+	booking_id: UUID,
+	db: Session = Depends(get_db),
+	current_user: User = Depends(get_current_user),
+) -> BookingWithTripRead:
+	if current_user.role != "driver":
+		raise HTTPException(status_code=403, detail="Only drivers can mark passenger boarding")
+
+	booking = db.execute(
+		select(Booking)
+		.options(
+			selectinload(Booking.trip).selectinload(Trip.driver),
+			selectinload(Booking.trip).selectinload(Trip.vehicle),
+			selectinload(Booking.trip).selectinload(Trip.bookings),
+			selectinload(Booking.payment_instruction),
+			selectinload(Booking.payments),
+			selectinload(Booking.wallet_entries),
+		)
+		.where(Booking.id == booking_id)
+	).scalar_one_or_none()
+	if booking is None:
+		raise HTTPException(status_code=404, detail="Booking not found")
+	if booking.trip is None or booking.trip.driver_id != current_user.id:
+		raise HTTPException(status_code=403, detail="You can only board passengers on your own trip")
+	if booking.status == "cancelled":
+		raise HTTPException(status_code=400, detail="Cancelled bookings cannot be boarded")
+
+	booking.status = "confirmed"
+	booking.pickup_status = "passenger_boarded"
+	db.commit()
+	db.refresh(booking)
+	return _build_booking_with_trip_read(booking)
+
+
 @router.post("/bookings/{booking_id}/payment-instruction/upload", response_model=PaymentInstructionRead)
 def upload_booking_payment_instruction_image(
 	booking_id: UUID,
@@ -1191,6 +1361,7 @@ def upload_booking_payment_instruction_image(
 	trip = booking.trip
 	if trip is None or trip.driver_id != current_user.id:
 		raise HTTPException(status_code=403, detail="Only the trip driver can upload payment instructions")
+	_assert_digital_payment_enabled(db)
 
 	image_base64 = payload.qr_image_base64.strip()
 	if "," in image_base64 and image_base64.split(",", 1)[0].startswith("data:"):
@@ -1219,6 +1390,40 @@ def upload_booking_payment_instruction_image(
 	return _build_payment_instruction_read(booking, instruction) or _empty_payment_instruction(booking)
 
 
+@router.post("/trips/{trip_id}/complete", response_model=TripRead)
+def complete_trip(
+	trip_id: UUID,
+	db: Session = Depends(get_db),
+	current_user: User = Depends(get_current_user),
+) -> TripRead:
+	if current_user.role != "driver":
+		raise HTTPException(status_code=403, detail="Only drivers can complete trips")
+
+	trip = db.execute(
+		select(Trip)
+		.options(selectinload(Trip.driver), selectinload(Trip.vehicle), selectinload(Trip.bookings).selectinload(Booking.wallet_entries))
+		.where(Trip.id == trip_id)
+	).scalar_one_or_none()
+	if trip is None:
+		raise HTTPException(status_code=404, detail="Trip not found")
+	if trip.driver_id != current_user.id:
+		raise HTTPException(status_code=403, detail="You can only complete your own trip")
+	if trip.status == "completed":
+		updated_trip = _load_trip_for_read(db, trip.id)
+		if updated_trip is None:
+			raise HTTPException(status_code=404, detail="Trip not found")
+		return _build_trip_read(updated_trip)
+
+	trip.status = "completed"
+	_sync_booking_completion_from_trip(db, trip=trip)
+	current_user.completed_trips = int(current_user.completed_trips or 0) + 1
+	db.commit()
+	updated_trip = _load_trip_for_read(db, trip.id)
+	if updated_trip is None:
+		raise HTTPException(status_code=404, detail="Trip not found")
+	return _build_trip_read(updated_trip)
+
+
 @router.patch("/bookings/{booking_id}/payment-status", response_model=BookingWithTripRead)
 def update_booking_payment_status(
 	booking_id: UUID,
@@ -1243,9 +1448,17 @@ def update_booking_payment_status(
 	if booking.passenger_id != current_user.id and (trip is None or trip.driver_id != current_user.id):
 		raise HTTPException(status_code=403, detail="You do not have access to this booking")
 
-	booking.payment_status = payload.payment_status
+	if _normalized_payment_method(booking.payment_method) != "cash":
+		_assert_digital_payment_enabled(db)
+
+	booking.payment_status = _normalized_payment_status(payload.payment_status)
 	if booking.payment_instruction is not None:
-		booking.payment_instruction.payment_status = payload.payment_status
+		booking.payment_instruction.payment_status = booking.payment_status
+
+	if booking.payment_status == "paid" and booking.status != "confirmed":
+		booking.status = "confirmed"
+		snapshot_booking_fees(db, booking)
+
 	db.commit()
 	updated_booking = db.execute(
 		select(Booking)
@@ -1275,23 +1488,23 @@ def get_wallet_summary(
 			.join(Trip, Booking.trip_id == Trip.id)
 			.where(
 				Trip.driver_id == current_user.id,
-				Booking.status == "confirmed",
+				Booking.pickup_status == "completed",
 			)
 		).scalar_one()
-		confirmed_payments_count = db.execute(
-			select(func.count(Payment.id))
-			.join(Booking, Payment.booking_id == Booking.id)
+		completed_trip_count = db.execute(
+			select(func.count(Booking.id))
 			.join(Trip, Booking.trip_id == Trip.id)
 			.where(
 				Trip.driver_id == current_user.id,
-				Payment.status == "success",
+				Booking.pickup_status == "completed",
 			)
 		).scalar_one()
+		wallet = get_or_create_driver_wallet(db, driver_id=current_user.id)
 		return WalletSummaryResponse(
 			total_spent=float(total_spent or 0),
 			currency=DEFAULT_CURRENCY,
-			confirmed_payments_count=confirmed_payments_count,
-			wallet_balance=float(total_spent or 0),
+			confirmed_payments_count=completed_trip_count,
+			wallet_balance=float(wallet.total_owed_khr or 0),
 			refund_total=0.0,
 			promo_credit=0.0,
 		)
@@ -1477,6 +1690,7 @@ def create_payment(
 		raise HTTPException(status_code=404, detail="Booking not found")
 	if booking.passenger_id != current_user.id:
 		raise HTTPException(status_code=403, detail="You can only pay for your own booking")
+	_assert_digital_payment_enabled(db)
 
 	existing_tx = db.execute(
 		select(Payment).where(Payment.transaction_id == payload.transaction_id)
@@ -1488,8 +1702,6 @@ def create_payment(
 	db.add(payment)
 	if payload.status == "success":
 		booking.payment_status = "paid"
-	elif payload.status == "failed":
-		booking.payment_status = "failed"
 	else:
 		booking.payment_status = "pending"
 	if booking.payment_instruction is not None:

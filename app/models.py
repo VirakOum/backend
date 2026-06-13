@@ -1,6 +1,7 @@
 from sqlalchemy import (
     String,
     Boolean,
+    Date,
     DateTime,
     Time,
     Numeric,
@@ -16,7 +17,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
-from datetime import datetime, time
+from datetime import date, datetime, time
 from zoneinfo import ZoneInfo
 
 from .db import Base
@@ -213,23 +214,44 @@ class Booking(Base):
     passenger_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     seat_numbers: Mapped[list[int]] = mapped_column(ARRAY(Integer), nullable=False)  # e.g., [1, 2, 3]
     total_price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
-    payment_method: Mapped[str] = mapped_column(String(20), default="cash_on_arrival")
+    payment_method: Mapped[str] = mapped_column(String(20), default="cash")
     payment_status: Mapped[str] = mapped_column(String(20), default="pending")
     pickup_status: Mapped[str] = mapped_column(String(30), default="pending")
     driver_arrived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default='pending')  # 'pending', 'confirmed', 'cancelled'
     created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now)
 
+    # Fee snapshot fields (populated when booking becomes billable/completed)
+    membership_code_snapshot: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    membership_label_snapshot: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    service_fee_per_passenger_usd: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    service_fee_per_passenger_khr: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    service_fee_total_usd: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    service_fee_total_khr: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    fee_snapshotted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    settlement_summary_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+
     # Relationships
     trip: Mapped["Trip"] = relationship("Trip", back_populates="bookings")
     passenger: Mapped["User"] = relationship("User", back_populates="bookings")
     payments: Mapped[list["Payment"]] = relationship("Payment", back_populates="booking", cascade="all, delete-orphan")
     payment_instruction: Mapped["BookingPaymentInstruction | None"] = relationship("BookingPaymentInstruction", back_populates="booking", cascade="all, delete-orphan")
+    wallet_entries: Mapped[list["DriverWalletEntry"]] = relationship(
+        "DriverWalletEntry",
+        back_populates="booking",
+        cascade="all, delete-orphan",
+    )
 
     __table_args__ = (
         CheckConstraint("status IN ('pending', 'confirmed', 'cancelled')", name='booking_status_check'),
-        CheckConstraint("payment_method IN ('khqr', 'cash_on_arrival')", name="booking_payment_method_check"),
-        CheckConstraint("payment_status IN ('pending', 'opened', 'paid', 'failed', 'cancelled')", name="booking_payment_status_check"),
+        CheckConstraint(
+            "payment_method IN ('cash', 'aba', 'wing', 'khqr', 'cash_on_arrival')",
+            name="booking_payment_method_check",
+        ),
+        CheckConstraint(
+            "payment_status IN ('pending', 'paid', 'postpaid', 'opened', 'failed', 'cancelled')",
+            name="booking_payment_status_check",
+        ),
         CheckConstraint("pickup_status IN ('pending', 'driver_arrived', 'passenger_boarded', 'completed')", name="booking_pickup_status_check"),
     )
 
@@ -348,4 +370,162 @@ class SupportTicket(Base):
 
     __table_args__ = (
         CheckConstraint("status IN ('open', 'in_progress', 'resolved', 'closed')", name="support_ticket_status_check"),
+    )
+
+
+class DriverMembership(Base):
+    __tablename__ = "driver_memberships"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    driver_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    code: Mapped[str] = mapped_column(String(20), nullable=False)
+    label: Mapped[str] = mapped_column(String(50), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="active", nullable=False)
+    verified_badge: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    priority_bookings: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    monthly_subscription_usd: Mapped[float] = mapped_column(Numeric(10, 2), default=0, nullable=False)
+    monthly_subscription_khr: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    service_fee_per_passenger_usd: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    service_fee_per_passenger_khr: Mapped[int] = mapped_column(Integer, nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, nullable=False)
+    ends_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    next_billing_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    auto_renew: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, onupdate=phnom_penh_now, nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("code IN ('normal', 'pro', 'vip')", name="driver_membership_code_check"),
+        CheckConstraint("status IN ('active', 'expired', 'cancelled', 'scheduled')", name="driver_membership_status_check"),
+        Index("idx_driver_memberships_driver_status", "driver_id", "status", "started_at"),
+    )
+
+
+class DriverWallet(Base):
+    __tablename__ = "driver_wallets"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    driver_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True)
+    service_fee_owed_usd: Mapped[float] = mapped_column(Numeric(10, 2), default=0, nullable=False)
+    service_fee_owed_khr: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    subscription_fee_owed_usd: Mapped[float] = mapped_column(Numeric(10, 2), default=0, nullable=False)
+    subscription_fee_owed_khr: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    total_owed_usd: Mapped[float] = mapped_column(Numeric(10, 2), default=0, nullable=False)
+    total_owed_khr: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    credit_limit_usd: Mapped[float] = mapped_column(Numeric(10, 2), default=20, nullable=False)
+    credit_limit_khr: Mapped[int] = mapped_column(Integer, default=80000, nullable=False)
+    is_locked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    locked_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    last_entry_posted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_settled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, onupdate=phnom_penh_now, nullable=False)
+
+
+class DriverWalletEntry(Base):
+    __tablename__ = "driver_wallet_entries"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    driver_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    trip_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
+    booking_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("bookings.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    entry_type: Mapped[str] = mapped_column(String(30), default="trip_service_fee", nullable=False)
+    payment_method: Mapped[str] = mapped_column(String(20), default="cash", nullable=False)
+    membership_code_snapshot: Mapped[str] = mapped_column(String(20), nullable=False)
+    membership_label_snapshot: Mapped[str] = mapped_column(String(50), nullable=False)
+    passenger_count: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    cash_collected_khr: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    service_fee_usd: Mapped[float] = mapped_column(Numeric(10, 2), default=0, nullable=False)
+    service_fee_khr: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="owed", nullable=False)
+    posted_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, nullable=False)
+    settled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, onupdate=phnom_penh_now, nullable=False)
+
+    booking: Mapped["Booking"] = relationship("Booking", back_populates="wallet_entries")
+    trip: Mapped["Trip"] = relationship("Trip")
+
+    __table_args__ = (
+        CheckConstraint("entry_type IN ('trip_service_fee')", name="driver_wallet_entry_type_check"),
+        CheckConstraint(
+            "payment_method IN ('cash', 'aba', 'wing', 'khqr', 'cash_on_arrival')",
+            name="driver_wallet_entry_payment_method_check",
+        ),
+        CheckConstraint(
+            "membership_code_snapshot IN ('normal', 'pro', 'vip')",
+            name="driver_wallet_entry_membership_code_check",
+        ),
+        CheckConstraint("status IN ('owed', 'settled', 'void')", name="driver_wallet_entry_status_check"),
+        Index("idx_driver_wallet_entries_driver_posted", "driver_id", "posted_at"),
+    )
+
+
+class AppRuntimeSetting(Base):
+    __tablename__ = "app_runtime_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    enable_digital_payment: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    auto_lock_on_limit: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    driver_cash_debt_limit_usd: Mapped[float] = mapped_column(Numeric(10, 2), default=20, nullable=False)
+    driver_cash_debt_limit_khr: Mapped[int] = mapped_column(Integer, default=80000, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, onupdate=phnom_penh_now, nullable=False)
+
+
+class DriverDailyFeeSummary(Base):
+    __tablename__ = "driver_daily_fee_summaries"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    driver_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    membership_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("driver_memberships.id", ondelete="SET NULL"), nullable=True)
+    summary_date: Mapped[date] = mapped_column(Date, nullable=False)
+    membership_code: Mapped[str] = mapped_column(String(20), nullable=False)
+    membership_label: Mapped[str] = mapped_column(String(50), nullable=False)
+    completed_bookings: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    confirmed_passengers: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    service_fee_usd: Mapped[float] = mapped_column(Numeric(10, 2), default=0, nullable=False)
+    service_fee_khr: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    invoice_status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, onupdate=phnom_penh_now, nullable=False)
+
+    membership: Mapped["DriverMembership | None"] = relationship("DriverMembership")
+
+    __table_args__ = (
+        CheckConstraint("membership_code IN ('normal', 'pro', 'vip')", name="driver_daily_fee_membership_code_check"),
+        CheckConstraint("invoice_status IN ('pending', 'issued', 'paid', 'overdue', 'failed', 'void')", name="driver_daily_fee_invoice_status_check"),
+        UniqueConstraint("driver_id", "summary_date", name="uq_driver_daily_fee_driver_date"),
+        Index("idx_driver_daily_fee_driver_date", "driver_id", "summary_date"),
+    )
+
+
+class DriverInvoice(Base):
+    __tablename__ = "driver_invoices"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    driver_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    membership_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("driver_memberships.id", ondelete="SET NULL"), nullable=True)
+    daily_summary_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("driver_daily_fee_summaries.id", ondelete="SET NULL"), nullable=True)
+    type: Mapped[str] = mapped_column(String(20), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False)
+    period_start: Mapped[date | None] = mapped_column(Date, nullable=True)
+    period_end: Mapped[date | None] = mapped_column(Date, nullable=True)
+    period_label: Mapped[str] = mapped_column(String(100), nullable=False)
+    total_usd: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    total_khr: Mapped[int] = mapped_column(Integer, nullable=False)
+    issued_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    due_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, onupdate=phnom_penh_now, nullable=False)
+
+    membership: Mapped["DriverMembership | None"] = relationship("DriverMembership")
+    daily_summary: Mapped["DriverDailyFeeSummary | None"] = relationship("DriverDailyFeeSummary")
+
+    __table_args__ = (
+        CheckConstraint("type IN ('service_fee', 'subscription')", name="driver_invoice_type_check"),
+        CheckConstraint("status IN ('pending', 'issued', 'paid', 'overdue', 'failed', 'void')", name="driver_invoice_status_check"),
+        Index("idx_driver_invoices_driver_created", "driver_id", "created_at"),
     )
