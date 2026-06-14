@@ -104,6 +104,7 @@ class User(Base):
     bookings: Mapped[list["Booking"]] = relationship("Booking", back_populates="passenger", cascade="all, delete-orphan")
     auth_tokens: Mapped[list["AuthToken"]] = relationship("AuthToken", back_populates="user", cascade="all, delete-orphan")
     notification_preferences: Mapped["NotificationPreference | None"] = relationship("NotificationPreference", back_populates="user", cascade="all, delete-orphan")
+    notifications: Mapped[list["UserNotification"]] = relationship("UserNotification", back_populates="user", cascade="all, delete-orphan")
     support_tickets: Mapped[list["SupportTicket"]] = relationship("SupportTicket", back_populates="user")
 
     __table_args__ = (
@@ -349,6 +350,26 @@ class NotificationPreference(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, onupdate=phnom_penh_now)
 
     user: Mapped["User"] = relationship("User", back_populates="notification_preferences")
+
+
+class UserNotification(Base):
+    __tablename__ = "user_notifications"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    type: Mapped[str] = mapped_column(String(50), nullable=False)
+    title: Mapped[str] = mapped_column(String(120), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    trip_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("trips.id", ondelete="SET NULL"), nullable=True, index=True)
+    booking_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("bookings.id", ondelete="SET NULL"), nullable=True, index=True)
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, nullable=False, index=True)
+
+    user: Mapped["User"] = relationship("User", back_populates="notifications")
+
+    __table_args__ = (
+        CheckConstraint("type IN ('driver_arrived')", name="user_notification_type_check"),
+    )
 
 
 class SupportTicket(Base):

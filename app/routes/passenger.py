@@ -21,6 +21,20 @@ from ..schemas import (
 
 router = APIRouter(prefix="/passenger", tags=["passenger"])
 
+
+def _trip_coordinates(trip: Trip) -> tuple[float | None, float | None]:
+    if trip.departure_lat is not None and trip.departure_lng is not None:
+        return float(trip.departure_lat), float(trip.departure_lng)
+    pickup_stop = trip.pickup_stop or {}
+    lat = pickup_stop.get("latitude")
+    lng = pickup_stop.get("longitude")
+    try:
+        if lat is None or lng is None:
+            return None, None
+        return float(lat), float(lng)
+    except (TypeError, ValueError):
+        return None, None
+
 DEFAULT_PLACE_LABELS = {
     "home": "Home",
     "work": "Work",
@@ -120,10 +134,13 @@ def get_trip_search_config(
         raise HTTPException(status_code=403, detail="Only passengers can access trip search config")
 
     return TripSearchConfigResponse(
-        default_schedule="now",
+        default_schedule="any",
         schedule_options=[
+            ScheduleOption(id="any", label="Any time"),
             ScheduleOption(id="now", label="Now"),
-            ScheduleOption(id="later", label="Schedule"),
+            ScheduleOption(id="morning", label="Morning"),
+            ScheduleOption(id="afternoon", label="Afternoon"),
+            ScheduleOption(id="evening", label="Evening"),
         ],
         ride_choices=[
             RideChoiceOption(
@@ -214,9 +231,7 @@ def get_nearby_drivers(
     fresh_threshold = now - timedelta(minutes=30)
     rows = db.execute(
         select(Trip).where(
-            Trip.status == "active",
-            Trip.departure_lat.is_not(None),
-            Trip.departure_lng.is_not(None),
+            Trip.status.in_(("scheduled", "active")),
             Trip.live_location_expires_at.is_not(None),
             Trip.live_location_expires_at > now,
         )
@@ -233,8 +248,9 @@ def get_nearby_drivers(
             if trip.live_location_updated_at is None or trip.live_location_updated_at < fresh_threshold:
                 continue
 
-        trip_lat = float(trip.departure_lat)
-        trip_lng = float(trip.departure_lng)
+        trip_lat, trip_lng = _trip_coordinates(trip)
+        if trip_lat is None or trip_lng is None:
+            continue
         if _haversine_km(lat, lng, trip_lat, trip_lng) <= radius_km:
             drivers.append(
                 NearbyDriverItem(

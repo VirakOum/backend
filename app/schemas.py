@@ -13,6 +13,7 @@ PaymentInstructionSourceType = Literal["none", "text", "manual", "qr_image", "qr
 PaymentInstructionParseStatus = Literal["missing", "parsed", "failed"]
 TripRepeatMode = Literal["none", "daily", "weekly"]
 TripStopSourceType = Literal["catalog", "manual_pin"]
+UserNotificationType = Literal["driver_arrived"]
 
 
 class AddressRead(BaseModel):
@@ -573,6 +574,23 @@ class NotificationPreferences(BaseModel):
 class NotificationPreferencesRead(NotificationPreferences):
     user_id: UUID
     updated_at: datetime | None = None
+
+
+class UserNotificationRead(BaseModel):
+    id: UUID
+    user_id: UUID
+    type: UserNotificationType
+    title: str
+    body: str
+    trip_id: UUID | None = None
+    booking_id: UUID | None = None
+    is_read: bool
+    created_at: datetime
+
+
+class UserNotificationListResponse(BaseModel):
+    unread_count: int
+    notifications: list[UserNotificationRead]
 
 
 DriverMembershipCode = Literal["normal", "pro", "vip"]

@@ -15,7 +15,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from ..auth import get_current_user, hash_password, issue_token, verify_password
 from ..config import ENABLE_DIGITAL_PAYMENT
 from ..db import get_db
-from ..models import Booking, BookingPaymentInstruction, DriverWalletEntry, NotificationPreference, Payment, SupportTicket, Trip, User, Vehicle, phnom_penh_now
+from ..models import Booking, BookingPaymentInstruction, DriverWalletEntry, NotificationPreference, Payment, SupportTicket, Trip, User, UserNotification, Vehicle, phnom_penh_now
 from .driver_fee import (
     evaluate_driver_wallet_lock,
     get_or_create_driver_wallet,
@@ -32,6 +32,8 @@ from ..schemas import (
 	LoginRequest,
 	NotificationPreferences,
 	NotificationPreferencesRead,
+	UserNotificationListResponse,
+	UserNotificationRead,
 	PaymentInstructionUploadRequest,
 	PaymentInstructionRead,
 	PaymentCreate,
@@ -64,6 +66,7 @@ router = APIRouter(prefix="/travel", tags=["travel"])
 BOOKING_SEAT_HOLD_STATUSES = {"pending", "confirmed"}
 DEFAULT_CURRENCY = "USD"
 ABA_PAYMENT_LINK_RE = re.compile(r"https://pay\.ababank\.com/[a-zA-Z0-9/]+")
+PHNOM_PENH_TZ = ZoneInfo("Asia/Phnom_Penh")
 
 LEGACY_PAYMENT_METHOD_MAP = {
 	"cash_on_arrival": "cash",
@@ -73,6 +76,65 @@ LEGACY_PAYMENT_STATUS_MAP = {
 	"opened": "pending",
 	"failed": "pending",
 	"cancelled": "pending",
+}
+
+PROVINCE_ALIAS_KEY_MAP = {
+	"ភ្នំពេញ": "phnom_penh",
+	"phnom penh": "phnom_penh",
+	"phnom penh capital": "phnom_penh",
+	"បន្ទាយមានជ័យ": "banteay_meanchey",
+	"banteay meanchey": "banteay_meanchey",
+	"បាត់ដំបង": "battambang",
+	"battambang": "battambang",
+	"កំពង់ចាម": "kampong_cham",
+	"kampong cham": "kampong_cham",
+	"កំពង់ឆ្នាំង": "kampong_chhnang",
+	"kampong chhnang": "kampong_chhnang",
+	"កំពង់ស្ពឺ": "kampong_speu",
+	"kampong speu": "kampong_speu",
+	"កំពង់ធំ": "kampong_thom",
+	"kampong thom": "kampong_thom",
+	"កំពត": "kampot",
+	"kampot": "kampot",
+	"កណ្ដាល": "kandal",
+	"កណ្តាល": "kandal",
+	"kandal": "kandal",
+	"កោះកុង": "koh_kong",
+	"koh kong": "koh_kong",
+	"ក្រចេះ": "kratie",
+	"kratie": "kratie",
+	"មណ្ឌលគិរី": "mondulkiri",
+	"mondulkiri": "mondulkiri",
+	"ឧត្តរមានជ័យ": "oddar_meanchey",
+	"oddar meanchey": "oddar_meanchey",
+	"ប៉ៃលិន": "pailin",
+	"pailin": "pailin",
+	"ព្រះសីហនុ": "preah_sihanouk",
+	"preah sihanouk": "preah_sihanouk",
+	"ព្រះវិហារ": "preah_vihear",
+	"preah vihear": "preah_vihear",
+	"ពោធិ៍សាត់": "pursat",
+	"pursat": "pursat",
+	"ព្រៃវែង": "prey_veng",
+	"prey veng": "prey_veng",
+	"រតនគិរី": "ratanakiri",
+	"ratanakiri": "ratanakiri",
+	"សៀមរាប": "siem_reap",
+	"siem reap": "siem_reap",
+	"siem reap province": "siem_reap",
+	"siemreap": "siem_reap",
+	"siemreap province": "siem_reap",
+	"ស្ទឹងត្រែង": "stung_treng",
+	"stung treng": "stung_treng",
+	"ស្វាយរៀង": "svay_rieng",
+	"svay rieng": "svay_rieng",
+	"តាកែវ": "takeo",
+	"takeo": "takeo",
+	"ត្បូងឃ្មុំ": "tboung_khmum",
+	"tboung khmum": "tboung_khmum",
+	"កែប": "kep",
+	"kep": "kep",
+	"kep province": "kep",
 }
 
 
@@ -96,6 +158,14 @@ def _cleanup_expired_live_locations(db: Session) -> None:
 	db.commit()
 
 
+def _normalize_to_phnom_penh_local(value: datetime | None) -> datetime | None:
+	if value is None:
+		return None
+	if value.tzinfo is None:
+		return value
+	return value.astimezone(PHNOM_PENH_TZ).replace(tzinfo=None)
+
+
 def _parse_iso_datetime_or_date(value: str) -> tuple[datetime, bool]:
 	text = value.strip()
 	if not text:
@@ -109,6 +179,30 @@ def _parse_iso_datetime_or_date(value: str) -> tuple[datetime, bool]:
 	dt_text = text.replace("Z", "+00:00")
 	dt = datetime.fromisoformat(dt_text)
 	return dt, True
+
+
+def _province_alias_key(value: str | None) -> str:
+	if value is None:
+		return ""
+	text = re.sub(r"\s+", " ", value.strip().lower())
+	text = re.sub(r"[(),]+", " ", text)
+	text = re.sub(r"\s+", " ", text).strip()
+	if text in PROVINCE_ALIAS_KEY_MAP:
+		return PROVINCE_ALIAS_KEY_MAP[text]
+	text = re.sub(r"\b(province|capital)\b", "", text)
+	text = re.sub(r"\s+", " ", text).strip()
+	return PROVINCE_ALIAS_KEY_MAP.get(text, text)
+
+
+def _province_matches(trip_value: str | None, query_value: str) -> bool:
+	return _province_alias_key(trip_value) == _province_alias_key(query_value)
+
+
+def _trip_departure_local(trip: Trip) -> datetime | None:
+	value = trip.departure_time
+	if value is None:
+		return None
+	return _normalize_to_phnom_penh_local(value)
 
 
 def _money(value: Decimal) -> Decimal:
@@ -137,12 +231,27 @@ def _build_promotion(trip: Trip) -> TripPromotionInfo | None:
 	)
 
 
+def _trip_coordinates(trip: Trip) -> tuple[float | None, float | None]:
+	if trip.departure_lat is not None and trip.departure_lng is not None:
+		return float(trip.departure_lat), float(trip.departure_lng)
+	pickup_stop = trip.pickup_stop or {}
+	lat = pickup_stop.get("latitude")
+	lng = pickup_stop.get("longitude")
+	try:
+		if lat is None or lng is None:
+			return None, None
+		return float(lat), float(lng)
+	except (TypeError, ValueError):
+		return None, None
+
+
 def _build_live_location(trip: Trip) -> TripLiveLocationInfo | None:
-	if trip.departure_lat is None or trip.departure_lng is None or trip.live_location_expires_at is None:
+	lat, lng = _trip_coordinates(trip)
+	if lat is None or lng is None or trip.live_location_expires_at is None:
 		return None
 	return TripLiveLocationInfo(
-		lat=float(trip.departure_lat),
-		lng=float(trip.departure_lng),
+		lat=lat,
+		lng=lng,
 		heading=trip.live_heading,
 		speed_kph=float(trip.live_speed_kph) if trip.live_speed_kph is not None else None,
 		updated_at=trip.live_location_updated_at,
@@ -174,6 +283,7 @@ def _available_seat_numbers(trip: Trip) -> list[int]:
 
 def _build_trip_read(trip: Trip) -> TripRead:
 	live_location = _build_live_location(trip)
+	departure_lat, departure_lng = _trip_coordinates(trip)
 	booked_seat_numbers = _booked_seat_numbers(trip)
 	available_seat_numbers = _available_seat_numbers(trip)
 	app_bookings = _app_bookings_for_trip(trip)
@@ -203,6 +313,8 @@ def _build_trip_read(trip: Trip) -> TripRead:
 
 	return TripRead.model_validate(trip).model_copy(
 		update={
+			"departure_lat": departure_lat,
+			"departure_lng": departure_lng,
 			"live_lat": live_location.lat if live_location else None,
 			"live_lng": live_location.lng if live_location else None,
 			"driver": driver,
@@ -487,6 +599,18 @@ def _clone_json_value(value: dict | None) -> dict | None:
     return deepcopy(value) if value is not None else None
 
 
+def _stop_coordinate(value: dict | None, field: str) -> float | None:
+    if value is None:
+        return None
+    raw = value.get(field)
+    if raw is None:
+        return None
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return None
+
+
 def _validate_trip_route_stop_pair(
     *,
     route_data: dict | None,
@@ -522,6 +646,10 @@ def _validate_trip_route_stop_payload(data: dict) -> None:
 
 
 def _normalize_trip_schedule_data(data: dict) -> dict:
+	data["departure_time"] = _normalize_to_phnom_penh_local(data.get("departure_time"))
+	data["return_departure_time"] = _normalize_to_phnom_penh_local(data.get("return_departure_time"))
+	data["live_location_expires_at"] = _normalize_to_phnom_penh_local(data.get("live_location_expires_at"))
+
 	repeat_mode = data.get("repeat_mode")
 	if repeat_mode is None:
 		repeat_mode = "weekly" if data.get("auto_repeat_weekly") else "none"
@@ -555,22 +683,26 @@ def _sync_return_trip(db: Session, trip: Trip) -> None:
         return
 
     return_trip = db.get(Trip, trip.return_trip_id) if trip.return_trip_id is not None else None
+    return_pickup_stop = _clone_json_value(trip.dropoff_stop)
+    return_dropoff_stop = _clone_json_value(trip.pickup_stop)
+    return_departure_lat = _stop_coordinate(return_pickup_stop, "latitude")
+    return_departure_lng = _stop_coordinate(return_pickup_stop, "longitude")
     return_data = {
         "driver_id": trip.driver_id,
         "vehicle_id": trip.vehicle_id,
         "departure_province": trip.destination_province,
         "destination_province": trip.departure_province,
         "departure_time": trip.return_departure_time,
-        "departure_lat": None,
-        "departure_lng": None,
+        "departure_lat": return_departure_lat,
+        "departure_lng": return_departure_lng,
         "departure_route": _clone_json_value(trip.destination_route),
         "destination_route": _clone_json_value(trip.departure_route),
-        "pickup_stop": _clone_json_value(trip.dropoff_stop),
-        "dropoff_stop": _clone_json_value(trip.pickup_stop),
+        "pickup_stop": return_pickup_stop,
+        "dropoff_stop": return_dropoff_stop,
         "live_heading": None,
         "live_speed_kph": None,
-        "live_location_updated_at": None,
-        "live_location_expires_at": None,
+        "live_location_updated_at": phnom_penh_now() if return_departure_lat is not None and return_departure_lng is not None else None,
+        "live_location_expires_at": trip.return_departure_time + timedelta(hours=24) if return_departure_lat is not None and return_departure_lng is not None else None,
         "repeat_mode": trip.repeat_mode,
         "auto_repeat_weekly": trip.repeat_mode == "weekly",
         "recurring_day_of_week": trip.return_departure_time.weekday() if trip.repeat_mode == "weekly" else None,
@@ -657,6 +789,44 @@ def _get_or_create_notification_preferences(db: Session, user: User) -> Notifica
 	db.commit()
 	db.refresh(preferences)
 	return preferences
+
+
+def _build_user_notification_read(notification: UserNotification) -> UserNotificationRead:
+	return UserNotificationRead(
+		id=notification.id,
+		user_id=notification.user_id,
+		type=notification.type,
+		title=notification.title,
+		body=notification.body,
+		trip_id=notification.trip_id,
+		booking_id=notification.booking_id,
+		is_read=notification.is_read,
+		created_at=notification.created_at,
+	)
+
+
+def _create_driver_arrived_notification(db: Session, booking: Booking) -> None:
+	existing = db.execute(
+		select(UserNotification).where(
+			UserNotification.user_id == booking.passenger_id,
+			UserNotification.booking_id == booking.id,
+			UserNotification.type == "driver_arrived",
+		)
+	).scalar_one_or_none()
+	if existing is not None:
+		return
+
+	db.add(
+		UserNotification(
+			user_id=booking.passenger_id,
+			type="driver_arrived",
+			title="Driver arrived",
+			body="Your driver has arrived. Please prepare to board.",
+			trip_id=booking.trip_id,
+			booking_id=booking.id,
+			is_read=False,
+		)
+	)
 
 
 @router.post("/auth/signup", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
@@ -933,8 +1103,6 @@ def search_trips(
 			select(Trip)
 			.options(selectinload(Trip.driver), selectinload(Trip.vehicle), selectinload(Trip.bookings))
 		.where(
-			Trip.departure_province == departure_province,
-			Trip.destination_province == destination_province,
 			Trip.status == "scheduled",
 		)
 		.order_by(Trip.departure_time.asc())
@@ -943,7 +1111,12 @@ def search_trips(
 	# Backward compatibility for older app versions.
 	if journey_dt is None and normalized_schedule == "any":
 		rows = db.execute(base_query).scalars().all()
-		return [_build_trip_read(row) for row in rows]
+		return [
+			_build_trip_read(row)
+			for row in rows
+			if _province_matches(row.departure_province, departure_province)
+			and _province_matches(row.destination_province, destination_province)
+		]
 
 	if journey_dt is None:
 		raise HTTPException(status_code=422, detail="journey_date is required when schedule is provided")
@@ -954,10 +1127,10 @@ def search_trips(
 	# - return_date provided => upper bound at that exact datetime (or end-of-day if date-only)
 	if journey_has_time:
 		window_start = journey_dt
-		start_operator = Trip.departure_time > window_start
+		starts_after_window = lambda departure: departure > window_start
 	else:
 		window_start = datetime.combine(journey_dt.date(), time(0, 0, 0))
-		start_operator = Trip.departure_time >= window_start
+		starts_after_window = lambda departure: departure >= window_start
 
 	if return_dt is not None:
 		if return_has_time:
@@ -967,23 +1140,52 @@ def search_trips(
 	else:
 		window_end = datetime.combine(journey_dt.date(), time(23, 59, 59, 999999))
 
-	base_query = base_query.where(
-		start_operator,
-		Trip.departure_time <= window_end,
-	)
 	rows = db.execute(base_query).scalars().all()
+	rows = [
+		row
+		for row in rows
+		if _province_matches(row.departure_province, departure_province)
+		and _province_matches(row.destination_province, destination_province)
+	]
+	rows = [
+		row
+		for row in rows
+		if (departure_local := _trip_departure_local(row)) is not None
+		and starts_after_window(departure_local)
+		and departure_local <= window_end
+	]
 
 	now_local = datetime.now(tz).replace(tzinfo=None)
 	if normalized_schedule == "any":
 		filtered = rows
 	elif normalized_schedule == "now":
-		filtered = [row for row in rows if row.departure_time >= now_local]
+		filtered = [
+			row
+			for row in rows
+			if (departure_local := _trip_departure_local(row)) is not None
+			and departure_local >= now_local
+		]
 	elif normalized_schedule == "morning":
-		filtered = [row for row in rows if time(5, 0) <= row.departure_time.time() <= time(11, 59)]
+		filtered = [
+			row
+			for row in rows
+			if (departure_local := _trip_departure_local(row)) is not None
+			and time(5, 0) <= departure_local.time() <= time(11, 59)
+		]
 	elif normalized_schedule == "afternoon":
-		filtered = [row for row in rows if time(12, 0) <= row.departure_time.time() <= time(16, 59)]
+		filtered = [
+			row
+			for row in rows
+			if (departure_local := _trip_departure_local(row)) is not None
+			and time(12, 0) <= departure_local.time() <= time(16, 59)
+		]
 	else:  # evening
-		filtered = [row for row in rows if time(17, 0) <= row.departure_time.time() <= time(21, 59)]
+		filtered = [
+			row
+			for row in rows
+			if (departure_local := _trip_departure_local(row)) is not None
+			and time(17, 0) <= departure_local.time() <= time(21, 59)
+		]
 
 	return [_build_trip_read(row) for row in filtered]
 
@@ -1047,8 +1249,11 @@ def update_trip_live_location(
 		raise HTTPException(status_code=404, detail="Trip not found")
 	if trip.driver_id != current_user.id:
 		raise HTTPException(status_code=403, detail="You can only update your own trip")
-	if trip.status != "active":
-		raise HTTPException(status_code=400, detail="Live location updates allowed only for active trips")
+	if trip.status not in {"scheduled", "active"}:
+		raise HTTPException(
+			status_code=400,
+			detail="Live location updates allowed only for scheduled or active trips",
+		)
 
 	trip.departure_lat = payload.lat
 	trip.departure_lng = payload.lng
@@ -1251,6 +1456,7 @@ def mark_driver_arrived(
 	if booking.status == "cancelled":
 		raise HTTPException(status_code=400, detail="Cancelled bookings cannot be marked arrived")
 
+	was_arrived = booking.pickup_status == "driver_arrived"
 	booking.pickup_status = "driver_arrived"
 	booking.driver_arrived_at = phnom_penh_now()
 	if _normalized_payment_method(booking.payment_method) != "cash":
@@ -1261,6 +1467,8 @@ def mark_driver_arrived(
 		booking.payment_status = instruction.payment_status
 	else:
 		booking.payment_status = "pending"
+	if not was_arrived:
+		_create_driver_arrived_notification(db, booking)
 
 	db.commit()
 	updated_booking = db.execute(
@@ -1673,6 +1881,43 @@ def update_notification_preferences(
 		pickup_reminders=preferences.pickup_reminders,
 		updated_at=preferences.updated_at,
 	)
+
+
+@router.get("/notifications", response_model=UserNotificationListResponse)
+def list_user_notifications(
+	db: Session = Depends(get_db),
+	current_user: User = Depends(get_current_user),
+) -> UserNotificationListResponse:
+	rows = db.execute(
+		select(UserNotification)
+		.where(UserNotification.user_id == current_user.id)
+		.order_by(UserNotification.created_at.desc())
+	).scalars().all()
+	unread_count = sum(0 if notification.is_read else 1 for notification in rows)
+	return UserNotificationListResponse(
+		unread_count=unread_count,
+		notifications=[_build_user_notification_read(row) for row in rows],
+	)
+
+
+@router.post("/notifications/{notification_id}/read", response_model=UserNotificationRead)
+def mark_user_notification_read(
+	notification_id: UUID,
+	db: Session = Depends(get_db),
+	current_user: User = Depends(get_current_user),
+) -> UserNotificationRead:
+	notification = db.execute(
+		select(UserNotification).where(
+			UserNotification.id == notification_id,
+			UserNotification.user_id == current_user.id,
+		)
+	).scalar_one_or_none()
+	if notification is None:
+		raise HTTPException(status_code=404, detail="Notification not found")
+	notification.is_read = True
+	db.commit()
+	db.refresh(notification)
+	return _build_user_notification_read(notification)
 
 
 @router.post("/payments", response_model=PaymentRead, status_code=status.HTTP_201_CREATED)

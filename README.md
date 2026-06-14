@@ -44,7 +44,15 @@ It now uses PostgreSQL in Docker and Alembic for database migrations.
    alembic upgrade head
    ```
 
-7. Run the tests:
+7. To access from other devices on your WiFi (e.g. Flutter app on a phone):
+
+   ```bash
+   uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+   ```
+
+   Find your local IP with `ifconfig` (e.g. `192.168.1.x`) and use that in your app's API config.
+
+8. Run the tests:
 
    ```bash
    pytest
