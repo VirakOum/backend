@@ -5,7 +5,7 @@ from binascii import Error as Base64DecodeError
 from copy import deepcopy
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select, func
+from sqlalchemy import select, func, inspect
 from sqlalchemy.orm import Session, selectinload
 from uuid import UUID
 from datetime import date, datetime, time, timedelta
@@ -203,6 +203,85 @@ def _trip_departure_local(trip: Trip) -> datetime | None:
 	if value is None:
 		return None
 	return _normalize_to_phnom_penh_local(value)
+
+
+def _trip_active_until_local(trip: Trip) -> datetime | None:
+	departure_local = _trip_departure_local(trip)
+	if departure_local is None:
+		return None
+	expires_at = trip.live_location_expires_at or (trip.departure_time + timedelta(hours=24))
+	expires_local = _normalize_to_phnom_penh_local(expires_at)
+	if expires_local is None:
+		return departure_local
+	return max(expires_local, departure_local)
+
+
+def _trip_overlaps_window(
+	trip: Trip,
+	window_start: datetime,
+	window_end: datetime,
+	*,
+	strict_start: bool,
+) -> bool:
+	departure_local = _trip_departure_local(trip)
+	if departure_local is None:
+		return False
+	if trip.status == "active":
+		active_until_local = _trip_active_until_local(trip)
+		if active_until_local is None:
+			return False
+		if strict_start:
+			return departure_local <= window_end and active_until_local > window_start
+		return departure_local <= window_end and active_until_local >= window_start
+	if strict_start:
+		return departure_local > window_start and departure_local <= window_end
+	return departure_local >= window_start and departure_local <= window_end
+
+
+def _trip_matches_now_window(trip: Trip, now_local: datetime) -> bool:
+	departure_local = _trip_departure_local(trip)
+	if departure_local is None:
+		return False
+	if trip.status == "active":
+		active_until_local = _trip_active_until_local(trip)
+		return active_until_local is not None and departure_local <= now_local <= active_until_local
+	return departure_local >= now_local
+
+
+def _local_now(tz: ZoneInfo) -> datetime:
+	return datetime.now(tz).replace(tzinfo=None)
+
+
+def _trip_can_complete_now(trip: Trip, now_local: datetime) -> bool:
+	departure_local = _trip_departure_local(trip)
+	if departure_local is None:
+		return False
+	return now_local >= departure_local
+
+
+def _repair_impossible_completed_trips(db: Session) -> None:
+	now_local = phnom_penh_now()
+	rows = db.execute(
+		select(Trip)
+		.options(
+			selectinload(Trip.driver),
+			selectinload(Trip.bookings).selectinload(Booking.wallet_entries),
+		)
+		.where(Trip.status == "completed")
+	).scalars().all()
+	updated = False
+	for trip in rows:
+		if _trip_can_complete_now(trip, now_local):
+			continue
+		trip.status = "scheduled"
+		if trip.driver is not None and (trip.driver.completed_trips or 0) > 0:
+			trip.driver.completed_trips = int(trip.driver.completed_trips or 0) - 1
+		for booking in trip.bookings:
+			if booking.status == "confirmed" and booking.pickup_status == "completed":
+				booking.pickup_status = "passenger_boarded"
+		updated = True
+	if updated:
+		db.commit()
 
 
 def _money(value: Decimal) -> Decimal:
@@ -805,7 +884,15 @@ def _build_user_notification_read(notification: UserNotification) -> UserNotific
 	)
 
 
+def _has_user_notifications_table(db: Session) -> bool:
+	bind = db.get_bind()
+	return inspect(bind).has_table("user_notifications")
+
+
 def _create_driver_arrived_notification(db: Session, booking: Booking) -> None:
+	if not _has_user_notifications_table(db):
+		return
+
 	existing = db.execute(
 		select(UserNotification).where(
 			UserNotification.user_id == booking.passenger_id,
@@ -1019,6 +1106,7 @@ def list_driver_trips(
 ) -> list[TripRead]:
 	if current_user.role != "driver":
 		raise HTTPException(status_code=403, detail="Only drivers can list their trips")
+	_repair_impossible_completed_trips(db)
 	query = (
 		select(Trip)
 		.options(selectinload(Trip.driver), selectinload(Trip.vehicle), selectinload(Trip.bookings))
@@ -1098,12 +1186,13 @@ def search_trips(
 			raise HTTPException(status_code=400, detail="return_date cannot be earlier than journey_date")
 
 	_cleanup_expired_live_locations(db)
+	_repair_impossible_completed_trips(db)
 
 	base_query = (
 			select(Trip)
 			.options(selectinload(Trip.driver), selectinload(Trip.vehicle), selectinload(Trip.bookings))
 		.where(
-			Trip.status == "scheduled",
+			Trip.status.in_(("scheduled", "active")),
 		)
 		.order_by(Trip.departure_time.asc())
 	)
@@ -1127,10 +1216,10 @@ def search_trips(
 	# - return_date provided => upper bound at that exact datetime (or end-of-day if date-only)
 	if journey_has_time:
 		window_start = journey_dt
-		starts_after_window = lambda departure: departure > window_start
+		strict_start = True
 	else:
 		window_start = datetime.combine(journey_dt.date(), time(0, 0, 0))
-		starts_after_window = lambda departure: departure >= window_start
+		strict_start = False
 
 	if return_dt is not None:
 		if return_has_time:
@@ -1150,20 +1239,22 @@ def search_trips(
 	rows = [
 		row
 		for row in rows
-		if (departure_local := _trip_departure_local(row)) is not None
-		and starts_after_window(departure_local)
-		and departure_local <= window_end
+		if _trip_overlaps_window(
+			row,
+			window_start,
+			window_end,
+			strict_start=strict_start,
+		)
 	]
 
-	now_local = datetime.now(tz).replace(tzinfo=None)
+	now_local = _local_now(tz)
 	if normalized_schedule == "any":
 		filtered = rows
 	elif normalized_schedule == "now":
 		filtered = [
 			row
 			for row in rows
-			if (departure_local := _trip_departure_local(row)) is not None
-			and departure_local >= now_local
+			if _trip_matches_now_window(row, now_local)
 		]
 	elif normalized_schedule == "morning":
 		filtered = [
@@ -1193,6 +1284,7 @@ def search_trips(
 @router.get("/trips/{trip_id}", response_model=TripRead)
 def get_trip(trip_id: UUID, db: Session = Depends(get_db)) -> TripRead:
 	_cleanup_expired_live_locations(db)
+	_repair_impossible_completed_trips(db)
 	trip = db.execute(
 		select(Trip)
 		.options(selectinload(Trip.driver), selectinload(Trip.vehicle), selectinload(Trip.bookings))
@@ -1342,6 +1434,7 @@ def list_bookings(
 	db: Session = Depends(get_db),
 	current_user: User = Depends(get_current_user),
 ) -> list[BookingWithTripRead]:
+	_repair_impossible_completed_trips(db)
 	sort_by_created_at = Booking.created_at.asc() if order == "asc" else Booking.created_at.desc()
 	query = select(Booking).options(
 		selectinload(Booking.trip).selectinload(Trip.driver),
@@ -1371,6 +1464,7 @@ def get_active_booking(
 		raise HTTPException(status_code=403, detail="Only passengers can access active booking")
 
 	_cleanup_expired_live_locations(db)
+	_repair_impossible_completed_trips(db)
 	now = phnom_penh_now()
 	rows = db.execute(
 		select(Booking)
@@ -1621,6 +1715,11 @@ def complete_trip(
 		if updated_trip is None:
 			raise HTTPException(status_code=404, detail="Trip not found")
 		return _build_trip_read(updated_trip)
+	if not _trip_can_complete_now(trip, phnom_penh_now()):
+		raise HTTPException(
+			status_code=400,
+			detail="Trip cannot be completed before its departure time",
+		)
 
 	trip.status = "completed"
 	_sync_booking_completion_from_trip(db, trip=trip)
@@ -1888,6 +1987,9 @@ def list_user_notifications(
 	db: Session = Depends(get_db),
 	current_user: User = Depends(get_current_user),
 ) -> UserNotificationListResponse:
+	if not _has_user_notifications_table(db):
+		return UserNotificationListResponse(unread_count=0, notifications=[])
+
 	rows = db.execute(
 		select(UserNotification)
 		.where(UserNotification.user_id == current_user.id)
@@ -1906,6 +2008,9 @@ def mark_user_notification_read(
 	db: Session = Depends(get_db),
 	current_user: User = Depends(get_current_user),
 ) -> UserNotificationRead:
+	if not _has_user_notifications_table(db):
+		raise HTTPException(status_code=404, detail="Notification not found")
+
 	notification = db.execute(
 		select(UserNotification).where(
 			UserNotification.id == notification_id,

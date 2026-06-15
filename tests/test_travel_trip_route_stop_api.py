@@ -2,6 +2,11 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
+from datetime import datetime
+from zoneinfo import ZoneInfo
+from uuid import UUID
+
+import app.routes.travel as travel_routes
 
 from app.main import app
 from app.db import get_db
@@ -254,3 +259,185 @@ def test_create_trip_rejects_stop_commune_mismatch() -> None:
 
     assert response.status_code == 400
     assert response.json()["detail"] == "pickup_stop.commune_code must match departure_route.commune_code"
+
+
+def test_search_trips_includes_active_and_scheduled_results_in_real_time_for_same_local_day(
+    monkeypatch,
+) -> None:
+    frozen_now = datetime(2026, 6, 15, 10, 0, 0)
+    tz = ZoneInfo("Asia/Phnom_Penh")
+    monkeypatch.setattr(travel_routes, "phnom_penh_now", lambda: frozen_now)
+    monkeypatch.setattr(travel_routes, "_local_now", lambda _: frozen_now)
+
+    token = _signup_driver()
+    vehicle_id = _create_vehicle(token)
+
+    active_response = client.post(
+        "/travel/trips",
+        headers=_auth_headers(token),
+        json={
+            "vehicle_id": vehicle_id,
+            "departure_province": "ភ្នំពេញ",
+            "destination_province": "កណ្ដាល",
+            "departure_time": "2026-06-15T08:30:00",
+            "departure_lat": 11.5564,
+            "departure_lng": 104.9282,
+            "price_per_seat": 5,
+            "total_seats": 15,
+            "available_seats": 12,
+            "status": "active",
+        },
+    )
+    assert active_response.status_code == 201
+    active_trip_id = active_response.json()["id"]
+
+    scheduled_response = client.post(
+        "/travel/trips",
+        headers=_auth_headers(token),
+        json={
+            "vehicle_id": vehicle_id,
+            "departure_province": "ភ្នំពេញ",
+            "destination_province": "កណ្ដាល",
+            "departure_time": "2026-06-15T13:30:00",
+            "price_per_seat": 5,
+            "total_seats": 15,
+            "available_seats": 15,
+            "status": "scheduled",
+        },
+    )
+    assert scheduled_response.status_code == 201
+    scheduled_trip_id = scheduled_response.json()["id"]
+
+    search_response = client.get(
+        "/travel/trips/search",
+        params={
+            "departure_province": "ភ្នំពេញ",
+            "destination_province": "កណ្ដាល",
+            "journey_date": "2026-06-15",
+            "timezone": tz.key,
+        },
+    )
+    assert search_response.status_code == 200
+    search_ids = {trip["id"] for trip in search_response.json()}
+    assert active_trip_id in search_ids
+    assert scheduled_trip_id in search_ids
+
+    default_timezone_response = client.get(
+        "/travel/trips/search",
+        params={
+            "departure_province": "ភ្នំពេញ",
+            "destination_province": "កណ្ដាល",
+            "journey_date": "2026-06-15",
+        },
+    )
+    assert default_timezone_response.status_code == 200
+    default_timezone_ids = {
+        trip["id"] for trip in default_timezone_response.json()
+    }
+    assert active_trip_id in default_timezone_ids
+    assert scheduled_trip_id in default_timezone_ids
+
+    now_response = client.get(
+        "/travel/trips/search",
+        params={
+            "departure_province": "ភ្នំពេញ",
+            "destination_province": "កណ្ដាល",
+            "journey_date": "2026-06-15",
+            "schedule": "now",
+            "timezone": tz.key,
+        },
+    )
+    assert now_response.status_code == 200
+    now_ids = {trip["id"] for trip in now_response.json()}
+    assert active_trip_id in now_ids
+    assert scheduled_trip_id in now_ids
+
+
+def test_complete_trip_rejects_completion_before_departure_time(monkeypatch) -> None:
+    frozen_now = datetime(2026, 6, 15, 11, 19, 0)
+    monkeypatch.setattr(travel_routes, "phnom_penh_now", lambda: frozen_now)
+
+    token = _signup_driver()
+    vehicle_id = _create_vehicle(token)
+
+    create_response = client.post(
+        "/travel/trips",
+        headers=_auth_headers(token),
+        json={
+            "vehicle_id": vehicle_id,
+            "departure_province": "ភ្នំពេញ",
+            "destination_province": "កណ្ដាល",
+            "departure_time": "2026-06-15T11:30:00",
+            "price_per_seat": 5,
+            "total_seats": 4,
+            "available_seats": 4,
+            "status": "scheduled",
+        },
+    )
+    assert create_response.status_code == 201
+    trip_id = create_response.json()["id"]
+
+    complete_response = client.post(
+        f"/travel/trips/{trip_id}/complete",
+        headers=_auth_headers(token),
+    )
+
+    assert complete_response.status_code == 400
+    assert (
+        complete_response.json()["detail"]
+        == "Trip cannot be completed before its departure time"
+    )
+
+    get_response = client.get(f"/travel/trips/{trip_id}")
+    assert get_response.status_code == 200
+    assert get_response.json()["status"] == "scheduled"
+
+
+def test_search_trips_repairs_future_trip_marked_completed_too_early(monkeypatch) -> None:
+    frozen_now = datetime(2026, 6, 15, 11, 19, 0)
+    tz = ZoneInfo("Asia/Phnom_Penh")
+    monkeypatch.setattr(travel_routes, "phnom_penh_now", lambda: frozen_now)
+    monkeypatch.setattr(travel_routes, "_local_now", lambda _: frozen_now)
+
+    token = _signup_driver()
+    vehicle_id = _create_vehicle(token)
+
+    create_response = client.post(
+        "/travel/trips",
+        headers=_auth_headers(token),
+        json={
+            "vehicle_id": vehicle_id,
+            "departure_province": "Phnom Penh Capital",
+            "destination_province": "Kandal Province",
+            "departure_time": "2026-06-15T11:30:00",
+            "price_per_seat": 5,
+            "total_seats": 4,
+            "available_seats": 4,
+            "status": "scheduled",
+        },
+    )
+    assert create_response.status_code == 201
+    trip_id = create_response.json()["id"]
+
+    with TestingSessionLocal() as db:
+        trip = db.get(Trip, UUID(trip_id))
+        assert trip is not None
+        trip.status = "completed"
+        db.commit()
+
+    search_response = client.get(
+        "/travel/trips/search",
+        params={
+            "departure_province": "ភ្នំពេញ",
+            "destination_province": "កណ្ដាល",
+            "journey_date": "2026-06-15",
+            "timezone": tz.key,
+        },
+    )
+    assert search_response.status_code == 200
+    search_ids = {trip["id"] for trip in search_response.json()}
+    assert trip_id in search_ids
+
+    get_response = client.get(f"/travel/trips/{trip_id}")
+    assert get_response.status_code == 200
+    assert get_response.json()["status"] == "scheduled"
