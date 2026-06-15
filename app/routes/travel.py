@@ -15,18 +15,24 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from ..auth import get_current_user, hash_password, issue_token, verify_password
 from ..config import ENABLE_DIGITAL_PAYMENT
 from ..db import get_db
-from ..models import Booking, BookingPaymentInstruction, DriverWalletEntry, NotificationPreference, Payment, SupportTicket, Trip, User, UserNotification, Vehicle, phnom_penh_now
+from ..models import Booking, BookingLiveLocation, BookingPaymentInstruction, DriverWalletEntry, NotificationPreference, Payment, SupportTicket, Trip, User, UserNotification, Vehicle, phnom_penh_now
 from .driver_fee import (
     evaluate_driver_wallet_lock,
     get_or_create_driver_wallet,
     get_runtime_settings,
     snapshot_booking_fees,
 )
+from math import asin, cos, radians, sin, sqrt
+
 from ..schemas import (
 	ActiveBookingResponse,
 	AuthResponse,
 	BookingCreate,
+	BookingLiveLocationUpdate,
+	BookingPassengerContact,
+	BookingProximityRead,
 	BookingRead,
+	BoardingConfirmationRead,
 	BookingWithTripRead,
 	DriverArrivedRequest,
 	LoginRequest,
@@ -541,6 +547,12 @@ def _build_payment_instruction_read(
 
 
 def _build_booking_with_trip_read(booking: Booking) -> BookingWithTripRead:
+	passenger_contact = None
+	if booking.passenger is not None:
+		passenger_contact = BookingPassengerContact(
+			full_name=booking.passenger.full_name,
+			phone=booking.passenger.phone,
+		)
 	return BookingWithTripRead(
 		id=booking.id,
 		trip_id=booking.trip_id,
@@ -552,10 +564,14 @@ def _build_booking_with_trip_read(booking: Booking) -> BookingWithTripRead:
 		payment_status=_normalized_payment_status(_booking_payment_status(booking)),
 		pickup_status=booking.pickup_status,
 		driver_arrived_at=booking.driver_arrived_at,
+		driver_requested_boarding_at=booking.driver_requested_boarding_at,
+		passenger_confirmed_boarding_at=booking.passenger_confirmed_boarding_at,
+		boarding_confirmation_expires_at=booking.boarding_confirmation_expires_at,
 		status=booking.status,
 		created_at=booking.created_at,
 		payment_instruction=_build_payment_instruction_read(booking, booking.payment_instruction),
 		trip=_build_trip_read(booking.trip) if booking.trip is not None else None,
+		passenger_contact=passenger_contact,
 	)
 
 
@@ -889,6 +905,31 @@ def _has_user_notifications_table(db: Session) -> bool:
 	return inspect(bind).has_table("user_notifications")
 
 
+ARRIVAL_PROXIMITY_THRESHOLD_M = 100.0
+BOARDING_CONFIRMATION_TIMEOUT_S = 60
+
+
+def _haversine_meters(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+	dlat = radians(lat2 - lat1)
+	dlng = radians(lng2 - lng1)
+	a = sin(dlat / 2) ** 2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlng / 2) ** 2
+	return 6371000 * 2 * asin(sqrt(a))
+
+
+def _trip_pickup_coordinates(trip: Trip) -> tuple[float | None, float | None]:
+	if trip.departure_lat is not None and trip.departure_lng is not None:
+		return float(trip.departure_lat), float(trip.departure_lng)
+	pickup_stop = trip.pickup_stop or {}
+	lat = pickup_stop.get("latitude")
+	lng = pickup_stop.get("longitude")
+	try:
+		if lat is None or lng is None:
+			return None, None
+		return float(lat), float(lng)
+	except (TypeError, ValueError):
+		return None, None
+
+
 def _create_driver_arrived_notification(db: Session, booking: Booking) -> None:
 	if not _has_user_notifications_table(db):
 		return
@@ -909,6 +950,85 @@ def _create_driver_arrived_notification(db: Session, booking: Booking) -> None:
 			type="driver_arrived",
 			title="Driver arrived",
 			body="Your driver has arrived. Please prepare to board.",
+			trip_id=booking.trip_id,
+			booking_id=booking.id,
+			is_read=False,
+		)
+	)
+
+
+def _create_driver_booking_notification(
+	db: Session,
+	trip: Trip,
+	booking: Booking,
+	passenger: User,
+) -> None:
+	if not _has_user_notifications_table(db):
+		return
+
+	existing = db.execute(
+		select(UserNotification).where(
+			UserNotification.user_id == trip.driver_id,
+			UserNotification.booking_id == booking.id,
+			UserNotification.type == "booking_created",
+		)
+	).scalar_one_or_none()
+	if existing is not None:
+		return
+
+	seat_count = len(booking.seat_numbers or [])
+	seat_label = "seat" if seat_count == 1 else "seats"
+	passenger_name = passenger.full_name.strip() or "A passenger"
+	db.add(
+		UserNotification(
+			user_id=trip.driver_id,
+			type="booking_created",
+			title="New passenger booking",
+			body=f"{passenger_name} booked {seat_count} {seat_label} on your trip.",
+			trip_id=trip.id,
+			booking_id=booking.id,
+			is_read=False,
+		)
+	)
+
+
+def _create_boarding_requested_notification(db: Session, booking: Booking) -> None:
+	if not _has_user_notifications_table(db):
+		return
+
+	db.add(
+		UserNotification(
+			user_id=booking.passenger_id,
+			type="boarding_requested",
+			title="Driver requests boarding",
+			body="Your driver has requested that you confirm boarding.",
+			trip_id=booking.trip_id,
+			booking_id=booking.id,
+			is_read=False,
+		)
+	)
+
+
+def _create_boarding_confirmed_notification(db: Session, booking: Booking) -> None:
+	if not _has_user_notifications_table(db):
+		return
+
+	existing = db.execute(
+		select(UserNotification).where(
+			UserNotification.user_id == booking.trip.driver_id,
+			UserNotification.booking_id == booking.id,
+			UserNotification.type == "boarding_confirmed",
+		)
+	).scalar_one_or_none()
+	if existing is not None:
+		return
+
+	db.add(
+		UserNotification(
+			user_id=booking.trip.driver_id,
+			type="boarding_confirmed",
+			title="Passenger boarded",
+			body="The passenger has confirmed boarding.",
 			trip_id=booking.trip_id,
 			booking_id=booking.id,
 			is_read=False,
@@ -1423,6 +1543,8 @@ def create_booking(
 	)
 	trip.available_seats -= requested
 	db.add(booking)
+	db.flush()
+	_create_driver_booking_notification(db, trip, booking, current_user)
 	db.commit()
 	db.refresh(booking)
 	return BookingRead.model_validate(booking)
@@ -1440,6 +1562,7 @@ def list_bookings(
 		selectinload(Booking.trip).selectinload(Trip.driver),
 		selectinload(Booking.trip).selectinload(Trip.vehicle),
 		selectinload(Booking.trip).selectinload(Trip.bookings),
+		selectinload(Booking.passenger),
 		selectinload(Booking.payment_instruction),
 		selectinload(Booking.payments),
 	)
@@ -1472,6 +1595,7 @@ def get_active_booking(
 			selectinload(Booking.trip).selectinload(Trip.driver),
 			selectinload(Booking.trip).selectinload(Trip.vehicle),
 			selectinload(Booking.trip).selectinload(Trip.bookings),
+			selectinload(Booking.passenger),
 			selectinload(Booking.payment_instruction),
 			selectinload(Booking.payments),
 		)
@@ -1509,6 +1633,7 @@ def get_booking(
 			selectinload(Booking.trip).selectinload(Trip.driver),
 			selectinload(Booking.trip).selectinload(Trip.vehicle),
 			selectinload(Booking.trip).selectinload(Trip.bookings),
+			selectinload(Booking.passenger),
 			selectinload(Booking.payment_instruction),
 			selectinload(Booking.payments),
 		)
@@ -1538,6 +1663,7 @@ def mark_driver_arrived(
 			selectinload(Booking.trip).selectinload(Trip.driver),
 			selectinload(Booking.trip).selectinload(Trip.vehicle),
 			selectinload(Booking.trip).selectinload(Trip.bookings),
+			selectinload(Booking.passenger),
 			selectinload(Booking.payment_instruction),
 			selectinload(Booking.payments),
 		)
@@ -1549,6 +1675,44 @@ def mark_driver_arrived(
 		raise HTTPException(status_code=403, detail="You can only mark arrival for your own trip")
 	if booking.status == "cancelled":
 		raise HTTPException(status_code=400, detail="Cancelled bookings cannot be marked arrived")
+	if booking.pickup_status == "passenger_boarded" or booking.pickup_status == "completed":
+		raise HTTPException(status_code=400, detail="Passenger has already boarded or trip is complete")
+
+	# Proximity gate: check driver's live location (stored in departure_lat/lng)
+	trip = booking.trip
+	if trip.departure_lat is None or trip.departure_lng is None:
+		raise HTTPException(
+			status_code=400,
+			detail="Your location is not available. Please enable location sharing and try again.",
+		)
+
+	# Check passenger location — must exist, be fresh, and be within 20m
+	passenger_loc = db.execute(
+		select(BookingLiveLocation).where(BookingLiveLocation.booking_id == booking.id)
+	).scalar_one_or_none()
+
+	if passenger_loc is None:
+		raise HTTPException(
+			status_code=400,
+			detail="Passenger location is not available yet. Please wait for the passenger to share their location.",
+		)
+
+	now = phnom_penh_now()
+	if passenger_loc.expires_at is not None and now > passenger_loc.expires_at:
+		raise HTTPException(
+			status_code=400,
+			detail="Passenger location is no longer available. Please ask the passenger to open the app.",
+		)
+
+	distance = _haversine_meters(
+		float(trip.departure_lat), float(trip.departure_lng),
+		float(passenger_loc.lat), float(passenger_loc.lng),
+	)
+	if distance > ARRIVAL_PROXIMITY_THRESHOLD_M:
+		raise HTTPException(
+			status_code=400,
+			detail=f"You are {distance:.0f}m from the passenger. Move within 20m to mark arrival.",
+		)
 
 	was_arrived = booking.pickup_status == "driver_arrived"
 	booking.pickup_status = "driver_arrived"
@@ -1571,6 +1735,7 @@ def mark_driver_arrived(
 			selectinload(Booking.trip).selectinload(Trip.driver),
 			selectinload(Booking.trip).selectinload(Trip.vehicle),
 			selectinload(Booking.trip).selectinload(Trip.bookings),
+			selectinload(Booking.passenger),
 			selectinload(Booking.payment_instruction),
 			selectinload(Booking.payments),
 		)
@@ -1607,14 +1772,14 @@ def get_booking_payment_instruction(
 	return instruction
 
 
-@router.post("/bookings/{booking_id}/passenger-boarded", response_model=BookingWithTripRead)
-def mark_passenger_boarded(
+@router.post("/bookings/{booking_id}/boarding/request", response_model=BookingWithTripRead)
+def driver_request_boarding(
 	booking_id: UUID,
 	db: Session = Depends(get_db),
 	current_user: User = Depends(get_current_user),
 ) -> BookingWithTripRead:
 	if current_user.role != "driver":
-		raise HTTPException(status_code=403, detail="Only drivers can mark passenger boarding")
+		raise HTTPException(status_code=403, detail="Only drivers can request boarding")
 
 	booking = db.execute(
 		select(Booking)
@@ -1622,6 +1787,7 @@ def mark_passenger_boarded(
 			selectinload(Booking.trip).selectinload(Trip.driver),
 			selectinload(Booking.trip).selectinload(Trip.vehicle),
 			selectinload(Booking.trip).selectinload(Trip.bookings),
+			selectinload(Booking.passenger),
 			selectinload(Booking.payment_instruction),
 			selectinload(Booking.payments),
 			selectinload(Booking.wallet_entries),
@@ -1631,15 +1797,226 @@ def mark_passenger_boarded(
 	if booking is None:
 		raise HTTPException(status_code=404, detail="Booking not found")
 	if booking.trip is None or booking.trip.driver_id != current_user.id:
-		raise HTTPException(status_code=403, detail="You can only board passengers on your own trip")
+		raise HTTPException(status_code=403, detail="You can only request boarding for your own trip")
 	if booking.status == "cancelled":
 		raise HTTPException(status_code=400, detail="Cancelled bookings cannot be boarded")
+	if booking.pickup_status != "driver_arrived":
+		raise HTTPException(status_code=400, detail="You must mark arrival before requesting boarding")
 
-	booking.status = "confirmed"
-	booking.pickup_status = "passenger_boarded"
+	now = phnom_penh_now()
+	booking.driver_requested_boarding_at = now
+	booking.boarding_confirmation_expires_at = now + timedelta(seconds=BOARDING_CONFIRMATION_TIMEOUT_S)
+	_create_boarding_requested_notification(db, booking)
 	db.commit()
 	db.refresh(booking)
 	return _build_booking_with_trip_read(booking)
+
+
+@router.post("/bookings/{booking_id}/boarding/passenger-confirm", response_model=BookingWithTripRead)
+def passenger_confirm_boarding(
+	booking_id: UUID,
+	db: Session = Depends(get_db),
+	current_user: User = Depends(get_current_user),
+) -> BookingWithTripRead:
+	if current_user.role != "passenger":
+		raise HTTPException(status_code=403, detail="Only passengers can confirm boarding")
+
+	booking = db.execute(
+		select(Booking)
+		.options(
+			selectinload(Booking.trip).selectinload(Trip.driver),
+			selectinload(Booking.trip).selectinload(Trip.vehicle),
+			selectinload(Booking.trip).selectinload(Trip.bookings),
+			selectinload(Booking.passenger),
+			selectinload(Booking.payment_instruction),
+			selectinload(Booking.payments),
+		)
+		.where(Booking.id == booking_id)
+	).scalar_one_or_none()
+	if booking is None:
+		raise HTTPException(status_code=404, detail="Booking not found")
+	if booking.passenger_id != current_user.id:
+		raise HTTPException(status_code=403, detail="You can only confirm boarding for your own booking")
+	if booking.status == "cancelled":
+		raise HTTPException(status_code=400, detail="This booking has been cancelled")
+	if booking.driver_requested_boarding_at is None:
+		raise HTTPException(status_code=400, detail="The driver has not yet requested boarding")
+	if booking.pickup_status != "driver_arrived":
+		raise HTTPException(status_code=400, detail="Boarding is not available at this stage")
+
+	if booking.boarding_confirmation_expires_at is not None and phnom_penh_now() > booking.boarding_confirmation_expires_at:
+		raise HTTPException(status_code=400, detail="Boarding confirmation has expired. Please ask the driver to request again.")
+
+	now = phnom_penh_now()
+	booking.passenger_confirmed_boarding_at = now
+	booking.pickup_status = "passenger_boarded"
+	booking.status = "confirmed"
+	_create_boarding_confirmed_notification(db, booking)
+	db.commit()
+	db.refresh(booking)
+	return _build_booking_with_trip_read(booking)
+
+
+@router.post("/bookings/{booking_id}/boarding/cancel", response_model=BookingWithTripRead)
+def cancel_boarding_request(
+	booking_id: UUID,
+	db: Session = Depends(get_db),
+	current_user: User = Depends(get_current_user),
+) -> BookingWithTripRead:
+	booking = db.execute(
+		select(Booking)
+		.options(
+			selectinload(Booking.trip).selectinload(Trip.driver),
+			selectinload(Booking.trip).selectinload(Trip.vehicle),
+			selectinload(Booking.trip).selectinload(Trip.bookings),
+			selectinload(Booking.passenger),
+			selectinload(Booking.payment_instruction),
+			selectinload(Booking.payments),
+		)
+		.where(Booking.id == booking_id)
+	).scalar_one_or_none()
+	if booking is None:
+		raise HTTPException(status_code=404, detail="Booking not found")
+	if booking.trip is None or booking.trip.driver_id != current_user.id:
+		if booking.passenger_id != current_user.id:
+			raise HTTPException(status_code=403, detail="You can only cancel boarding for your own booking or trip")
+	if booking.driver_requested_boarding_at is None:
+		raise HTTPException(status_code=400, detail="No active boarding request to cancel")
+	if booking.passenger_confirmed_boarding_at is not None:
+		raise HTTPException(status_code=400, detail="Boarding has already been confirmed")
+
+	booking.driver_requested_boarding_at = None
+	booking.boarding_confirmation_expires_at = None
+	db.commit()
+	db.refresh(booking)
+	return _build_booking_with_trip_read(booking)
+
+
+@router.put("/bookings/{booking_id}/passenger-live-location", response_model=dict)
+def update_passenger_live_location(
+	booking_id: UUID,
+	payload: BookingLiveLocationUpdate,
+	db: Session = Depends(get_db),
+	current_user: User = Depends(get_current_user),
+) -> dict:
+	if current_user.role != "passenger":
+		raise HTTPException(status_code=403, detail="Only passengers can update their location")
+
+	booking = db.execute(
+		select(Booking).where(Booking.id == booking_id, Booking.passenger_id == current_user.id)
+	).scalar_one_or_none()
+	if booking is None:
+		raise HTTPException(status_code=404, detail="Booking not found")
+	if booking.pickup_status not in ("pending", "driver_arrived"):
+		raise HTTPException(status_code=400, detail="Location tracking is only active before boarding")
+
+	now = phnom_penh_now()
+	loc = db.execute(
+		select(BookingLiveLocation).where(BookingLiveLocation.booking_id == booking.id)
+	).scalar_one_or_none()
+
+	if loc is None:
+		loc = BookingLiveLocation(
+			booking_id=booking.id,
+			lat=payload.lat,
+			lng=payload.lng,
+			accuracy_m=payload.accuracy_m,
+			updated_at=now,
+			expires_at=now + timedelta(seconds=60),
+		)
+		db.add(loc)
+	else:
+		loc.lat = payload.lat
+		loc.lng = payload.lng
+		loc.accuracy_m = payload.accuracy_m
+		loc.updated_at = now
+		loc.expires_at = now + timedelta(seconds=60)
+
+	db.commit()
+	return {"status": "ok"}
+
+
+@router.get("/bookings/{booking_id}/proximity", response_model=BookingProximityRead)
+def get_booking_proximity(
+	booking_id: UUID,
+	db: Session = Depends(get_db),
+	current_user: User = Depends(get_current_user),
+) -> BookingProximityRead:
+	booking = db.execute(
+		select(Booking)
+		.options(selectinload(Booking.trip), selectinload(Booking.live_location))
+		.where(Booking.id == booking_id)
+	).scalar_one_or_none()
+	if booking is None:
+		raise HTTPException(status_code=404, detail="Booking not found")
+	if booking.trip is None:
+		raise HTTPException(status_code=400, detail="Booking has no associated trip")
+
+	is_driver = current_user.role == "driver" and booking.trip.driver_id == current_user.id
+	is_passenger = current_user.role == "passenger" and booking.passenger_id == current_user.id
+	if not is_driver and not is_passenger:
+		raise HTTPException(status_code=403, detail="You can only check proximity for your own booking/trip")
+
+	driver_lat = booking.trip.departure_lat
+	driver_lng = booking.trip.departure_lng
+	passenger_loc = booking.live_location
+
+	now = phnom_penh_now()
+	driver_location_fresh = driver_lat is not None and driver_lng is not None
+	passenger_location_fresh = (
+		passenger_loc is not None
+		and passenger_loc.expires_at is not None
+		and now <= passenger_loc.expires_at
+	)
+
+	if driver_location_fresh and passenger_location_fresh:
+		distance = _haversine_meters(
+			float(driver_lat), float(driver_lng),
+			float(passenger_loc.lat), float(passenger_loc.lng),
+		)
+	else:
+		distance = 0.0
+
+	return BookingProximityRead(
+		distance_m=round(distance, 1),
+		within_threshold=distance <= ARRIVAL_PROXIMITY_THRESHOLD_M,
+		driver_location_fresh=driver_location_fresh,
+		passenger_location_fresh=passenger_location_fresh,
+	)
+
+
+@router.get("/bookings/{booking_id}/boarding/status", response_model=BoardingConfirmationRead)
+def get_boarding_status(
+	booking_id: UUID,
+	db: Session = Depends(get_db),
+	current_user: User = Depends(get_current_user),
+) -> BoardingConfirmationRead:
+	booking = db.execute(
+		select(Booking).where(Booking.id == booking_id)
+	).scalar_one_or_none()
+	if booking is None:
+		raise HTTPException(status_code=404, detail="Booking not found")
+	if booking.trip is None or booking.trip.driver_id != current_user.id:
+		if booking.passenger_id != current_user.id:
+			raise HTTPException(status_code=403, detail="Access denied")
+
+	now = phnom_penh_now()
+	if booking.passenger_confirmed_boarding_at is not None:
+		status = "confirmed"
+	elif booking.driver_requested_boarding_at is not None:
+		if booking.boarding_confirmation_expires_at is not None and now > booking.boarding_confirmation_expires_at:
+			status = "expired"
+		else:
+			status = "requested"
+	else:
+		status = "none"
+
+	return BoardingConfirmationRead(
+		status=status,
+		driver_requested_at=booking.driver_requested_boarding_at,
+		passenger_confirmed_at=booking.passenger_confirmed_boarding_at,
+		expires_at=booking.boarding_confirmation_expires_at,
+	)
 
 
 @router.post("/bookings/{booking_id}/payment-instruction/upload", response_model=PaymentInstructionRead)

@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routes.items import router as items_router
 from .routes.meta import router as meta_router
 from .routes.travel import router as travel_router
 from .routes.passenger import router as passenger_router
@@ -14,7 +13,7 @@ app = FastAPI(
     description="A small FastAPI starter for learning how to build APIs.",
     servers=[
         {
-            "url": "http://192.168.10.151:8000",
+            "url": "http://192.168.1.113:8000",
             "description": "Local development server",
         }
     ],
@@ -29,7 +28,6 @@ app.add_middleware(
 )
 
 # app.include_router(meta_router)
-app.include_router(items_router)
 app.include_router(travel_router)
 app.include_router(passenger_router)
 app.include_router(addresses_router)

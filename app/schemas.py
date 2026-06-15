@@ -13,7 +13,8 @@ PaymentInstructionSourceType = Literal["none", "text", "manual", "qr_image", "qr
 PaymentInstructionParseStatus = Literal["missing", "parsed", "failed"]
 TripRepeatMode = Literal["none", "daily", "weekly"]
 TripStopSourceType = Literal["catalog", "manual_pin"]
-UserNotificationType = Literal["driver_arrived"]
+UserNotificationType = Literal["driver_arrived", "booking_created", "boarding_requested", "boarding_confirmed"]
+BoardingConfirmationStatus = Literal["none", "requested", "confirmed", "expired"]
 
 
 class AddressRead(BaseModel):
@@ -372,6 +373,9 @@ class BookingRead(BaseModel):
     payment_status: BookingPaymentStatus = "pending"
     pickup_status: BookingPickupStatus = "pending"
     driver_arrived_at: datetime | None = None
+    driver_requested_boarding_at: datetime | None = None
+    passenger_confirmed_boarding_at: datetime | None = None
+    boarding_confirmation_expires_at: datetime | None = None
     status: str
     created_at: datetime
     payment_instruction: PaymentInstructionRead | None = None
@@ -380,6 +384,32 @@ class BookingRead(BaseModel):
 
 class BookingWithTripRead(BookingRead):
     trip: TripRead | None = None
+    passenger_contact: BookingPassengerContact | None = None
+
+
+class BookingPassengerContact(BaseModel):
+    full_name: str
+    phone: str
+
+
+class BookingLiveLocationUpdate(BaseModel):
+    lat: float
+    lng: float
+    accuracy_m: float | None = None
+
+
+class BookingProximityRead(BaseModel):
+    distance_m: float
+    within_threshold: bool
+    driver_location_fresh: bool
+    passenger_location_fresh: bool
+
+
+class BoardingConfirmationRead(BaseModel):
+    status: BoardingConfirmationStatus = "none"
+    driver_requested_at: datetime | None = None
+    passenger_confirmed_at: datetime | None = None
+    expires_at: datetime | None = None
 
 
 class PaymentCreate(BaseModel):

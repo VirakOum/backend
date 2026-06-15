@@ -219,6 +219,12 @@ class Booking(Base):
     payment_status: Mapped[str] = mapped_column(String(20), default="pending")
     pickup_status: Mapped[str] = mapped_column(String(30), default="pending")
     driver_arrived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    # Boarding confirmation columns
+    driver_requested_boarding_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    passenger_confirmed_boarding_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    boarding_confirmation_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
     status: Mapped[str] = mapped_column(String(20), default='pending')  # 'pending', 'confirmed', 'cancelled'
     created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now)
 
@@ -235,6 +241,7 @@ class Booking(Base):
     # Relationships
     trip: Mapped["Trip"] = relationship("Trip", back_populates="bookings")
     passenger: Mapped["User"] = relationship("User", back_populates="bookings")
+    live_location: Mapped["BookingLiveLocation | None"] = relationship("BookingLiveLocation", back_populates="booking", uselist=False)
     payments: Mapped[list["Payment"]] = relationship("Payment", back_populates="booking", cascade="all, delete-orphan")
     payment_instruction: Mapped["BookingPaymentInstruction | None"] = relationship("BookingPaymentInstruction", back_populates="booking", cascade="all, delete-orphan")
     wallet_entries: Mapped[list["DriverWalletEntry"]] = relationship(
@@ -255,6 +262,22 @@ class Booking(Base):
         ),
         CheckConstraint("pickup_status IN ('pending', 'driver_arrived', 'passenger_boarded', 'completed')", name="booking_pickup_status_check"),
     )
+
+
+class BookingLiveLocation(Base):
+    __tablename__ = "booking_live_locations"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    booking_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("bookings.id", ondelete="CASCADE"), nullable=False, unique=True, index=True
+    )
+    lat: Mapped[float] = mapped_column(Numeric(10, 6), nullable=False)
+    lng: Mapped[float] = mapped_column(Numeric(10, 6), nullable=False)
+    accuracy_m: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+    booking: Mapped["Booking"] = relationship("Booking", back_populates="live_location", uselist=False)
 
 
 class Payment(Base):
@@ -368,7 +391,10 @@ class UserNotification(Base):
     user: Mapped["User"] = relationship("User", back_populates="notifications")
 
     __table_args__ = (
-        CheckConstraint("type IN ('driver_arrived')", name="user_notification_type_check"),
+        CheckConstraint(
+            "type IN ('driver_arrived', 'booking_created', 'boarding_requested', 'boarding_confirmed')",
+            name="user_notification_type_check",
+        ),
     )
 
 
