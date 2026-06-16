@@ -1115,6 +1115,13 @@ def test_booking_passenger_contact_scoped_to_booking_users(monkeypatch) -> None:
         booking_id = str(uuid4())
         _insert_booking(booking_id, trip_id, str(passenger.id))
 
+    live_location_resp = client.put(
+        f"/travel/bookings/{booking_id}/passenger-live-location",
+        headers=_auth_headers(passenger_token),
+        json={"lat": 11.5565, "lng": 104.9283, "accuracy_m": 8},
+    )
+    assert live_location_resp.status_code == 200
+
     driver_bookings = client.get(
         "/travel/bookings",
         headers=_auth_headers(driver_token),
@@ -1124,6 +1131,9 @@ def test_booking_passenger_contact_scoped_to_booking_users(monkeypatch) -> None:
         item for item in driver_bookings.json() if item["id"] == booking_id
     )
     assert driver_booking["passenger_contact"]["phone"] == "098765436"
+    assert driver_booking["passenger_live_location"]["lat"] == 11.5565
+    assert driver_booking["passenger_live_location"]["lng"] == 104.9283
+    assert driver_booking["passenger_live_location"]["accuracy_m"] == 8
 
     passenger_booking = client.get(
         f"/travel/bookings/{booking_id}",
@@ -1131,6 +1141,8 @@ def test_booking_passenger_contact_scoped_to_booking_users(monkeypatch) -> None:
     )
     assert passenger_booking.status_code == 200
     assert passenger_booking.json()["passenger_contact"]["phone"] == "098765436"
+    assert passenger_booking.json()["passenger_live_location"]["lat"] == 11.5565
+    assert passenger_booking.json()["passenger_live_location"]["lng"] == 104.9283
 
     denied = client.get(
         f"/travel/bookings/{booking_id}",

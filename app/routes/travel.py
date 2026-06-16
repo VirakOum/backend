@@ -28,6 +28,7 @@ from ..schemas import (
 	ActiveBookingResponse,
 	AuthResponse,
 	BookingCreate,
+	BookingLiveLocationInfo,
 	BookingLiveLocationUpdate,
 	BookingPassengerContact,
 	BookingProximityRead,
@@ -553,6 +554,20 @@ def _build_booking_with_trip_read(booking: Booking) -> BookingWithTripRead:
 			full_name=booking.passenger.full_name,
 			phone=booking.passenger.phone,
 		)
+	driver_contact_phone = None
+	if booking.trip is not None and booking.trip.driver is not None:
+		driver_contact_phone = booking.trip.driver.phone
+	passenger_live_location = None
+	if booking.live_location is not None:
+		passenger_live_location = BookingLiveLocationInfo(
+			lat=float(booking.live_location.lat),
+			lng=float(booking.live_location.lng),
+			accuracy_m=float(booking.live_location.accuracy_m)
+			if booking.live_location.accuracy_m is not None
+			else None,
+			updated_at=booking.live_location.updated_at,
+			expires_at=booking.live_location.expires_at,
+		)
 	return BookingWithTripRead(
 		id=booking.id,
 		trip_id=booking.trip_id,
@@ -572,6 +587,8 @@ def _build_booking_with_trip_read(booking: Booking) -> BookingWithTripRead:
 		payment_instruction=_build_payment_instruction_read(booking, booking.payment_instruction),
 		trip=_build_trip_read(booking.trip) if booking.trip is not None else None,
 		passenger_contact=passenger_contact,
+		driver_contact_phone=driver_contact_phone,
+		passenger_live_location=passenger_live_location,
 	)
 
 
@@ -1563,6 +1580,7 @@ def list_bookings(
 		selectinload(Booking.trip).selectinload(Trip.vehicle),
 		selectinload(Booking.trip).selectinload(Trip.bookings),
 		selectinload(Booking.passenger),
+		selectinload(Booking.live_location),
 		selectinload(Booking.payment_instruction),
 		selectinload(Booking.payments),
 	)
@@ -1596,6 +1614,7 @@ def get_active_booking(
 			selectinload(Booking.trip).selectinload(Trip.vehicle),
 			selectinload(Booking.trip).selectinload(Trip.bookings),
 			selectinload(Booking.passenger),
+			selectinload(Booking.live_location),
 			selectinload(Booking.payment_instruction),
 			selectinload(Booking.payments),
 		)
@@ -1634,6 +1653,7 @@ def get_booking(
 			selectinload(Booking.trip).selectinload(Trip.vehicle),
 			selectinload(Booking.trip).selectinload(Trip.bookings),
 			selectinload(Booking.passenger),
+			selectinload(Booking.live_location),
 			selectinload(Booking.payment_instruction),
 			selectinload(Booking.payments),
 		)
@@ -1664,6 +1684,7 @@ def mark_driver_arrived(
 			selectinload(Booking.trip).selectinload(Trip.vehicle),
 			selectinload(Booking.trip).selectinload(Trip.bookings),
 			selectinload(Booking.passenger),
+			selectinload(Booking.live_location),
 			selectinload(Booking.payment_instruction),
 			selectinload(Booking.payments),
 		)
@@ -1684,6 +1705,11 @@ def mark_driver_arrived(
 		raise HTTPException(
 			status_code=400,
 			detail="Your location is not available. Please enable location sharing and try again.",
+		)
+	if trip.live_location_expires_at is not None and phnom_penh_now() > trip.live_location_expires_at:
+		raise HTTPException(
+			status_code=400,
+			detail="Your live location is no longer fresh. Open the app and try again.",
 		)
 
 	# Check passenger location — must exist, be fresh, and be within 20m
@@ -1736,6 +1762,7 @@ def mark_driver_arrived(
 			selectinload(Booking.trip).selectinload(Trip.vehicle),
 			selectinload(Booking.trip).selectinload(Trip.bookings),
 			selectinload(Booking.passenger),
+			selectinload(Booking.live_location),
 			selectinload(Booking.payment_instruction),
 			selectinload(Booking.payments),
 		)
@@ -1788,6 +1815,7 @@ def driver_request_boarding(
 			selectinload(Booking.trip).selectinload(Trip.vehicle),
 			selectinload(Booking.trip).selectinload(Trip.bookings),
 			selectinload(Booking.passenger),
+			selectinload(Booking.live_location),
 			selectinload(Booking.payment_instruction),
 			selectinload(Booking.payments),
 			selectinload(Booking.wallet_entries),
@@ -1828,6 +1856,7 @@ def passenger_confirm_boarding(
 			selectinload(Booking.trip).selectinload(Trip.vehicle),
 			selectinload(Booking.trip).selectinload(Trip.bookings),
 			selectinload(Booking.passenger),
+			selectinload(Booking.live_location),
 			selectinload(Booking.payment_instruction),
 			selectinload(Booking.payments),
 		)
@@ -1870,6 +1899,7 @@ def cancel_boarding_request(
 			selectinload(Booking.trip).selectinload(Trip.vehicle),
 			selectinload(Booking.trip).selectinload(Trip.bookings),
 			selectinload(Booking.passenger),
+			selectinload(Booking.live_location),
 			selectinload(Booking.payment_instruction),
 			selectinload(Booking.payments),
 		)
@@ -1962,7 +1992,12 @@ def get_booking_proximity(
 	passenger_loc = booking.live_location
 
 	now = phnom_penh_now()
-	driver_location_fresh = driver_lat is not None and driver_lng is not None
+	driver_location_fresh = (
+		driver_lat is not None
+		and driver_lng is not None
+		and booking.trip.live_location_expires_at is not None
+		and now <= booking.trip.live_location_expires_at
+	)
 	passenger_location_fresh = (
 		passenger_loc is not None
 		and passenger_loc.expires_at is not None
@@ -2121,6 +2156,8 @@ def update_booking_payment_status(
 			selectinload(Booking.trip).selectinload(Trip.driver),
 			selectinload(Booking.trip).selectinload(Trip.vehicle),
 			selectinload(Booking.trip).selectinload(Trip.bookings),
+			selectinload(Booking.passenger),
+			selectinload(Booking.live_location),
 			selectinload(Booking.payment_instruction),
 			selectinload(Booking.payments),
 		)

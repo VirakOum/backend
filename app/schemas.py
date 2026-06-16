@@ -385,11 +385,21 @@ class BookingRead(BaseModel):
 class BookingWithTripRead(BookingRead):
     trip: TripRead | None = None
     passenger_contact: BookingPassengerContact | None = None
+    driver_contact_phone: str | None = None
+    passenger_live_location: BookingLiveLocationInfo | None = None
 
 
 class BookingPassengerContact(BaseModel):
     full_name: str
     phone: str
+
+
+class BookingLiveLocationInfo(BaseModel):
+    lat: float
+    lng: float
+    accuracy_m: float | None = None
+    updated_at: datetime
+    expires_at: datetime
 
 
 class BookingLiveLocationUpdate(BaseModel):
