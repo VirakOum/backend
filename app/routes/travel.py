@@ -156,8 +156,8 @@ def _cleanup_expired_live_locations(db: Session) -> None:
 	if not expired:
 		return
 	for trip in expired:
-		trip.departure_lat = None
-		trip.departure_lng = None
+		trip.live_lat = None
+		trip.live_lng = None
 		trip.live_heading = None
 		trip.live_speed_kph = None
 		trip.live_location_updated_at = None
@@ -332,7 +332,8 @@ def _trip_coordinates(trip: Trip) -> tuple[float | None, float | None]:
 
 
 def _build_live_location(trip: Trip) -> TripLiveLocationInfo | None:
-	lat, lng = _trip_coordinates(trip)
+	lat = float(trip.live_lat) if trip.live_lat is not None else None
+	lng = float(trip.live_lng) if trip.live_lng is not None else None
 	if lat is None or lng is None or trip.live_location_expires_at is None:
 		return None
 	return TripLiveLocationInfo(
@@ -811,6 +812,8 @@ def _sync_return_trip(db: Session, trip: Trip) -> None:
         "destination_route": _clone_json_value(trip.departure_route),
         "pickup_stop": return_pickup_stop,
         "dropoff_stop": return_dropoff_stop,
+        "live_lat": return_departure_lat,
+        "live_lng": return_departure_lng,
         "live_heading": None,
         "live_speed_kph": None,
         "live_location_updated_at": phnom_penh_now() if return_departure_lat is not None and return_departure_lng is not None else None,
@@ -947,6 +950,21 @@ def _trip_pickup_coordinates(trip: Trip) -> tuple[float | None, float | None]:
 		return None, None
 
 
+def _booking_arrival_target(
+	trip: Trip,
+	passenger_loc: BookingLiveLocation | None,
+	now: datetime,
+) -> tuple[float | None, float | None, bool]:
+	if (
+		passenger_loc is not None
+		and passenger_loc.expires_at is not None
+		and now <= passenger_loc.expires_at
+	):
+		return float(passenger_loc.lat), float(passenger_loc.lng), True
+	pickup_lat, pickup_lng = _trip_pickup_coordinates(trip)
+	return pickup_lat, pickup_lng, False
+
+
 def _create_driver_arrived_notification(db: Session, booking: Booking) -> None:
 	if not _has_user_notifications_table(db):
 		return
@@ -959,6 +977,11 @@ def _create_driver_arrived_notification(db: Session, booking: Booking) -> None:
 		)
 	).scalar_one_or_none()
 	if existing is not None:
+		existing.title = "Driver arrived"
+		existing.body = "Your driver has arrived. Please prepare to board."
+		existing.trip_id = booking.trip_id
+		existing.is_read = False
+		existing.created_at = phnom_penh_now()
 		return
 
 	db.add(
@@ -1219,6 +1242,8 @@ def create_trip(
     if trip_data["has_return_schedule"] and trip_data.get("return_departure_time") is None:
         raise HTTPException(status_code=422, detail="return_departure_time is required when has_return_schedule is true")
     if trip_data.get("departure_lat") is not None and trip_data.get("departure_lng") is not None:
+        trip_data["live_lat"] = trip_data.get("departure_lat")
+        trip_data["live_lng"] = trip_data.get("departure_lng")
         if trip_data.get("live_location_expires_at") is None:
             trip_data["live_location_expires_at"] = payload.departure_time + timedelta(hours=24)
         trip_data["live_location_updated_at"] = phnom_penh_now()
@@ -1484,8 +1509,8 @@ def update_trip_live_location(
 			detail="Live location updates allowed only for scheduled or active trips",
 		)
 
-	trip.departure_lat = payload.lat
-	trip.departure_lng = payload.lng
+	trip.live_lat = payload.lat
+	trip.live_lng = payload.lng
 	trip.live_heading = payload.heading
 	trip.live_speed_kph = payload.speed_kph
 	trip.live_location_updated_at = phnom_penh_now()
@@ -1496,8 +1521,8 @@ def update_trip_live_location(
 	return TripLiveLocationResponse(
 		trip_id=trip.id,
 		driver_id=trip.driver_id,
-		lat=float(trip.departure_lat),
-		lng=float(trip.departure_lng),
+		lat=float(trip.live_lat),
+		lng=float(trip.live_lng),
 		heading=trip.live_heading,
 		speed_kph=float(trip.live_speed_kph) if trip.live_speed_kph is not None else None,
 		updated_at=trip.live_location_updated_at,
@@ -1699,9 +1724,9 @@ def mark_driver_arrived(
 	if booking.pickup_status == "passenger_boarded" or booking.pickup_status == "completed":
 		raise HTTPException(status_code=400, detail="Passenger has already boarded or trip is complete")
 
-	# Proximity gate: check driver's live location (stored in departure_lat/lng)
+	# Proximity gate: check driver's live location
 	trip = booking.trip
-	if trip.departure_lat is None or trip.departure_lng is None:
+	if trip.live_lat is None or trip.live_lng is None:
 		raise HTTPException(
 			status_code=400,
 			detail="Your location is not available. Please enable location sharing and try again.",
@@ -1712,32 +1737,37 @@ def mark_driver_arrived(
 			detail="Your live location is no longer fresh. Open the app and try again.",
 		)
 
-	# Check passenger location — must exist, be fresh, and be within 20m
+	# Check arrival target. Prefer fresh passenger live location; otherwise use
+	# the booking pickup point so arrival still works when the passenger app is
+	# temporarily not broadcasting.
 	passenger_loc = db.execute(
 		select(BookingLiveLocation).where(BookingLiveLocation.booking_id == booking.id)
 	).scalar_one_or_none()
 
-	if passenger_loc is None:
-		raise HTTPException(
-			status_code=400,
-			detail="Passenger location is not available yet. Please wait for the passenger to share their location.",
-		)
-
 	now = phnom_penh_now()
-	if passenger_loc.expires_at is not None and now > passenger_loc.expires_at:
+	target_lat, target_lng, using_passenger_live_location = _booking_arrival_target(
+		trip=trip,
+		passenger_loc=passenger_loc,
+		now=now,
+	)
+	if target_lat is None or target_lng is None:
 		raise HTTPException(
 			status_code=400,
-			detail="Passenger location is no longer available. Please ask the passenger to open the app.",
+			detail="Pickup location is not available yet. Please wait for the passenger location or trip pickup point.",
 		)
 
 	distance = _haversine_meters(
-		float(trip.departure_lat), float(trip.departure_lng),
-		float(passenger_loc.lat), float(passenger_loc.lng),
+		float(trip.live_lat), float(trip.live_lng),
+		target_lat, target_lng,
 	)
 	if distance > ARRIVAL_PROXIMITY_THRESHOLD_M:
+		target_label = "passenger" if using_passenger_live_location else "pickup point"
 		raise HTTPException(
 			status_code=400,
-			detail=f"You are {distance:.0f}m from the passenger. Move within 20m to mark arrival.",
+			detail=(
+				f"You are {distance:.0f}m from the {target_label}. "
+				f"Move within {ARRIVAL_PROXIMITY_THRESHOLD_M:.0f}m to mark arrival."
+			),
 		)
 
 	was_arrived = booking.pickup_status == "driver_arrived"
@@ -1987,8 +2017,8 @@ def get_booking_proximity(
 	if not is_driver and not is_passenger:
 		raise HTTPException(status_code=403, detail="You can only check proximity for your own booking/trip")
 
-	driver_lat = booking.trip.departure_lat
-	driver_lng = booking.trip.departure_lng
+	driver_lat = booking.trip.live_lat
+	driver_lng = booking.trip.live_lng
 	passenger_loc = booking.live_location
 
 	now = phnom_penh_now()
@@ -2003,11 +2033,16 @@ def get_booking_proximity(
 		and passenger_loc.expires_at is not None
 		and now <= passenger_loc.expires_at
 	)
+	target_lat, target_lng, _ = _booking_arrival_target(
+		trip=booking.trip,
+		passenger_loc=passenger_loc,
+		now=now,
+	)
 
-	if driver_location_fresh and passenger_location_fresh:
+	if driver_location_fresh and target_lat is not None and target_lng is not None:
 		distance = _haversine_meters(
 			float(driver_lat), float(driver_lng),
-			float(passenger_loc.lat), float(passenger_loc.lng),
+			target_lat, target_lng,
 		)
 	else:
 		distance = 0.0

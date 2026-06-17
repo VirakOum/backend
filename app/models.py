@@ -157,6 +157,8 @@ class Trip(Base):
     destination_route: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     pickup_stop: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     dropoff_stop: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    live_lat: Mapped[float | None] = mapped_column(Numeric(10, 6), nullable=True)
+    live_lng: Mapped[float | None] = mapped_column(Numeric(10, 6), nullable=True)
     live_heading: Mapped[int | None] = mapped_column(Integer, nullable=True)
     live_speed_kph: Mapped[float | None] = mapped_column(Numeric(6, 2), nullable=True)
     live_location_updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

@@ -732,7 +732,7 @@ def test_driver_arrived_succeeds_with_live_location(monkeypatch) -> None:
     assert data["driver_arrived_at"] is not None
 
 
-def test_driver_arrived_fails_when_passenger_location_missing(monkeypatch) -> None:
+def test_driver_arrived_uses_pickup_point_when_passenger_location_missing(monkeypatch) -> None:
     frozen_now = datetime(2026, 6, 15, 11, 30, 0)
     monkeypatch.setattr(travel_routes, "phnom_penh_now", lambda: frozen_now)
 
@@ -764,13 +764,15 @@ def test_driver_arrived_fails_when_passenger_location_missing(monkeypatch) -> No
         booking_id = str(uuid4())
         _insert_booking(booking_id, trip_id, str(passenger.id))
 
-    # No passenger live location set
+    # No passenger live location set. Driver is already at the pickup point.
     response = client.post(
         f"/travel/bookings/{booking_id}/driver-arrived",
         headers=_auth_headers(driver_token),
     )
-    assert response.status_code == 400
-    assert "passenger location is not available" in response.json()["detail"].lower()
+    assert response.status_code == 200
+    data = response.json()
+    assert data["pickup_status"] == "driver_arrived"
+    assert data["driver_arrived_at"] is not None
 
 
 def test_driver_arrived_fails_when_passenger_too_far(monkeypatch) -> None:
@@ -821,12 +823,12 @@ def test_driver_arrived_fails_when_passenger_too_far(monkeypatch) -> None:
     )
     assert response.status_code == 400
     detail = response.json()["detail"].lower()
-    assert "move within 20m" in detail
+    assert "move within 100m" in detail
     assert "m from the passenger" in detail
 
 
-def test_driver_arrived_fails_when_passenger_location_stale(monkeypatch) -> None:
-    """Passenger location expires after 60s; driver tries after expiration."""
+def test_driver_arrived_uses_pickup_point_when_passenger_location_stale(monkeypatch) -> None:
+    """Stale passenger live location falls back to the booking pickup point."""
     base_time = datetime(2026, 6, 15, 11, 30, 0)
     monkeypatch.setattr(travel_routes, "phnom_penh_now", lambda: base_time)
 
@@ -876,8 +878,10 @@ def test_driver_arrived_fails_when_passenger_location_stale(monkeypatch) -> None
         f"/travel/bookings/{booking_id}/driver-arrived",
         headers=_auth_headers(driver_token),
     )
-    assert response.status_code == 400
-    assert "no longer available" in response.json()["detail"].lower()
+    assert response.status_code == 200
+    data = response.json()
+    assert data["pickup_status"] == "driver_arrived"
+    assert data["driver_arrived_at"] is not None
 
 
 def test_boarding_request_requires_driver_arrived_first(monkeypatch) -> None:
