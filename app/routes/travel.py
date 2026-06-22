@@ -291,6 +291,144 @@ def _repair_impossible_completed_trips(db: Session) -> None:
 		db.commit()
 
 
+def _next_repeat_departure_local(trip: Trip) -> datetime | None:
+	departure_local = _trip_departure_local(trip)
+	if departure_local is None:
+		return None
+	if trip.repeat_mode == "daily":
+		next_date = departure_local.date() + timedelta(days=1)
+	elif trip.repeat_mode == "weekly":
+		next_date = departure_local.date() + timedelta(days=7)
+	else:
+		return None
+
+	repeat_time = trip.recurring_departure_time or departure_local.time().replace(second=0, microsecond=0)
+	return datetime.combine(next_date, repeat_time)
+
+
+def _trip_already_exists_for_repeat(db: Session, trip: Trip, departure_time: datetime) -> bool:
+	existing = db.execute(
+		select(Trip.id).where(
+			Trip.driver_id == trip.driver_id,
+			Trip.vehicle_id == trip.vehicle_id,
+			Trip.departure_province == trip.departure_province,
+			Trip.destination_province == trip.destination_province,
+			Trip.departure_time == departure_time,
+		)
+	).scalar_one_or_none()
+	return existing is not None
+
+
+def _ensure_next_repeated_trip(db: Session, trip: Trip, now_local: datetime) -> bool:
+	if trip.repeat_mode not in {"daily", "weekly"}:
+		return False
+
+	next_departure = _next_repeat_departure_local(trip)
+	if next_departure is None:
+		return False
+
+	step = timedelta(days=1 if trip.repeat_mode == "daily" else 7)
+	while next_departure + timedelta(hours=24) <= now_local:
+		next_departure += step
+
+	if _trip_already_exists_for_repeat(db, trip, next_departure):
+		return False
+
+	next_return_departure = None
+	if trip.has_return_schedule and trip.return_departure_time is not None:
+		delta = next_departure - _trip_departure_local(trip)
+		next_return_departure = trip.return_departure_time + delta
+
+	live_departure_lat = float(trip.departure_lat) if trip.departure_lat is not None else _stop_coordinate(trip.pickup_stop, "latitude")
+	live_departure_lng = float(trip.departure_lng) if trip.departure_lng is not None else _stop_coordinate(trip.pickup_stop, "longitude")
+	next_trip = Trip(
+		driver_id=trip.driver_id,
+		vehicle_id=trip.vehicle_id,
+		departure_province=trip.departure_province,
+		destination_province=trip.destination_province,
+		departure_time=next_departure,
+		departure_lat=float(trip.departure_lat) if trip.departure_lat is not None else None,
+		departure_lng=float(trip.departure_lng) if trip.departure_lng is not None else None,
+		departure_route=_clone_json_value(trip.departure_route),
+		destination_route=_clone_json_value(trip.destination_route),
+		pickup_stop=_clone_json_value(trip.pickup_stop),
+		dropoff_stop=_clone_json_value(trip.dropoff_stop),
+		live_lat=live_departure_lat,
+		live_lng=live_departure_lng,
+		live_heading=None,
+		live_speed_kph=None,
+		live_location_updated_at=phnom_penh_now() if live_departure_lat is not None and live_departure_lng is not None else None,
+		live_location_expires_at=next_departure + timedelta(hours=24) if live_departure_lat is not None and live_departure_lng is not None else None,
+		repeat_mode=trip.repeat_mode,
+		auto_repeat_weekly=trip.repeat_mode == "weekly",
+		recurring_day_of_week=next_departure.weekday() if trip.repeat_mode == "weekly" else trip.recurring_day_of_week,
+		recurring_departure_time=trip.recurring_departure_time,
+		has_return_schedule=trip.has_return_schedule,
+		return_departure_time=next_return_departure,
+		promotion_label=trip.promotion_label,
+		promotion_discount_percent=trip.promotion_discount_percent,
+		price_per_seat=trip.price_per_seat,
+		total_seats=trip.total_seats,
+		available_seats=trip.total_seats,
+		status="scheduled",
+	)
+	db.add(next_trip)
+	db.flush()
+	_sync_return_trip(db, next_trip)
+	return True
+
+
+def _expire_trip_bookings(trip: Trip) -> bool:
+	if trip.status == "completed":
+		return False
+
+	updated = trip.status != "cancelled"
+	trip.status = "cancelled"
+	trip.available_seats = trip.total_seats
+
+	for booking in trip.bookings:
+		if booking.status not in BOOKING_SEAT_HOLD_STATUSES:
+			continue
+		booking.status = "cancelled"
+		booking.payment_status = "pending"
+		booking.pickup_status = "pending"
+		booking.driver_arrived_at = None
+		booking.driver_requested_boarding_at = None
+		booking.passenger_confirmed_boarding_at = None
+		booking.boarding_confirmation_expires_at = None
+		if booking.payment_instruction is not None:
+			booking.payment_instruction.payment_status = "pending"
+		updated = True
+
+	return updated
+
+
+def _expire_stale_trips_and_bookings(db: Session) -> None:
+	_cleanup_expired_live_locations(db)
+	_repair_impossible_completed_trips(db)
+	now_local = phnom_penh_now()
+	rows = db.execute(
+		select(Trip)
+		.options(
+			selectinload(Trip.bookings).selectinload(Booking.payment_instruction),
+		)
+		.where(Trip.status.in_(("scheduled", "active", "completed")))
+	).scalars().all()
+
+	updated = False
+	for trip in rows:
+		active_until_local = _trip_active_until_local(trip)
+		if active_until_local is None or active_until_local > now_local:
+			continue
+		if _ensure_next_repeated_trip(db, trip, now_local):
+			updated = True
+		if _expire_trip_bookings(trip):
+			updated = True
+
+	if updated:
+		db.commit()
+
+
 def _money(value: Decimal) -> Decimal:
 	return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
@@ -1220,44 +1358,45 @@ def create_trip(
 	db: Session = Depends(get_db),
 	current_user: User = Depends(get_current_user),
 ) -> TripRead:
-    if current_user.role != "driver":
-        raise HTTPException(status_code=403, detail="Only drivers can create trips")
-    driver_wallet = get_or_create_driver_wallet(db, driver_id=current_user.id)
-    evaluate_driver_wallet_lock(db, wallet=driver_wallet, settings=get_runtime_settings(db))
-    if driver_wallet.is_locked:
-        raise HTTPException(status_code=403, detail=driver_wallet.locked_reason)
+	_expire_stale_trips_and_bookings(db)
+	if current_user.role != "driver":
+		raise HTTPException(status_code=403, detail="Only drivers can create trips")
+	driver_wallet = get_or_create_driver_wallet(db, driver_id=current_user.id)
+	evaluate_driver_wallet_lock(db, wallet=driver_wallet, settings=get_runtime_settings(db))
+	if driver_wallet.is_locked:
+		raise HTTPException(status_code=403, detail=driver_wallet.locked_reason)
 
-    if payload.vehicle_id is not None:
-        vehicle = db.get(Vehicle, payload.vehicle_id)
-        if vehicle is None:
-            raise HTTPException(status_code=404, detail="Vehicle not found")
-        if vehicle.owner_id != current_user.id:
-            raise HTTPException(status_code=403, detail="Vehicle does not belong to the current user")
+	if payload.vehicle_id is not None:
+		vehicle = db.get(Vehicle, payload.vehicle_id)
+		if vehicle is None:
+			raise HTTPException(status_code=404, detail="Vehicle not found")
+		if vehicle.owner_id != current_user.id:
+			raise HTTPException(status_code=403, detail="Vehicle does not belong to the current user")
 
-    if payload.available_seats > payload.total_seats:
-        raise HTTPException(status_code=400, detail="available_seats cannot exceed total_seats")
+	if payload.available_seats > payload.total_seats:
+		raise HTTPException(status_code=400, detail="available_seats cannot exceed total_seats")
 
-    trip_data = _normalize_trip_schedule_data(payload.model_dump())
-    _validate_trip_route_stop_payload(trip_data)
-    if trip_data["has_return_schedule"] and trip_data.get("return_departure_time") is None:
-        raise HTTPException(status_code=422, detail="return_departure_time is required when has_return_schedule is true")
-    if trip_data.get("departure_lat") is not None and trip_data.get("departure_lng") is not None:
-        trip_data["live_lat"] = trip_data.get("departure_lat")
-        trip_data["live_lng"] = trip_data.get("departure_lng")
-        if trip_data.get("live_location_expires_at") is None:
-            trip_data["live_location_expires_at"] = payload.departure_time + timedelta(hours=24)
-        trip_data["live_location_updated_at"] = phnom_penh_now()
-    trip = Trip(**trip_data, driver_id=current_user.id)
-    db.add(trip)
-    db.flush()
-    _sync_return_trip(db, trip)
-    db.commit()
-    created_trip = db.execute(
-        select(Trip)
-        .options(selectinload(Trip.driver), selectinload(Trip.vehicle), selectinload(Trip.bookings))
-        .where(Trip.id == trip.id)
-    ).scalar_one()
-    return _build_trip_read(created_trip)
+	trip_data = _normalize_trip_schedule_data(payload.model_dump())
+	_validate_trip_route_stop_payload(trip_data)
+	if trip_data["has_return_schedule"] and trip_data.get("return_departure_time") is None:
+		raise HTTPException(status_code=422, detail="return_departure_time is required when has_return_schedule is true")
+	if trip_data.get("departure_lat") is not None and trip_data.get("departure_lng") is not None:
+		trip_data["live_lat"] = trip_data.get("departure_lat")
+		trip_data["live_lng"] = trip_data.get("departure_lng")
+		if trip_data.get("live_location_expires_at") is None:
+			trip_data["live_location_expires_at"] = payload.departure_time + timedelta(hours=24)
+		trip_data["live_location_updated_at"] = phnom_penh_now()
+	trip = Trip(**trip_data, driver_id=current_user.id)
+	db.add(trip)
+	db.flush()
+	_sync_return_trip(db, trip)
+	db.commit()
+	created_trip = db.execute(
+		select(Trip)
+		.options(selectinload(Trip.driver), selectinload(Trip.vehicle), selectinload(Trip.bookings))
+		.where(Trip.id == trip.id)
+	).scalar_one()
+	return _build_trip_read(created_trip)
 
 
 @router.get("/driver/trips", response_model=list[TripRead])
@@ -1268,7 +1407,7 @@ def list_driver_trips(
 ) -> list[TripRead]:
 	if current_user.role != "driver":
 		raise HTTPException(status_code=403, detail="Only drivers can list their trips")
-	_repair_impossible_completed_trips(db)
+	_expire_stale_trips_and_bookings(db)
 	query = (
 		select(Trip)
 		.options(selectinload(Trip.driver), selectinload(Trip.vehicle), selectinload(Trip.bookings))
@@ -1313,6 +1452,7 @@ def search_trips(
 	timezone: str = "Asia/Phnom_Penh",
 	db: Session = Depends(get_db),
 ) -> list[TripRead]:
+	_expire_stale_trips_and_bookings(db)
 	if departure_province == destination_province:
 		raise HTTPException(status_code=400, detail="departure_province and destination_province cannot be the same")
 	try:
@@ -1445,8 +1585,7 @@ def search_trips(
 
 @router.get("/trips/{trip_id}", response_model=TripRead)
 def get_trip(trip_id: UUID, db: Session = Depends(get_db)) -> TripRead:
-	_cleanup_expired_live_locations(db)
-	_repair_impossible_completed_trips(db)
+	_expire_stale_trips_and_bookings(db)
 	trip = db.execute(
 		select(Trip)
 		.options(selectinload(Trip.driver), selectinload(Trip.vehicle), selectinload(Trip.bookings))
@@ -1537,6 +1676,7 @@ def create_booking(
 	db: Session = Depends(get_db),
 	current_user: User = Depends(get_current_user),
 ) -> BookingRead:
+	_expire_stale_trips_and_bookings(db)
 	trip = db.execute(
 		select(Trip)
 		.options(selectinload(Trip.bookings))
@@ -1598,7 +1738,7 @@ def list_bookings(
 	db: Session = Depends(get_db),
 	current_user: User = Depends(get_current_user),
 ) -> list[BookingWithTripRead]:
-	_repair_impossible_completed_trips(db)
+	_expire_stale_trips_and_bookings(db)
 	sort_by_created_at = Booking.created_at.asc() if order == "asc" else Booking.created_at.desc()
 	query = select(Booking).options(
 		selectinload(Booking.trip).selectinload(Trip.driver),
@@ -1629,8 +1769,7 @@ def get_active_booking(
 	if current_user.role != "passenger":
 		raise HTTPException(status_code=403, detail="Only passengers can access active booking")
 
-	_cleanup_expired_live_locations(db)
-	_repair_impossible_completed_trips(db)
+	_expire_stale_trips_and_bookings(db)
 	now = phnom_penh_now()
 	rows = db.execute(
 		select(Booking)
@@ -1671,6 +1810,7 @@ def get_booking(
 	db: Session = Depends(get_db),
 	current_user: User = Depends(get_current_user),
 ) -> BookingWithTripRead:
+	_expire_stale_trips_and_bookings(db)
 	booking = db.execute(
 		select(Booking)
 		.options(
@@ -1699,6 +1839,7 @@ def mark_driver_arrived(
 	db: Session = Depends(get_db),
 	current_user: User = Depends(get_current_user),
 ) -> BookingWithTripRead:
+	_expire_stale_trips_and_bookings(db)
 	if current_user.role != "driver":
 		raise HTTPException(status_code=403, detail="Only drivers can mark arrival")
 
@@ -1835,6 +1976,7 @@ def driver_request_boarding(
 	db: Session = Depends(get_db),
 	current_user: User = Depends(get_current_user),
 ) -> BookingWithTripRead:
+	_expire_stale_trips_and_bookings(db)
 	if current_user.role != "driver":
 		raise HTTPException(status_code=403, detail="Only drivers can request boarding")
 
@@ -1876,6 +2018,7 @@ def passenger_confirm_boarding(
 	db: Session = Depends(get_db),
 	current_user: User = Depends(get_current_user),
 ) -> BookingWithTripRead:
+	_expire_stale_trips_and_bookings(db)
 	if current_user.role != "passenger":
 		raise HTTPException(status_code=403, detail="Only passengers can confirm boarding")
 
@@ -1922,6 +2065,7 @@ def cancel_boarding_request(
 	db: Session = Depends(get_db),
 	current_user: User = Depends(get_current_user),
 ) -> BookingWithTripRead:
+	_expire_stale_trips_and_bookings(db)
 	booking = db.execute(
 		select(Booking)
 		.options(
@@ -2145,6 +2289,7 @@ def complete_trip(
 	db: Session = Depends(get_db),
 	current_user: User = Depends(get_current_user),
 ) -> TripRead:
+	_expire_stale_trips_and_bookings(db)
 	if current_user.role != "driver":
 		raise HTTPException(status_code=403, detail="Only drivers can complete trips")
 
@@ -2157,6 +2302,8 @@ def complete_trip(
 		raise HTTPException(status_code=404, detail="Trip not found")
 	if trip.driver_id != current_user.id:
 		raise HTTPException(status_code=403, detail="You can only complete your own trip")
+	if trip.status == "cancelled":
+		raise HTTPException(status_code=400, detail="Cancelled trips cannot be completed")
 	if trip.status == "completed":
 		updated_trip = _load_trip_for_read(db, trip.id)
 		if updated_trip is None:

@@ -11,7 +11,7 @@ import app.routes.travel as travel_routes
 
 from app.main import app
 from app.db import get_db
-from app.models import AppRuntimeSetting, AuthToken, DriverWallet, Trip, User, UserNotification, Vehicle
+from app.models import AppRuntimeSetting, AuthToken, Booking, DriverWallet, Trip, User, UserNotification, Vehicle
 
 # Monkey-patch ARRAY type for SQLite compatibility
 from sqlalchemy import ARRAY as _ARRAY
@@ -213,6 +213,36 @@ def _create_vehicle(token: str) -> str:
             "model": "County",
             "color": "White",
             "company_name": "Demo Travel",
+        },
+    )
+    assert response.status_code == 201
+    return response.json()["id"]
+
+
+def _create_trip_for_test(
+    token: str,
+    vehicle_id: str,
+    *,
+    departure_time: str = "2026-06-25T07:30:00",
+    repeat_mode: str = "none",
+) -> str:
+    response = client.post(
+        "/travel/trips",
+        headers=_auth_headers(token),
+        json={
+            "vehicle_id": vehicle_id,
+            "departure_province": "Kampong Thom",
+            "destination_province": "Phnom Penh",
+            "departure_time": departure_time,
+            "departure_lat": 12.71123,
+            "departure_lng": 104.88991,
+            "repeat_mode": repeat_mode,
+            "auto_repeat_weekly": repeat_mode == "weekly",
+            "has_return_schedule": False,
+            "price_per_seat": 5,
+            "total_seats": 15,
+            "available_seats": 15,
+            "status": "scheduled",
         },
     )
     assert response.status_code == 201
@@ -659,7 +689,7 @@ def test_driver_arrived_fails_without_live_location() -> None:
             "vehicle_id": vehicle_id,
             "departure_province": "Phnom Penh",
             "destination_province": "Kandal",
-            "departure_time": "2026-06-15T11:30:00",
+            "departure_time": "2099-06-15T11:30:00",
             "price_per_seat": 5,
             "total_seats": 4,
             "available_seats": 4,
@@ -1209,3 +1239,77 @@ def test_passenger_live_location(monkeypatch) -> None:
     assert prox["passenger_location_fresh"] is True
     assert prox["distance_m"] > 0
     assert prox["within_threshold"] is True
+
+
+def test_expired_trip_cancels_active_bookings_and_clears_passenger_active_state(monkeypatch) -> None:
+    frozen_now = datetime(2026, 6, 20, 12, 0, 0)
+    monkeypatch.setattr(travel_routes, "phnom_penh_now", lambda: frozen_now)
+
+    driver_token = _signup_driver()
+    passenger_token = _signup_passenger()
+    vehicle_id = _create_vehicle(driver_token)
+    trip_id = _create_trip_for_test(driver_token, vehicle_id)
+
+    with TestingSessionLocal() as db:
+        passenger = db.execute(
+            select(User).where(User.role == "passenger")
+        ).scalar_one()
+        booking_id = str(uuid4())
+        _insert_booking(booking_id, trip_id, str(passenger.id))
+
+    with TestingSessionLocal() as db:
+        trip = db.get(Trip, UUID(trip_id))
+        assert trip is not None
+        trip.departure_time = datetime(2026, 6, 15, 7, 30, 0)
+        trip.live_location_expires_at = datetime(2026, 6, 16, 7, 30, 0)
+        db.commit()
+
+    driver_bookings = client.get(
+        "/travel/bookings",
+        headers=_auth_headers(driver_token),
+    )
+    assert driver_bookings.status_code == 200
+    expired_booking = next(item for item in driver_bookings.json() if item["id"] == booking_id)
+    assert expired_booking["status"] == "cancelled"
+    assert expired_booking["trip"]["status"] == "cancelled"
+
+    passenger_active = client.get(
+        "/travel/bookings/active",
+        headers=_auth_headers(passenger_token),
+    )
+    assert passenger_active.status_code == 200
+    assert passenger_active.json()["booking"] is None
+
+
+def test_expired_daily_trip_creates_next_scheduled_repeat(monkeypatch) -> None:
+    frozen_now = datetime(2026, 6, 20, 12, 0, 0)
+    monkeypatch.setattr(travel_routes, "phnom_penh_now", lambda: frozen_now)
+
+    driver_token = _signup_driver()
+    vehicle_id = _create_vehicle(driver_token)
+    trip_id = _create_trip_for_test(driver_token, vehicle_id, repeat_mode="daily")
+
+    with TestingSessionLocal() as db:
+        trip = db.get(Trip, UUID(trip_id))
+        assert trip is not None
+        trip.departure_time = datetime(2026, 6, 15, 7, 30, 0)
+        trip.live_location_expires_at = datetime(2026, 6, 16, 7, 30, 0)
+        trip.recurring_departure_time = datetime(2026, 6, 15, 7, 30, 0).time()
+        db.commit()
+
+    trips_response = client.get(
+        "/travel/driver/trips",
+        headers=_auth_headers(driver_token),
+    )
+    assert trips_response.status_code == 200
+
+    trips = trips_response.json()
+    cancelled_original = next(item for item in trips if item["id"] == trip_id)
+    repeated_trip = next(
+        item
+        for item in trips
+        if item["id"] != trip_id and item["status"] == "scheduled"
+    )
+    assert cancelled_original["status"] == "cancelled"
+    assert repeated_trip["repeat_mode"] == "daily"
+    assert repeated_trip["departure_time"].startswith("2026-06-20T07:30:00")
