@@ -103,6 +103,7 @@ class User(Base):
     trips: Mapped[list["Trip"]] = relationship("Trip", back_populates="driver", foreign_keys="Trip.driver_id", cascade="all, delete-orphan")
     bookings: Mapped[list["Booking"]] = relationship("Booking", back_populates="passenger", cascade="all, delete-orphan")
     auth_tokens: Mapped[list["AuthToken"]] = relationship("AuthToken", back_populates="user", cascade="all, delete-orphan")
+    trusted_devices: Mapped[list["TrustedDevice"]] = relationship("TrustedDevice", back_populates="user", cascade="all, delete-orphan")
     notification_preferences: Mapped["NotificationPreference | None"] = relationship("NotificationPreference", back_populates="user", cascade="all, delete-orphan")
     notifications: Mapped[list["UserNotification"]] = relationship("UserNotification", back_populates="user", cascade="all, delete-orphan")
     support_tickets: Mapped[list["SupportTicket"]] = relationship("SupportTicket", back_populates="user")
@@ -342,6 +343,21 @@ class AuthToken(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now)
 
     user: Mapped["User"] = relationship("User", back_populates="auth_tokens")
+
+
+class TrustedDevice(Base):
+    __tablename__ = "trusted_devices"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    device_id_hash: Mapped[str] = mapped_column(String(128), nullable=False, unique=True, index=True)
+    device_secret_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    device_platform: Mapped[str] = mapped_column(String(30), nullable=False)
+    device_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, nullable=False)
+
+    user: Mapped["User"] = relationship("User", back_populates="trusted_devices")
 
 
 class PassengerQuickPlace(Base):

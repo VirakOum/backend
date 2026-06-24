@@ -127,6 +127,9 @@ class UserCreate(BaseModel):
     role: str = Field(pattern="^(passenger|driver)$")
     password: str = Field(min_length=8, max_length=128)
     avatar_url: str | None = None
+    device_id: str | None = Field(default=None, min_length=1, max_length=255)
+    device_platform: str | None = Field(default=None, min_length=1, max_length=30)
+    device_name: str | None = Field(default=None, max_length=120)
 
 
 class UserRead(BaseModel):
@@ -146,11 +149,26 @@ class UserRead(BaseModel):
 class LoginRequest(BaseModel):
     phone: str = Field(min_length=6, max_length=20)
     password: str = Field(min_length=8, max_length=128)
+    device_id: str | None = Field(default=None, min_length=1, max_length=255)
+    device_platform: str | None = Field(default=None, min_length=1, max_length=30)
+    device_name: str | None = Field(default=None, max_length=120)
+
+
+class TrustedDeviceLoginRequest(BaseModel):
+    device_id: str = Field(min_length=1, max_length=255)
+    device_secret: str = Field(min_length=16, max_length=255)
+
+
+class TrustedDeviceAuthRead(BaseModel):
+    device_secret: str
+    device_platform: str
+    device_name: str | None = None
 
 
 class AuthResponse(BaseModel):
     token: str
     user: UserRead
+    trusted_device: TrustedDeviceAuthRead | None = None
 
 
 class VehicleCreate(BaseModel):

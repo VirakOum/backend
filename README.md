@@ -6,6 +6,17 @@ The app is organized with a small service layer and routers so you can learn a s
 
 It now uses PostgreSQL in Docker and Alembic for database migrations.
 
+## Active backend paths
+
+Use these directories as the backend source of truth:
+
+- `app/`
+- `alembic/`
+- `tests/`
+- `scripts/`
+
+The previous nested checkout under `python/` was removed after being identified as a stale duplicate with divergent history.
+
 ## Run it
 
 1. Create a virtual environment:

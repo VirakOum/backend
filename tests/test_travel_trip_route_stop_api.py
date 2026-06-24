@@ -11,7 +11,7 @@ import app.routes.travel as travel_routes
 
 from app.main import app
 from app.db import get_db
-from app.models import AppRuntimeSetting, AuthToken, Booking, DriverWallet, Trip, User, UserNotification, Vehicle
+from app.models import AppRuntimeSetting, AuthToken, Booking, DriverWallet, Trip, TrustedDevice, User, UserNotification, Vehicle
 
 # Monkey-patch ARRAY type for SQLite compatibility
 from sqlalchemy import ARRAY as _ARRAY
@@ -61,6 +61,7 @@ def override_get_db() -> Session:
 app.dependency_overrides[get_db] = override_get_db
 User.__table__.create(bind=test_engine)
 AuthToken.__table__.create(bind=test_engine)
+TrustedDevice.__table__.create(bind=test_engine)
 Vehicle.__table__.create(bind=test_engine)
 Trip.__table__.create(bind=test_engine)
 DriverWallet.__table__.create(bind=test_engine)
@@ -154,10 +155,12 @@ def setup_function() -> None:
     DriverWallet.__table__.drop(bind=test_engine, checkfirst=True)
     AppRuntimeSetting.__table__.drop(bind=test_engine, checkfirst=True)
     UserNotification.__table__.drop(bind=test_engine, checkfirst=True)
+    TrustedDevice.__table__.drop(bind=test_engine, checkfirst=True)
     AuthToken.__table__.drop(bind=test_engine, checkfirst=True)
     User.__table__.drop(bind=test_engine, checkfirst=True)
     User.__table__.create(bind=test_engine)
     AuthToken.__table__.create(bind=test_engine)
+    TrustedDevice.__table__.create(bind=test_engine)
     Vehicle.__table__.create(bind=test_engine)
     Trip.__table__.create(bind=test_engine)
     DriverWallet.__table__.create(bind=test_engine)
@@ -247,6 +250,40 @@ def _create_trip_for_test(
     )
     assert response.status_code == 201
     return response.json()["id"]
+
+
+def test_trusted_device_login_issues_new_token_without_password() -> None:
+    signup_response = client.post(
+        "/travel/auth/signup",
+        json={
+            "phone": "011111111",
+            "full_name": "Trusted Device User",
+            "role": "passenger",
+            "password": "strongpass123",
+            "device_id": "android:trusted-device-1",
+            "device_platform": "android",
+            "device_name": "Samsung Galaxy",
+            "avatar_url": None,
+        },
+    )
+    assert signup_response.status_code == 201
+    trusted_device = signup_response.json()["trusted_device"]
+    assert trusted_device is not None
+    assert trusted_device["device_platform"] == "android"
+    assert trusted_device["device_secret"]
+
+    login_response = client.post(
+        "/travel/auth/device-login",
+        json={
+            "device_id": "android:trusted-device-1",
+            "device_secret": trusted_device["device_secret"],
+        },
+    )
+    assert login_response.status_code == 200
+    body = login_response.json()
+    assert body["token"]
+    assert body["user"]["phone"] == "011111111"
+    assert body["trusted_device"] is None
 
 
 def test_create_trip_with_structured_route_and_stops_round_trips_through_read_and_update() -> None:

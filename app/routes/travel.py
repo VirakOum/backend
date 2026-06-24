@@ -12,7 +12,14 @@ from datetime import date, datetime, time, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from ..auth import get_current_user, hash_password, issue_token, verify_password
+from ..auth import (
+	authenticate_trusted_device,
+	get_current_user,
+	hash_password,
+	issue_token,
+	register_trusted_device,
+	verify_password,
+)
 from ..config import ENABLE_DIGITAL_PAYMENT
 from ..db import get_db
 from ..models import Booking, BookingLiveLocation, BookingPaymentInstruction, DriverWalletEntry, NotificationPreference, Payment, SupportTicket, Trip, User, UserNotification, Vehicle, phnom_penh_now
@@ -50,6 +57,8 @@ from ..schemas import (
 	SupportConfigResponse,
 	SupportTicketCreate,
 	SupportTicketRead,
+	TrustedDeviceAuthRead,
+	TrustedDeviceLoginRequest,
 	TripCreate,
 	TripDriverInfo,
 	TripLiveLocationResponse,
@@ -317,6 +326,19 @@ def _trip_already_exists_for_repeat(db: Session, trip: Trip, departure_time: dat
 		)
 	).scalar_one_or_none()
 	return existing is not None
+
+
+def _build_auth_response(
+	user: User,
+	token: str,
+	*,
+	trusted_device: TrustedDeviceAuthRead | None = None,
+) -> AuthResponse:
+	return AuthResponse(
+		token=token,
+		user=UserRead.model_validate(user),
+		trusted_device=trusted_device,
+	)
 
 
 def _ensure_next_repeated_trip(db: Session, trip: Trip, now_local: datetime) -> bool:
@@ -1220,13 +1242,29 @@ def signup(payload: UserCreate, db: Session = Depends(get_db)) -> AuthResponse:
 	if existing is not None:
 		raise HTTPException(status_code=409, detail="Phone already exists")
 
-	user_data = payload.model_dump(exclude={"password"})
+	user_data = payload.model_dump(
+		exclude={"password", "device_id", "device_platform", "device_name"},
+	)
 	user = User(**user_data, password_hash=hash_password(payload.password))
 	db.add(user)
 	db.commit()
 	db.refresh(user)
 	token = issue_token(db, user)
-	return AuthResponse(token=token, user=UserRead.model_validate(user))
+	trusted_device = None
+	if payload.device_id and payload.device_platform:
+		device_secret = register_trusted_device(
+			db,
+			user=user,
+			device_id=payload.device_id,
+			device_platform=payload.device_platform,
+			device_name=payload.device_name,
+		)
+		trusted_device = TrustedDeviceAuthRead(
+			device_secret=device_secret,
+			device_platform=payload.device_platform,
+			device_name=payload.device_name,
+		)
+	return _build_auth_response(user, token, trusted_device=trusted_device)
 
 
 @router.post("/auth/login", response_model=AuthResponse)
@@ -1236,7 +1274,38 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> AuthResponse:
 		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid phone or password")
 
 	token = issue_token(db, user)
-	return AuthResponse(token=token, user=UserRead.model_validate(user))
+	trusted_device = None
+	if payload.device_id and payload.device_platform:
+		device_secret = register_trusted_device(
+			db,
+			user=user,
+			device_id=payload.device_id,
+			device_platform=payload.device_platform,
+			device_name=payload.device_name,
+		)
+		trusted_device = TrustedDeviceAuthRead(
+			device_secret=device_secret,
+			device_platform=payload.device_platform,
+			device_name=payload.device_name,
+		)
+	return _build_auth_response(user, token, trusted_device=trusted_device)
+
+
+@router.post("/auth/device-login", response_model=AuthResponse)
+def login_with_trusted_device(
+	payload: TrustedDeviceLoginRequest,
+	db: Session = Depends(get_db),
+) -> AuthResponse:
+	user = authenticate_trusted_device(
+		db,
+		device_id=payload.device_id,
+		device_secret=payload.device_secret,
+	)
+	if user is None:
+		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Trusted device login failed")
+
+	token = issue_token(db, user)
+	return _build_auth_response(user, token)
 
 
 @router.get("/auth/me", response_model=UserRead)

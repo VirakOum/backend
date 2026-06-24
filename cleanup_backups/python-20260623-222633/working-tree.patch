@@ -1,0 +1,23 @@
+diff --git a/README.md b/README.md
+index 9bd7d42..b26f65d 100644
+--- a/README.md
++++ b/README.md
+@@ -150,3 +150,4 @@ Example:
+ python scripts/generate_crud.py Category --fields name:str:100 description:str?:300
+ alembic revision --autogenerate -m "create categories table"
+ alembic upgrade head
++uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+\ No newline at end of file
+diff --git a/app/main.py b/app/main.py
+index eb529ab..b8de6d7 100644
+--- a/app/main.py
++++ b/app/main.py
+@@ -14,7 +14,7 @@ app = FastAPI(
+     description="A small FastAPI starter for learning how to build APIs.",
+     servers=[
+         {
+-            "url": "http://192.168.1.153:8000",
++            "url": "http://192.168.1.87:8000",
+             "description": "Local development server",
+         }
+     ],
