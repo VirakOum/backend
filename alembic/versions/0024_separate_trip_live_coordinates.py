@@ -7,6 +7,7 @@ Create Date: 2026-06-16 00:00:00.000000
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect
 
 
 revision = "0024_separate_trip_live_coordinates"
@@ -16,8 +17,14 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("trips", sa.Column("live_lat", sa.Numeric(10, 6), nullable=True))
-    op.add_column("trips", sa.Column("live_lng", sa.Numeric(10, 6), nullable=True))
+    bind = op.get_bind()
+    inspector = inspect(bind)
+    columns = {column["name"] for column in inspector.get_columns("trips")}
+
+    if "live_lat" not in columns:
+        op.add_column("trips", sa.Column("live_lat", sa.Numeric(10, 6), nullable=True))
+    if "live_lng" not in columns:
+        op.add_column("trips", sa.Column("live_lng", sa.Numeric(10, 6), nullable=True))
 
     op.execute(
         """
@@ -30,5 +37,11 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_column("trips", "live_lng")
-    op.drop_column("trips", "live_lat")
+    bind = op.get_bind()
+    inspector = inspect(bind)
+    columns = {column["name"] for column in inspector.get_columns("trips")}
+
+    if "live_lng" in columns:
+        op.drop_column("trips", "live_lng")
+    if "live_lat" in columns:
+        op.drop_column("trips", "live_lat")

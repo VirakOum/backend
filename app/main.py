@@ -15,7 +15,7 @@ app = FastAPI(
     description="A small FastAPI starter for learning how to build APIs.",
     servers=[
         {
-            "url": "http://192.168.1.28:8000",
+            "url": "http://192.168.1.193:8000",
             "description": "Local development server",
         }
     ],

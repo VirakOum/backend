@@ -6,6 +6,7 @@ from base64 import urlsafe_b64decode, urlsafe_b64encode
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
+from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.orm import Session
 
 from .db import get_db
@@ -13,6 +14,7 @@ from .models import AuthToken, TrustedDevice, User, phnom_penh_now
 
 _TOKEN_SCHEME = HTTPBearer(auto_error=False)
 _HASH_ITERATIONS = 100_000
+_TRUSTED_DEVICES_TABLE = "trusted_devices"
 
 
 def hash_password(password: str) -> str:
@@ -46,6 +48,13 @@ def _hash_device_value(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
+def _is_missing_trusted_devices_table(error: ProgrammingError | OperationalError) -> bool:
+    message = str(error).lower()
+    return _TRUSTED_DEVICES_TABLE in message and (
+        'does not exist' in message or 'no such table' in message
+    )
+
+
 def register_trusted_device(
     db: Session,
     *,
@@ -56,9 +65,15 @@ def register_trusted_device(
 ) -> str:
     device_secret = secrets.token_urlsafe(32)
     device_id_hash = _hash_device_value(device_id)
-    trusted_device = db.execute(
-        select(TrustedDevice).where(TrustedDevice.device_id_hash == device_id_hash)
-    ).scalar_one_or_none()
+    try:
+        trusted_device = db.execute(
+            select(TrustedDevice).where(TrustedDevice.device_id_hash == device_id_hash)
+        ).scalar_one_or_none()
+    except (ProgrammingError, OperationalError) as error:
+        if _is_missing_trusted_devices_table(error):
+            db.rollback()
+            return ""
+        raise
     if trusted_device is None:
         trusted_device = TrustedDevice(
             user_id=user.id,
@@ -74,7 +89,13 @@ def register_trusted_device(
         trusted_device.device_platform = device_platform
         trusted_device.device_name = device_name
     trusted_device.last_seen_at = phnom_penh_now()
-    db.commit()
+    try:
+        db.commit()
+    except (ProgrammingError, OperationalError) as error:
+        if _is_missing_trusted_devices_table(error):
+            db.rollback()
+            return ""
+        raise
     return device_secret
 
 
@@ -84,9 +105,17 @@ def authenticate_trusted_device(
     device_id: str,
     device_secret: str,
 ) -> User | None:
-    trusted_device = db.execute(
-        select(TrustedDevice).where(TrustedDevice.device_id_hash == _hash_device_value(device_id))
-    ).scalar_one_or_none()
+    try:
+        trusted_device = db.execute(
+            select(TrustedDevice).where(
+                TrustedDevice.device_id_hash == _hash_device_value(device_id)
+            )
+        ).scalar_one_or_none()
+    except (ProgrammingError, OperationalError) as error:
+        if _is_missing_trusted_devices_table(error):
+            db.rollback()
+            return None
+        raise
     if trusted_device is None:
         return None
     if not hmac.compare_digest(
@@ -100,7 +129,13 @@ def authenticate_trusted_device(
         return None
 
     trusted_device.last_seen_at = phnom_penh_now()
-    db.commit()
+    try:
+        db.commit()
+    except (ProgrammingError, OperationalError) as error:
+        if _is_missing_trusted_devices_table(error):
+            db.rollback()
+            return None
+        raise
     return user
 
 

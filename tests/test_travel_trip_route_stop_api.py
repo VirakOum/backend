@@ -286,6 +286,63 @@ def test_trusted_device_login_issues_new_token_without_password() -> None:
     assert body["trusted_device"] is None
 
 
+def test_signup_succeeds_without_trusted_device_when_table_is_missing() -> None:
+    TrustedDevice.__table__.drop(bind=test_engine, checkfirst=True)
+
+    signup_response = client.post(
+        "/travel/auth/signup",
+        json={
+            "phone": "022222222",
+            "full_name": "Fallback Signup User",
+            "role": "passenger",
+            "password": "strongpass123",
+            "device_id": "android:signup-fallback-1",
+            "device_platform": "android",
+            "device_name": "Fallback Phone",
+            "avatar_url": None,
+        },
+    )
+
+    assert signup_response.status_code == 201
+    body = signup_response.json()
+    assert body["token"]
+    assert body["user"]["phone"] == "022222222"
+    assert body["trusted_device"] is None
+
+
+def test_login_succeeds_without_trusted_device_when_table_is_missing() -> None:
+    signup_response = client.post(
+        "/travel/auth/signup",
+        json={
+            "phone": "033333333",
+            "full_name": "Fallback Login User",
+            "role": "passenger",
+            "password": "strongpass123",
+            "avatar_url": None,
+        },
+    )
+    assert signup_response.status_code == 201
+
+    TrustedDevice.__table__.drop(bind=test_engine, checkfirst=True)
+
+    login_response = client.post(
+        "/travel/auth/login",
+        json={
+            "phone": "033333333",
+            "password": "strongpass123",
+            "device_id": "android:login-fallback-1",
+            "device_platform": "android",
+            "device_name": "Fallback Login Device",
+        },
+    )
+
+    assert login_response.status_code == 200
+    body = login_response.json()
+    assert body["token"]
+    assert body["user"]["phone"] == "033333333"
+    assert body["trusted_device"] is None
+
+
 def test_create_trip_with_structured_route_and_stops_round_trips_through_read_and_update() -> None:
     token = _signup_driver()
     vehicle_id = _create_vehicle(token)
@@ -1350,3 +1407,50 @@ def test_expired_daily_trip_creates_next_scheduled_repeat(monkeypatch) -> None:
     assert cancelled_original["status"] == "cancelled"
     assert repeated_trip["repeat_mode"] == "daily"
     assert repeated_trip["departure_time"].startswith("2026-06-20T07:30:00")
+
+
+def test_list_bookings_tolerates_duplicate_future_repeated_trips(monkeypatch) -> None:
+    frozen_now = datetime(2026, 6, 20, 12, 0, 0)
+    monkeypatch.setattr(travel_routes, "phnom_penh_now", lambda: frozen_now)
+
+    driver_token = _signup_driver()
+    vehicle_id = _create_vehicle(driver_token)
+    trip_id = _create_trip_for_test(driver_token, vehicle_id, repeat_mode="daily")
+
+    with TestingSessionLocal() as db:
+        trip = db.get(Trip, UUID(trip_id))
+        assert trip is not None
+        trip.departure_time = datetime(2026, 6, 15, 7, 30, 0)
+        trip.live_location_expires_at = datetime(2026, 6, 16, 7, 30, 0)
+        trip.recurring_departure_time = datetime(2026, 6, 15, 7, 30, 0).time()
+
+        duplicate_departure = datetime(2026, 6, 20, 7, 30, 0)
+        for _ in range(2):
+            db.add(
+                Trip(
+                    driver_id=trip.driver_id,
+                    vehicle_id=trip.vehicle_id,
+                    departure_province=trip.departure_province,
+                    destination_province=trip.destination_province,
+                    departure_time=duplicate_departure,
+                    departure_lat=trip.departure_lat,
+                    departure_lng=trip.departure_lng,
+                    repeat_mode="daily",
+                    auto_repeat_weekly=False,
+                    recurring_departure_time=trip.recurring_departure_time,
+                    has_return_schedule=False,
+                    price_per_seat=trip.price_per_seat,
+                    total_seats=trip.total_seats,
+                    available_seats=trip.total_seats,
+                    status="scheduled",
+                )
+            )
+        db.commit()
+
+    response = client.get(
+        "/travel/bookings",
+        headers=_auth_headers(driver_token),
+    )
+
+    assert response.status_code == 200
+    assert response.json() == []

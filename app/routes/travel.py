@@ -323,7 +323,7 @@ def _trip_already_exists_for_repeat(db: Session, trip: Trip, departure_time: dat
 			Trip.departure_province == trip.departure_province,
 			Trip.destination_province == trip.destination_province,
 			Trip.departure_time == departure_time,
-		)
+		).limit(1)
 	).scalar_one_or_none()
 	return existing is not None
 
@@ -1259,11 +1259,12 @@ def signup(payload: UserCreate, db: Session = Depends(get_db)) -> AuthResponse:
 			device_platform=payload.device_platform,
 			device_name=payload.device_name,
 		)
-		trusted_device = TrustedDeviceAuthRead(
-			device_secret=device_secret,
-			device_platform=payload.device_platform,
-			device_name=payload.device_name,
-		)
+		if device_secret:
+			trusted_device = TrustedDeviceAuthRead(
+				device_secret=device_secret,
+				device_platform=payload.device_platform,
+				device_name=payload.device_name,
+			)
 	return _build_auth_response(user, token, trusted_device=trusted_device)
 
 
@@ -1283,11 +1284,12 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> AuthResponse:
 			device_platform=payload.device_platform,
 			device_name=payload.device_name,
 		)
-		trusted_device = TrustedDeviceAuthRead(
-			device_secret=device_secret,
-			device_platform=payload.device_platform,
-			device_name=payload.device_name,
-		)
+		if device_secret:
+			trusted_device = TrustedDeviceAuthRead(
+				device_secret=device_secret,
+				device_platform=payload.device_platform,
+				device_name=payload.device_name,
+			)
 	return _build_auth_response(user, token, trusted_device=trusted_device)
 
 
