@@ -169,3 +169,4 @@ Example:
 python scripts/generate_crud.py Category --fields name:str:100 description:str?:300
 alembic revision --autogenerate -m "create categories table"
 alembic upgrade head
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload 

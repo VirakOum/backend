@@ -173,20 +173,22 @@ class AuthResponse(BaseModel):
 
 class VehicleCreate(BaseModel):
     plate_number: str = Field(min_length=1, max_length=20)
-    seat_type: int
+    seat_type: int = Field(gt=0)
     vehicle_type: str | None = Field(default=None, max_length=50)
     model: str | None = Field(default=None, max_length=50)
     color: str | None = Field(default=None, max_length=30)
     company_name: str | None = Field(default=None, max_length=100)
+    image_urls: list[str] | None = Field(default=None, max_length=4)
 
 
 class VehicleUpdate(BaseModel):
     plate_number: str | None = Field(default=None, min_length=1, max_length=20)
-    seat_type: int | None = None
+    seat_type: int | None = Field(default=None, gt=0)
     vehicle_type: str | None = Field(default=None, max_length=50)
     model: str | None = Field(default=None, max_length=50)
     color: str | None = Field(default=None, max_length=30)
     company_name: str | None = Field(default=None, max_length=100)
+    image_urls: list[str] | None = Field(default=None, max_length=4)
 
 
 class VehicleRead(BaseModel):
@@ -198,6 +200,7 @@ class VehicleRead(BaseModel):
     model: str | None
     color: str | None = None
     company_name: str | None
+    image_urls: list[str] | None = None
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
@@ -333,6 +336,16 @@ class TripRead(BaseModel):
     promotion: TripPromotionInfo | None = None
     live_location: TripLiveLocationInfo | None = None
     model_config = ConfigDict(from_attributes=True)
+
+
+class FindTripsNowResponse(BaseModel):
+    passenger_address: str | None = None
+    passenger_road: str | None = None
+    passenger_province: str | None = None
+    passenger_district: str | None = None
+    passenger_commune: str | None = None
+    trips: list[TripRead]
+
 
 
 class BookingCreate(BaseModel):
@@ -614,6 +627,10 @@ class SupportConfigResponse(BaseModel):
     telegram_username: str
     support_phone: str | None = None
     support_email: str | None = None
+
+
+class AppConfigResponse(BaseModel):
+    google_places_api_key: str | None = None
 
 
 class SafetyConfigResponse(BaseModel):

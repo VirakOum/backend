@@ -179,7 +179,7 @@ def _signup_driver() -> str:
             "full_name": "Driver Demo",
             "role": "driver",
             "password": "strongpass123",
-            "avatar_url": None,
+            "avatar_url": "data:image/jpeg;base64,dummy_driver_avatar_bytes",
         },
     )
     assert response.status_code == 201
@@ -284,6 +284,24 @@ def test_trusted_device_login_issues_new_token_without_password() -> None:
     assert body["token"]
     assert body["user"]["phone"] == "011111111"
     assert body["trusted_device"] is None
+
+
+def test_app_config_returns_google_places_key_from_backend_env(monkeypatch) -> None:
+    monkeypatch.setenv("GOOGLE_PLACES_API_KEY", "backend-places-key")
+
+    response = client.get("/travel/app-config")
+
+    assert response.status_code == 200
+    assert response.json() == {"google_places_api_key": "backend-places-key"}
+
+
+def test_app_config_omits_google_places_key_when_backend_env_missing(monkeypatch) -> None:
+    monkeypatch.delenv("GOOGLE_PLACES_API_KEY", raising=False)
+
+    response = client.get("/travel/app-config")
+
+    assert response.status_code == 200
+    assert response.json() == {"google_places_api_key": None}
 
 
 def test_signup_succeeds_without_trusted_device_when_table_is_missing() -> None:
@@ -1097,13 +1115,15 @@ def test_full_boarding_flow(monkeypatch) -> None:
     )
     assert arrived.status_code == 200
 
-    # Step 2: Driver requests boarding
+    # Step 2: Driver requests boarding (immediately auto-confirming/boarding)
     request_resp = client.post(
         f"/travel/bookings/{booking_id}/boarding/request",
         headers=_auth_headers(driver_token),
     )
     assert request_resp.status_code == 200
     assert request_resp.json()["driver_requested_boarding_at"] is not None
+    assert request_resp.json()["passenger_confirmed_boarding_at"] is not None
+    assert request_resp.json()["pickup_status"] == "passenger_boarded"
 
     # Step 3: Check boarding status from passenger side
     status_resp = client.get(
@@ -1111,9 +1131,9 @@ def test_full_boarding_flow(monkeypatch) -> None:
         headers=_auth_headers(passenger_token),
     )
     assert status_resp.status_code == 200
-    assert status_resp.json()["status"] == "requested"
+    assert status_resp.json()["status"] == "confirmed"
 
-    # Step 4: Passenger confirms boarding
+    # Step 4: Passenger confirms boarding (should be idempotent success)
     confirm_resp = client.post(
         f"/travel/bookings/{booking_id}/boarding/passenger-confirm",
         headers=_auth_headers(passenger_token),
@@ -1183,29 +1203,20 @@ def test_boarding_cancel(monkeypatch) -> None:
     )
     assert arrived_resp.status_code == 200
 
-    # Request boarding
+    # Request boarding (automatically boards passenger)
     request_resp = client.post(
         f"/travel/bookings/{booking_id}/boarding/request",
         headers=_auth_headers(driver_token),
     )
     assert request_resp.status_code == 200
 
-    # Passenger declines/cancels boarding so the driver can call or retry.
+    # Passenger declines/cancels boarding - should fail with 400 because they are already boarded
     cancel_resp = client.post(
         f"/travel/bookings/{booking_id}/boarding/cancel",
         headers=_auth_headers(passenger_token),
     )
-    assert cancel_resp.status_code == 200
-    data = cancel_resp.json()
-    assert data["driver_requested_boarding_at"] is None
-    assert data["boarding_confirmation_expires_at"] is None
-
-    status_resp = client.get(
-        f"/travel/bookings/{booking_id}/boarding/status",
-        headers=_auth_headers(driver_token),
-    )
-    assert status_resp.status_code == 200
-    assert status_resp.json()["status"] == "none"
+    assert cancel_resp.status_code == 400
+    assert "already been confirmed" in cancel_resp.json()["detail"]
 
 
 def test_booking_passenger_contact_scoped_to_booking_users(monkeypatch) -> None:
@@ -1454,3 +1465,370 @@ def test_list_bookings_tolerates_duplicate_future_repeated_trips(monkeypatch) ->
 
     assert response.status_code == 200
     assert response.json() == []
+
+
+def test_recommended_trips_passenger():
+    driver_token = _signup_driver()
+    vehicle_id = _create_vehicle(driver_token)
+    passenger_token = _signup_passenger()
+
+    # Create an upcoming trip
+    from datetime import datetime, timedelta
+    future_time = (datetime.now() + timedelta(days=5)).isoformat()
+    trip_id = _create_trip_for_test(driver_token, vehicle_id, departure_time=future_time)
+
+    # Call endpoint with passenger auth
+    response = client.get(
+        "/passenger/recommended-trips",
+        headers=_auth_headers(passenger_token),
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) >= 1
+    assert any(trip["id"] == trip_id for trip in data)
+
+    # Call endpoint with driver auth (should be forbidden)
+    denied = client.get(
+        "/passenger/recommended-trips",
+        headers=_auth_headers(driver_token),
+    )
+    assert denied.status_code == 403
+
+
+def test_list_passenger_trips():
+    driver_token = _signup_driver()
+    vehicle_id = _create_vehicle(driver_token)
+    passenger_token = _signup_passenger()
+
+    from datetime import datetime, timedelta
+
+    first_trip_id = _create_trip_for_test(
+        driver_token,
+        vehicle_id,
+        departure_time=(datetime.now() + timedelta(days=2)).isoformat(),
+    )
+    second_trip_id = _create_trip_for_test(
+        driver_token,
+        vehicle_id,
+        departure_time=(datetime.now() + timedelta(days=4)).isoformat(),
+    )
+
+    response = client.get(
+        "/passenger/trips",
+        headers=_auth_headers(passenger_token),
+    )
+    assert response.status_code == 200
+    data = response.json()
+    ids = [trip["id"] for trip in data]
+    assert first_trip_id in ids
+    assert second_trip_id in ids
+
+    limited = client.get(
+        "/passenger/trips",
+        params={"limit": 1},
+        headers=_auth_headers(passenger_token),
+    )
+    assert limited.status_code == 200
+    assert len(limited.json()) == 1
+
+    denied = client.get(
+        "/passenger/trips",
+        headers=_auth_headers(driver_token),
+    )
+    assert denied.status_code == 403
+
+
+def test_find_trips_now_endpoint() -> None:
+    # 1. Create a driver and a vehicle
+    token = _signup_driver()
+    vehicle_id = _create_vehicle(token)
+    
+    # 2. Add an Address catalog entry for a village near Kampong Thom (12.71123, 104.88991)
+    db = override_get_db().__next__()
+    try:
+        from app.models import Address
+        Address.__table__.create(bind=test_engine, checkfirst=True)
+        # First clear addresses
+        db.query(Address).delete()
+        # Add country, province, district, commune, village
+        country = Address(id=1, code="855", name="Cambodia", description="កម្ពុជា", type="country")
+        province = Address(id=2, code="06", name="Kampong Thom Province", description="កំពង់ធំ", type="province", parent_code="855")
+        district = Address(id=3, code="0601", name="Stueng Saen", description="ស្ទឹងសែន", type="district", parent_code="06")
+        commune = Address(id=4, code="060101", name="Kampong Roteh", description="កំពង់រទេះ", type="commune", parent_code="0601")
+        village = Address(
+            id=5,
+            code="06010101",
+            name="Village A",
+            description="ភូមិ A",
+            type="village",
+            parent_code="060101",
+            latitude=12.71123,
+            longitude=104.88991,
+            reference="National Road 6",
+        )
+        db.add_all([country, province, district, commune, village])
+        db.commit()
+    finally:
+        db.close()
+        
+    # 3. Create a trip from Kampong Thom to Phnom Penh
+    from datetime import timedelta
+    create_response = client.post(
+        "/travel/trips",
+        headers=_auth_headers(token),
+        json={
+            "vehicle_id": vehicle_id,
+            "departure_province": "Kampong Thom",
+            "destination_province": "Phnom Penh",
+            "departure_time": (datetime.now() + timedelta(hours=2)).isoformat(),
+            "departure_lat": 12.71123,
+            "departure_lng": 104.88991,
+            "repeat_mode": "none",
+            "auto_repeat_weekly": False,
+            "has_return_schedule": False,
+            "price_per_seat": 5,
+            "total_seats": 15,
+            "available_seats": 15,
+            "status": "scheduled",
+            "departure_route": {
+                "province_code": "06",
+                "province_name": "កំពង់ធំ",
+                "district_code": "0601",
+                "district_name": "ស្ទឹងសែន",
+                "commune_code": "060101",
+                "commune_name": "ស្ទឹងសែន",
+            },
+        },
+    )
+    assert create_response.status_code == 201
+    trip_id = create_response.json()["id"]
+    
+    # 4. Search for trips near Kampong Thom (12.71123, 104.88991)
+    response = client.get(
+        "/travel/trips/find-now",
+        params={
+            "lat": 12.71123,
+            "lng": 104.88991,
+        },
+        headers=_auth_headers(token),
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["passenger_province"] == "កំពង់ធំ"
+    assert "National Road 6" in data["passenger_road"]
+    assert len(data["trips"]) == 1
+    assert data["trips"][0]["id"] == trip_id
+
+
+def test_find_trips_now_prioritizes_nearest_active_trip() -> None:
+    near_token = _signup_driver()
+    near_vehicle_id = _create_vehicle(near_token)
+    far_signup = client.post(
+        "/travel/auth/signup",
+        json={
+            "phone": "012345679",
+            "full_name": "Driver Far",
+            "role": "driver",
+            "password": "strongpass123",
+            "avatar_url": "data:image/jpeg;base64,dummy_driver_avatar_bytes",
+        },
+    )
+    assert far_signup.status_code == 201
+    far_token = far_signup.json()["token"]
+    far_vehicle_response = client.post(
+        "/travel/vehicles",
+        headers=_auth_headers(far_token),
+        json={
+            "plate_number": "2AB-9998",
+            "seat_type": 15,
+            "vehicle_type": "Van",
+            "model": "County",
+            "color": "White",
+            "company_name": "Demo Travel",
+        },
+    )
+    assert far_vehicle_response.status_code == 201
+    far_vehicle_id = far_vehicle_response.json()["id"]
+
+    db = override_get_db().__next__()
+    try:
+        from app.models import Address
+
+        Address.__table__.create(bind=test_engine, checkfirst=True)
+        db.query(Address).delete()
+        db.add_all(
+            [
+                Address(
+                    id=1,
+                    code="855",
+                    name="Cambodia",
+                    description="កម្ពុជា",
+                    type="country",
+                ),
+                Address(
+                    id=2,
+                    code="06",
+                    name="Kampong Thom Province",
+                    description="កំពង់ធំ",
+                    type="province",
+                    parent_code="855",
+                ),
+                Address(
+                    id=3,
+                    code="0601",
+                    name="Stueng Saen",
+                    description="ស្ទឹងសែន",
+                    type="district",
+                    parent_code="06",
+                ),
+                Address(
+                    id=4,
+                    code="060101",
+                    name="Kampong Roteh",
+                    description="កំពង់រទេះ",
+                    type="commune",
+                    parent_code="0601",
+                ),
+                Address(
+                    id=5,
+                    code="06010101",
+                    name="Village A",
+                    description="ភូមិ A",
+                    type="village",
+                    parent_code="060101",
+                    latitude=12.71123,
+                    longitude=104.88991,
+                    reference="National Road 6",
+                ),
+            ]
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    from datetime import timedelta
+
+    near_response = client.post(
+        "/travel/trips",
+        headers=_auth_headers(near_token),
+        json={
+            "vehicle_id": near_vehicle_id,
+            "departure_province": "Kampong Thom",
+            "destination_province": "Phnom Penh",
+            "departure_time": (datetime.now() - timedelta(minutes=20)).isoformat(),
+            "departure_lat": 12.71123,
+            "departure_lng": 104.88991,
+            "price_per_seat": 5,
+            "total_seats": 15,
+            "available_seats": 12,
+            "status": "active",
+            "departure_route": {
+                "province_code": "06",
+                "province_name": "កំពង់ធំ",
+                "district_code": "0601",
+                "district_name": "ស្ទឹងសែន",
+                "commune_code": "060101",
+                "commune_name": "ស្ទឹងសែន",
+            },
+        },
+    )
+    assert near_response.status_code == 201
+    near_trip_id = near_response.json()["id"]
+
+    far_response = client.post(
+        "/travel/trips",
+        headers=_auth_headers(far_token),
+        json={
+            "vehicle_id": far_vehicle_id,
+            "departure_province": "Kampong Thom",
+            "destination_province": "Phnom Penh",
+            "departure_time": (datetime.now() - timedelta(minutes=10)).isoformat(),
+            "departure_lat": 12.71123,
+            "departure_lng": 104.88991,
+            "price_per_seat": 6,
+            "total_seats": 15,
+            "available_seats": 9,
+            "status": "active",
+            "departure_route": {
+                "province_code": "06",
+                "province_name": "កំពង់ធំ",
+                "district_code": "0601",
+                "district_name": "ស្ទឹងសែន",
+                "commune_code": "060101",
+                "commune_name": "ស្ទឹងសែន",
+            },
+        },
+    )
+    assert far_response.status_code == 201
+    far_trip_id = far_response.json()["id"]
+
+    db = override_get_db().__next__()
+    try:
+        near_trip = db.execute(select(Trip).where(Trip.id == UUID(near_trip_id))).scalar_one()
+        far_trip = db.execute(select(Trip).where(Trip.id == UUID(far_trip_id))).scalar_one()
+        near_trip.live_lat = 12.719
+        near_trip.live_lng = 104.892
+        far_trip.live_lat = 13.05
+        far_trip.live_lng = 104.90
+        db.commit()
+    finally:
+        db.close()
+
+    response = client.get(
+        "/travel/trips/find-now",
+        params={
+            "lat": 12.71123,
+            "lng": 104.88991,
+        },
+        headers=_auth_headers(near_token),
+    )
+
+    assert response.status_code == 200
+    trips = response.json()["trips"]
+    assert len(trips) == 2
+    assert trips[0]["id"] == near_trip_id
+    assert trips[1]["id"] == far_trip_id
+
+
+def test_signup_driver_avatar_validation() -> None:
+    # 1. Driver signup without avatar_url should fail with 400
+    response = client.post(
+        "/travel/auth/signup",
+        json={
+            "phone": "099999991",
+            "full_name": "Driver No Avatar",
+            "role": "driver",
+            "password": "strongpass123",
+            "avatar_url": None,
+        },
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Drivers must upload a face image"
+
+    # 2. Driver signup with empty avatar_url should fail with 400
+    response = client.post(
+        "/travel/auth/signup",
+        json={
+            "phone": "099999991",
+            "full_name": "Driver Empty Avatar",
+            "role": "driver",
+            "password": "strongpass123",
+            "avatar_url": "   ",
+        },
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Drivers must upload a face image"
+
+    # 3. Driver signup with avatar_url should succeed with 201
+    response = client.post(
+        "/travel/auth/signup",
+        json={
+            "phone": "099999991",
+            "full_name": "Driver With Avatar",
+            "role": "driver",
+            "password": "strongpass123",
+            "avatar_url": "data:image/jpeg;base64,dummy_driver_avatar_bytes",
+        },
+    )
+    assert response.status_code == 201
+    assert response.json()["user"]["avatar_url"] == "data:image/jpeg;base64,dummy_driver_avatar_bytes"

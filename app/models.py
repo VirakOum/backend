@@ -116,18 +116,19 @@ class User(Base):
 class Vehicle(Base):
     """
     Table: vehicles (ព័ត៌មានរថយន្ត)
-    Vehicle information with specific seat types (4, 15, 16, 23, 30, 45)
+    Vehicle information owned by drivers with flexible seat counts.
     """
     __tablename__ = "vehicles"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     plate_number: Mapped[str] = mapped_column(String(20), unique=True, nullable=False, index=True)
-    seat_type: Mapped[int] = mapped_column(Integer, nullable=False)  # 4, 15, 16, 23, 30, or 45
+    seat_type: Mapped[int] = mapped_column(Integer, nullable=False)
     vehicle_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     model: Mapped[str | None] = mapped_column(String(50), nullable=True)  # e.g., Prius, Hyundai County
     color: Mapped[str | None] = mapped_column(String(30), nullable=True)
     company_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    image_urls: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now)
 
     # Relationships
@@ -135,7 +136,7 @@ class Vehicle(Base):
     trips: Mapped[list["Trip"]] = relationship("Trip", back_populates="vehicle")
 
     __table_args__ = (
-        CheckConstraint("seat_type IN (4, 15, 16, 23, 30, 45)", name='seat_type_check'),
+        CheckConstraint("seat_type > 0", name='seat_type_check'),
     )
 
 

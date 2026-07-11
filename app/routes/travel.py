@@ -20,9 +20,9 @@ from ..auth import (
 	register_trusted_device,
 	verify_password,
 )
-from ..config import ENABLE_DIGITAL_PAYMENT
+from ..config import ENABLE_DIGITAL_PAYMENT, get_google_places_api_key
 from ..db import get_db
-from ..models import Booking, BookingLiveLocation, BookingPaymentInstruction, DriverWalletEntry, NotificationPreference, Payment, SupportTicket, Trip, User, UserNotification, Vehicle, phnom_penh_now
+from ..models import Address, Booking, BookingLiveLocation, BookingPaymentInstruction, DriverWalletEntry, NotificationPreference, Payment, SupportTicket, Trip, User, UserNotification, Vehicle, phnom_penh_now
 from .driver_fee import (
     evaluate_driver_wallet_lock,
     get_or_create_driver_wallet,
@@ -33,6 +33,7 @@ from math import asin, cos, radians, sin, sqrt
 
 from ..schemas import (
 	ActiveBookingResponse,
+	AppConfigResponse,
 	AuthResponse,
 	BookingCreate,
 	BookingLiveLocationInfo,
@@ -66,6 +67,7 @@ from ..schemas import (
 	TripLiveLocationUpdate,
 	TripPromotionInfo,
 	TripRead,
+	FindTripsNowResponse,
 	TripUpdate,
 	TripVehicleInfo,
 	UserCreate,
@@ -1242,6 +1244,9 @@ def signup(payload: UserCreate, db: Session = Depends(get_db)) -> AuthResponse:
 	if existing is not None:
 		raise HTTPException(status_code=409, detail="Phone already exists")
 
+	if payload.role == "driver" and (payload.avatar_url is None or not payload.avatar_url.strip()):
+		raise HTTPException(status_code=400, detail="Drivers must upload a face image")
+
 	user_data = payload.model_dump(
 		exclude={"password", "device_id", "device_platform", "device_name"},
 	)
@@ -1337,6 +1342,8 @@ def create_vehicle(
 ) -> VehicleRead:
 	if current_user.role != "driver":
 		raise HTTPException(status_code=403, detail="Only drivers can register vehicles")
+	if payload.image_urls is not None and len(payload.image_urls) > 4:
+		raise HTTPException(status_code=422, detail="You can upload up to 4 vehicle images")
 
 	existing_plate = db.execute(
 		select(Vehicle).where(Vehicle.plate_number == payload.plate_number)
@@ -1394,8 +1401,8 @@ def update_vehicle(
 		raise HTTPException(status_code=422, detail="plate_number cannot be null")
 	if "seat_type" in update_data and update_data["seat_type"] is None:
 		raise HTTPException(status_code=422, detail="seat_type cannot be null")
-	if "seat_type" in update_data and update_data["seat_type"] not in {4, 15, 16, 23, 30, 45}:
-		raise HTTPException(status_code=422, detail="Invalid seat_type")
+	if "image_urls" in update_data and update_data["image_urls"] is not None and len(update_data["image_urls"]) > 4:
+		raise HTTPException(status_code=422, detail="You can upload up to 4 vehicle images")
 	if "plate_number" in update_data and update_data["plate_number"] != vehicle.plate_number:
 		existing_plate = db.execute(
 			select(Vehicle).where(Vehicle.plate_number == update_data["plate_number"])
@@ -1652,6 +1659,205 @@ def search_trips(
 		]
 
 	return [_build_trip_read(row) for row in filtered]
+
+
+# Cambodia's National Roads sequences of provinces
+ROUTES = {
+    "NR6": ["ភ្នំពេញ", "កណ្ដាល", "កំពង់ចាម", "កំពង់ធំ", "សៀមរាប", "បន្ទាយមានជ័យ"],
+    "NR5": ["ភ្នំពេញ", "កណ្ដាល", "កំពង់ឆ្នាំង", "ពោធិ៍សាត់", "បាត់ដំបង", "បន្ទាយមានជ័យ"],
+    "NR1": ["ភ្នំពេញ", "កណ្ដាល", "ព្រៃវែង", "ស្វាយរៀង"],
+    "NR2": ["ភ្នំពេញ", "កណ្ដាល", "តាកែវ"],
+    "NR3": ["ភ្នំពេញ", "កណ្ដាល", "កំពត", "កែប", "ព្រះសីហនុ"],
+    "NR4": ["ភ្នំពេញ", "កណ្ដាល", "កំពង់ស្ពឺ", "កោះកុង", "ព្រះសីហនុ"],
+    "NR7": ["កំពង់ចាម", "ត្បូងឃ្មុំ", "ក្រចេះ", "ស្ទឹងត្រែង"],
+    "NR8": ["កណ្ដាល", "ព្រៃវែង", "ត្បូងឃ្មុំ"],
+}
+
+def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    earth_radius_km = 6371.0
+    dlat = radians(lat2 - lat1)
+    dlng = radians(lng2 - lng1)
+    a = sin(dlat / 2) ** 2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlng / 2) ** 2
+    return 2 * earth_radius_km * asin(sqrt(a))
+
+def _resolve_province_from_coords(lat: float, lng: float, db: Session) -> tuple[Address | None, Address | None, Address | None, Address | None]:
+    # Resolve the nearest village with lat/lng
+    villages = db.execute(
+        select(Address)
+        .where(
+            Address.type == "village",
+            Address.latitude.is_not(None),
+            Address.longitude.is_not(None),
+        )
+    ).scalars().all()
+    if not villages:
+        return None, None, None, None
+    nearest_village = min(
+        villages,
+        key=lambda v: _haversine_km(lat, lng, float(v.latitude), float(v.longitude)),
+    )
+    commune = db.execute(select(Address).where(Address.code == nearest_village.parent_code)).scalar_one_or_none()
+    district = db.execute(select(Address).where(Address.code == commune.parent_code)).scalar_one_or_none() if commune else None
+    province = db.execute(select(Address).where(Address.code == district.parent_code)).scalar_one_or_none() if district else None
+    return province, district, commune, nearest_village
+
+def _detect_road(address: Address) -> str | None:
+    text_fields = [address.name, address.description, address.reference, address.official_note, address.note_by_checker]
+    for field in text_fields:
+        if not field:
+            continue
+        # Search for pattern like "ផ្លូវជាតិលេខ X" or "National Road X" or "NR X" or "NRX" or "ផ្លូវជាតិលេខX"
+        match = re.search(r'(ផ្លូវជាតិលេខ\s*\d+|National Road\s*\d+|NR\s*\d+)', field, re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+    return None
+
+def _detect_road_from_hierarchy(village: Address, commune: Address | None, district: Address | None, db: Session) -> str | None:
+    road = _detect_road(village)
+    if road:
+        return road
+    if commune:
+        road = _detect_road(commune)
+        if road:
+            return road
+    if district:
+        road = _detect_road(district)
+        if road:
+            return road
+    return None
+
+def _infer_road_from_province(province_name: str) -> str | None:
+    p_norm = _province_alias_key(province_name)
+    if p_norm in ["siem reap", "kampong thom", "sautr nikum", "ស្ទឹងសែន", "សៀមរាប", "កំពង់ធំ"]:
+        return "ផ្លូវជាតិលេខ ៦ (National Road 6)"
+    elif p_norm in ["battambang", "pursat", "kampong chhnang", "បាត់ដំបង", "ពោធិ៍សាត់", "កំពង់ឆ្នាំង"]:
+        return "ផ្លូវជាតិលេខ ៥ (National Road 5)"
+    elif p_norm in ["prey veng", "svay rieng", "ព្រៃវែង", "ស្វាយរៀង"]:
+        return "ផ្លូវជាតិលេខ ១ (National Road 1)"
+    elif p_norm in ["takeo", "តាកែវ"]:
+        return "ផ្លូវជាតិលេខ ២ (National Road 2)"
+    elif p_norm in ["kampot", "kep", "កំពត", "កែប"]:
+        return "ផ្លូវជាតិលេខ ៣ (National Road 3)"
+    elif p_norm in ["kampong speu", "koh kong", "កំពង់ស្ពឺ", "កោះកុង"]:
+        return "ផ្លូវជាតិលេខ ៤ (National Road 4)"
+    return None
+
+def _is_province_on_trip_route(passenger_province: str, dep_province: str, dest_province: str) -> bool:
+    p_prov = _province_alias_key(passenger_province)
+    d_prov = _province_alias_key(dep_province)
+    t_prov = _province_alias_key(dest_province)
+    
+    if p_prov == d_prov or p_prov == t_prov:
+        return True
+        
+    for route_name, route_provinces in ROUTES.items():
+        normalized_route = [_province_alias_key(p) for p in route_provinces]
+        try:
+            d_idx = normalized_route.index(d_prov)
+            t_idx = normalized_route.index(t_prov)
+            p_idx = normalized_route.index(p_prov)
+            
+            if min(d_idx, t_idx) <= p_idx <= max(d_idx, t_idx):
+                return True
+        except ValueError:
+            continue
+            
+    return False
+
+@router.get("/trips/find-now", response_model=FindTripsNowResponse)
+def find_trips_now(
+    lat: float = Query(...),
+    lng: float = Query(...),
+    destination_province: str | None = Query(default=None),
+    timezone: str = "Asia/Phnom_Penh",
+    db: Session = Depends(get_db),
+) -> FindTripsNowResponse:
+    _expire_stale_trips_and_bookings(db)
+    try:
+        tz = ZoneInfo(timezone)
+    except ZoneInfoNotFoundError:
+        raise HTTPException(status_code=422, detail="Invalid timezone value")
+        
+    # Resolve passenger's location details
+    province, district, commune, village = _resolve_province_from_coords(lat, lng, db)
+    
+    passenger_province = (province.description or province.name) if province else None
+    passenger_district = (district.description or district.name) if district else None
+    passenger_commune = (commune.description or commune.name) if commune else None
+    
+    passenger_address = None
+    if village:
+        parts = [
+            village.description or village.name,
+            commune.description or commune.name if commune else None,
+            district.description or district.name if district else None,
+            province.description or province.name if province else None,
+        ]
+        passenger_address = ", ".join([p for p in parts if p])
+        
+    passenger_road = None
+    if village:
+        passenger_road = _detect_road_from_hierarchy(village, commune, district, db)
+    if not passenger_road and passenger_province:
+        passenger_road = _infer_road_from_province(passenger_province)
+        
+    # Query active/scheduled trips
+    now_local = _local_now(tz)
+    # Search trips departing around current time window (e.g. from 2 hours ago up to 24 hours ahead)
+    window_start = now_local - timedelta(hours=2)
+    window_end = now_local + timedelta(hours=24)
+    
+    base_query = (
+        select(Trip)
+        .options(selectinload(Trip.driver), selectinload(Trip.vehicle), selectinload(Trip.bookings))
+        .where(
+            Trip.status.in_(("scheduled", "active")),
+        )
+    )
+    trips = db.execute(base_query).scalars().all()
+    
+    matched_trips: list[tuple[Trip, int, float, datetime]] = []
+    for trip in trips:
+        if not _trip_overlaps_window(trip, window_start, window_end, strict_start=False):
+            continue
+            
+        if destination_province:
+            if not _province_matches(trip.destination_province, destination_province):
+                continue
+                
+        route_match = False
+        if passenger_province:
+            route_match = _is_province_on_trip_route(passenger_province, trip.departure_province, trip.destination_province)
+            
+        proximity_match = False
+        proximity_distance_km = float("inf")
+        if trip.status == "active" and trip.live_lat is not None and trip.live_lng is not None:
+            dist = _haversine_km(lat, lng, float(trip.live_lat), float(trip.live_lng))
+            if dist <= 50.0:
+                proximity_match = True
+                proximity_distance_km = dist
+                
+        if route_match or proximity_match:
+            matched_trips.append(
+                (
+                    trip,
+                    0 if trip.status == "active" else 1,
+                    proximity_distance_km,
+                    _trip_departure_local(trip) or datetime.max,
+                )
+            )
+            
+    # Active trips with live positions should surface closest-first for instant pickup.
+    matched_trips.sort(key=lambda item: (item[1], item[2], item[3]))
+    
+    return FindTripsNowResponse(
+        passenger_address=passenger_address,
+        passenger_road=passenger_road,
+        passenger_province=passenger_province,
+        passenger_district=passenger_district,
+        passenger_commune=passenger_commune,
+        trips=[_build_trip_read(item[0]) for item in matched_trips]
+    )
 
 
 @router.get("/trips/{trip_id}", response_model=TripRead)
@@ -2076,8 +2282,10 @@ def driver_request_boarding(
 
 	now = phnom_penh_now()
 	booking.driver_requested_boarding_at = now
-	booking.boarding_confirmation_expires_at = now + timedelta(seconds=BOARDING_CONFIRMATION_TIMEOUT_S)
-	_create_boarding_requested_notification(db, booking)
+	booking.passenger_confirmed_boarding_at = now
+	booking.pickup_status = "passenger_boarded"
+	booking.status = "confirmed"
+	_create_boarding_confirmed_notification(db, booking)
 	db.commit()
 	db.refresh(booking)
 	return _build_booking_with_trip_read(booking)
@@ -2112,6 +2320,8 @@ def passenger_confirm_boarding(
 		raise HTTPException(status_code=403, detail="You can only confirm boarding for your own booking")
 	if booking.status == "cancelled":
 		raise HTTPException(status_code=400, detail="This booking has been cancelled")
+	if booking.pickup_status == "passenger_boarded":
+		return _build_booking_with_trip_read(booking)
 	if booking.driver_requested_boarding_at is None:
 		raise HTTPException(status_code=400, detail="The driver has not yet requested boarding")
 	if booking.pickup_status != "driver_arrived":
@@ -2600,6 +2810,14 @@ def get_support_config() -> SupportConfigResponse:
 		telegram_username=os.getenv("SUPPORT_TELEGRAM_USERNAME", "ride_support"),
 		support_phone=os.getenv("SUPPORT_PHONE"),
 		support_email=os.getenv("SUPPORT_EMAIL"),
+	)
+
+
+@router.get("/app-config", response_model=AppConfigResponse)
+def get_app_config() -> AppConfigResponse:
+	google_places_api_key = get_google_places_api_key()
+	return AppConfigResponse(
+		google_places_api_key=google_places_api_key or None,
 	)
 
 

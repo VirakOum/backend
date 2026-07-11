@@ -17,6 +17,7 @@ from ..schemas import (
     ScheduleBucketRange,
     ScheduleOption,
     TripSearchConfigResponse,
+    TripRead,
 )
 
 router = APIRouter(prefix="/passenger", tags=["passenger"])
@@ -270,3 +271,66 @@ def get_nearby_drivers(
             )
 
     return NearbyDriversResponse(drivers=drivers)
+
+
+@router.get("/recommended-trips", response_model=list[TripRead])
+def get_recommended_trips(
+    limit: int = 5,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[TripRead]:
+    if current_user.role != "passenger":
+        raise HTTPException(status_code=403, detail="Only passengers can view recommended trips")
+
+    from sqlalchemy.orm import selectinload
+    from ..models import Trip
+    from .travel import _build_trip_read, _expire_stale_trips_and_bookings
+
+    _expire_stale_trips_and_bookings(db)
+    now = phnom_penh_now()
+
+    query = (
+        select(Trip)
+        .options(selectinload(Trip.driver), selectinload(Trip.vehicle), selectinload(Trip.bookings))
+        .where(
+            Trip.status == "scheduled",
+            Trip.departure_time > now,
+            Trip.available_seats > 0,
+        )
+        .order_by(Trip.departure_time.asc())
+        .limit(limit)
+    )
+    rows = db.execute(query).scalars().all()
+    return [_build_trip_read(row) for row in rows]
+
+
+@router.get("/trips", response_model=list[TripRead])
+def list_passenger_trips(
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[TripRead]:
+    if current_user.role != "passenger":
+        raise HTTPException(status_code=403, detail="Only passengers can view trips")
+
+    from sqlalchemy.orm import selectinload
+    from ..models import Trip
+    from .travel import _build_trip_read, _expire_stale_trips_and_bookings
+
+    safe_limit = max(1, min(limit, 500))
+    _expire_stale_trips_and_bookings(db)
+    now = phnom_penh_now()
+
+    query = (
+        select(Trip)
+        .options(selectinload(Trip.driver), selectinload(Trip.vehicle), selectinload(Trip.bookings))
+        .where(
+            Trip.status == "scheduled",
+            Trip.departure_time > now,
+            Trip.available_seats > 0,
+        )
+        .order_by(Trip.departure_time.asc())
+        .limit(safe_limit)
+    )
+    rows = db.execute(query).scalars().all()
+    return [_build_trip_read(row) for row in rows]
