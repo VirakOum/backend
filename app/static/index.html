@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="doc_title">My Travel - Command Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <!-- FontAwesome for Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js for High-end Revenue Graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/styles.css?v=1.4">
+</head>
+<body>
+    <div class="app-layout">
+        <aside class="sidebar" id="app-sidebar">
+            <div class="sidebar-brand" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                    <img src="assets/logo.png" alt="My Travel Logo" class="brand-logo">
+                    <div class="brand-text">
+                        <span class="brand-title" data-i18n="brand_title">MY TRAVEL</span>
+                        <span class="brand-subtitle" data-i18n="brand_subtitle">Kinetic Precision Framework</span>
+                    </div>
+                </div>
+                <button class="sidebar-close-btn" id="btn-close-sidebar" aria-label="Close menu">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="#overview" class="nav-item active" data-tab="overview">
+                    <i class="fa-solid fa-chart-pie nav-icon"></i>
+                    <span data-i18n="nav_overview">System Overview</span>
+                </a>
+                <a href="#map" class="nav-item" data-tab="map">
+                    <i class="fa-solid fa-map-location-dot nav-icon"></i>
+                    <span data-i18n="nav_map">Live Tracking Map</span>
+                </a>
+                <a href="#trips" class="nav-item" data-tab="trips">
+                    <i class="fa-solid fa-route nav-icon"></i>
+                    <span data-i18n="nav_trips">Trip Operations</span>
+                </a>
+                <a href="#drivers" class="nav-item" data-tab="drivers">
+                    <i class="fa-solid fa-id-card nav-icon"></i>
+                    <span data-i18n="nav_drivers">Driver Management</span>
+                </a>
+                <a href="#passengers" class="nav-item" data-tab="passengers">
+                    <i class="fa-solid fa-user-group nav-icon"></i>
+                    <span data-i18n="nav_passengers">Passenger Management</span>
+                </a>
+                <a href="#revenue" class="nav-item" data-tab="revenue">
+                    <i class="fa-solid fa-chart-line nav-icon"></i>
+                    <span data-i18n="nav_revenue">Revenue Analytics</span>
+                </a>
+                <a href="#promotions" class="nav-item" data-tab="promotions">
+                    <i class="fa-solid fa-rectangle-ad nav-icon"></i>
+                    <span data-i18n="nav_promotions">Promotions & Ads</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="system-status">
+                    <span class="status-indicator online"></span>
+                    <span data-i18n="system_online">SYSTEM ONLINE (PP)</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="content-header">
+                <div class="header-title-area" style="display: flex; align-items: center; gap: var(--spacing-md);">
+                    <button id="sidebar-toggle" class="sidebar-toggle-btn" aria-label="Toggle Navigation Menu">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                    <div>
+                        <h1 id="page-title" data-i18n="title_overview">System Overview</h1>
+                        <p class="header-subtitle" id="page-subtitle" data-i18n="subtitle_overview">Real-time status updates and operations control</p>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <!-- Translate Dropdown -->
+                    <div class="lang-selector-wrap">
+                        <i class="fa-solid fa-language lang-icon"></i>
+                        <select id="lang-select" class="lang-select">
+                            <option value="en">English</option>
+                            <option value="km">ភាសាខ្មែរ (Khmer)</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-secondary" id="btn-refresh-all">
+                        <i class="fa-solid fa-rotate"></i> <span data-i18n="btn_refresh">Refresh Data</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Tab: Overview -->
+            <section id="tab-overview" class="tab-pane active">
+                <div class="kpi-grid">
+                    <div class="kpi-card gradient-card">
+                        <div class="kpi-card-header">
+                            <span class="kpi-label" data-i18n="kpi_active_vehicles">Active Vehicles</span>
+                            <i class="fa-solid fa-car kpi-icon"></i>
+                        </div>
+                        <div class="kpi-value" id="kpi-total-drivers">0</div>
+                        <div class="kpi-meta" data-i18n="kpi_registered_drivers">Registered Drivers</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-card-header">
+                            <span class="kpi-label" data-i18n="kpi_total_passengers">Total Passengers</span>
+                            <i class="fa-solid fa-users kpi-icon"></i>
+                        </div>
+                        <div class="kpi-value" id="kpi-total-passengers">0</div>
+                        <div class="kpi-meta" data-i18n="kpi_verified_customers">Verified Customers</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-card-header">
+                            <span class="kpi-label" data-i18n="kpi_active_trips">Active Trips</span>
+                            <i class="fa-solid fa-route-highway kpi-icon"></i>
+                        </div>
+                        <div class="kpi-value" id="kpi-active-trips">0</div>
+                        <div class="kpi-meta" data-i18n="kpi_trip_sub">En Route / Scheduled</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-card-header">
+                            <span class="kpi-label" data-i18n="kpi_debt_owed">Total Debt Owed</span>
+                            <i class="fa-solid fa-wallet kpi-icon"></i>
+                        </div>
+                        <div class="kpi-value" id="kpi-total-owed">៛0</div>
+                        <div class="kpi-meta" id="kpi-total-owed-usd">$0.00 USD</div>
+                    </div>
+                </div>
+
+                <div class="layout-grid">
+                    <!-- Global Configuration Card -->
+                    <div class="content-card col-span-2">
+                        <div class="card-header">
+                            <h2 class="headline-sm" data-i18n="config_title">System Configuration</h2>
+                        </div>
+                        <form id="settings-form" class="settings-form">
+                            <div class="form-row">
+                                <div class="form-group toggle-group">
+                                    <div class="toggle-label-wrap">
+                                        <label for="enable_digital_payment" data-i18n="config_enable_digital">Enable Digital ABA Payments</label>
+                                        <p class="input-desc" data-i18n="config_enable_digital_desc">Allow passengers to upload ABA transaction screenshots</p>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="enable_digital_payment">
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+                                <div class="form-group toggle-group">
+                                    <div class="toggle-label-wrap">
+                                        <label for="auto_lock_on_limit" data-i18n="config_auto_lock">Auto-Lock Owed Drivers</label>
+                                        <p class="input-desc" data-i18n="config_auto_lock_desc">Automatically lock driver when debt limit is breached</p>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="auto_lock_on_limit">
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="driver_cash_debt_limit_usd" data-i18n="config_limit_usd">Cash Debt Limit (USD)</label>
+                                    <input type="number" step="0.5" id="driver_cash_debt_limit_usd" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="driver_cash_debt_limit_khr" data-i18n="config_limit_khr">Cash Debt Limit (KHR)</label>
+                                    <input type="number" id="driver_cash_debt_limit_khr" required>
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary" id="btn-save-settings">
+                                    <i class="fa-solid fa-save"></i> <span data-i18n="config_save">Save Configuration</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Quick Tools Card -->
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h2 class="headline-sm" data-i18n="preset_title">Operational Presets</h2>
+                        </div>
+                        <div class="quick-tools-body">
+                            <p class="body-md" data-i18n="preset_desc">Utilize database shortcuts to test specific dashboard states.</p>
+                            <div class="tool-buttons">
+                                <button class="btn btn-preset" id="btn-seed-demo">
+                                    <i class="fa-solid fa-seedling"></i> <span data-i18n="preset_btn">Seed Demo Data</span>
+                                </button>
+                                <div class="preset-status" id="preset-status"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Live Map -->
+            <section id="tab-map" class="tab-pane">
+                <div class="map-container-wrap">
+                    <div id="fleet-map"></div>
+                    <div class="map-overlay">
+                        <h3 data-i18n="map_overview_label">Fleet Overview</h3>
+                        <div class="map-legend">
+                            <div class="legend-item">
+                                <span class="legend-marker marker-active"></span>
+                                <span data-i18n="map_active_trip">Active Trip</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-marker marker-scheduled"></span>
+                                <span data-i18n="map_scheduled_trip">Scheduled Trip</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-marker marker-locked"></span>
+                                <span data-i18n="map_locked_driver">Locked Driver</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Trip Operations -->
+            <section id="tab-trips" class="tab-pane">
+                <!-- Filters Bar -->
+                <div class="search-bar-container" style="display: flex; flex-wrap: wrap; gap: var(--spacing-md); align-items: center; background-color: var(--color-surface-lowest); padding: var(--spacing-md); border-radius: var(--radius-xl);">
+                    <div class="search-input-wrap" style="max-width: 160px; margin-bottom: 0;">
+                        <i class="fa-solid fa-calendar-day search-icon"></i>
+                        <input type="date" id="trip-date-filter" class="search-input">
+                    </div>
+                    <div class="search-input-wrap" style="max-width: 180px; margin-bottom: 0; position: relative;">
+                        <select id="trip-status-filter" class="search-input" style="padding-left: 2.2rem; cursor: pointer; -webkit-appearance: none; appearance: none;">
+                            <option value="" data-i18n="filter_status_all">All Statuses</option>
+                            <option value="scheduled" data-i18n="filter_status_scheduled">Scheduled</option>
+                            <option value="active" data-i18n="filter_status_active">Active</option>
+                            <option value="completed" data-i18n="filter_status_completed">Completed</option>
+                            <option value="cancelled" data-i18n="filter_status_cancelled">Cancelled</option>
+                        </select>
+                        <i class="fa-solid fa-filter search-icon" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none;"></i>
+                    </div>
+                    <div class="search-input-wrap custom-select-wrap" style="max-width: 180px; margin-bottom: 0;">
+                        <i class="fa-solid fa-plane-departure search-icon"></i>
+                        <input type="text" id="trip-departure-filter" class="search-input select-search-input" placeholder="Departure..." data-i18n-placeholder="filter_dep_placeholder" autocomplete="off">
+                        <div id="departure-dropdown-list" class="custom-dropdown-list"></div>
+                    </div>
+                    <div class="search-input-wrap custom-select-wrap" style="max-width: 180px; margin-bottom: 0;">
+                        <i class="fa-solid fa-plane-arrival search-icon"></i>
+                        <input type="text" id="trip-destination-filter" class="search-input select-search-input" placeholder="Destination..." data-i18n-placeholder="filter_dest_placeholder" autocomplete="off">
+                        <div id="destination-dropdown-list" class="custom-dropdown-list"></div>
+                    </div>
+                    <button class="btn btn-secondary" id="btn-clear-date-filter" style="margin-left: auto;">
+                        <i class="fa-solid fa-filter-circle-xmark"></i> <span data-i18n="trip_clear_filter">Clear Filters</span>
+                    </button>
+                </div>
+
+                <!-- Analysis Summary Area -->
+                <div class="trips-analytics-container" style="display: grid; grid-template-columns: 1fr 360px; gap: var(--spacing-md); margin-top: var(--spacing-sm);">
+                    <!-- Mini KPI grid -->
+                    <div class="kpi-grid" style="grid-template-columns: repeat(2, 1fr); gap: var(--spacing-sm); margin-bottom: 0;">
+                        <div class="kpi-card" style="padding: var(--spacing-md);">
+                            <div class="kpi-header" style="margin-bottom: var(--spacing-xs);">
+                                <span class="kpi-title" data-i18n="kpi_total_trips">Total Trips</span>
+                                <i class="fa-solid fa-route kpi-icon" style="font-size: 1rem;"></i>
+                            </div>
+                            <div class="kpi-value" id="kpi-trips-total" style="font-size: 1.5rem;">0</div>
+                        </div>
+                        <div class="kpi-card" style="padding: var(--spacing-md);">
+                            <div class="kpi-header" style="margin-bottom: var(--spacing-xs);">
+                                <span class="kpi-title" data-i18n="kpi_total_bookings">Total Bookings</span>
+                                <i class="fa-solid fa-ticket kpi-icon" style="font-size: 1rem;"></i>
+                            </div>
+                            <div class="kpi-value" id="kpi-trips-bookings" style="font-size: 1.5rem;">0</div>
+                        </div>
+                        <div class="kpi-card" style="padding: var(--spacing-md);">
+                            <div class="kpi-header" style="margin-bottom: var(--spacing-xs);">
+                                <span class="kpi-title" data-i18n="kpi_active_trips">Active Trips</span>
+                                <i class="fa-solid fa-circle-play kpi-icon" style="color: var(--color-success); font-size: 1rem;"></i>
+                            </div>
+                            <div class="kpi-value" id="kpi-trips-active" style="font-size: 1.5rem;">0</div>
+                        </div>
+                        <div class="kpi-card" style="padding: var(--spacing-md);">
+                            <div class="kpi-header" style="margin-bottom: var(--spacing-xs);">
+                                <span class="kpi-title" data-i18n="kpi_occupancy_rate">Seat Occupancy</span>
+                                <i class="fa-solid fa-percent kpi-icon" style="font-size: 1rem;"></i>
+                            </div>
+                            <div class="kpi-value" id="kpi-trips-occupancy" style="font-size: 1.5rem;">0%</div>
+                        </div>
+                    </div>
+                    <!-- Chart card -->
+                    <div class="content-card" style="display: flex; flex-direction: column; justify-content: center; padding: var(--spacing-md);">
+                        <div class="card-header" style="padding-bottom: var(--spacing-xs); margin-bottom: var(--spacing-xs);">
+                            <h3 class="headline-sm" style="font-size: 0.85rem;" data-i18n="chart_trips_status">Trips by Status</h3>
+                        </div>
+                        <div style="position: relative; height: 140px; width: 100%;">
+                            <canvas id="trips-status-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="trips-section-body">
+                    <div id="trips-by-day-list" class="trips-by-day-list">
+                        <!-- Group blocks dynamically rendered by JS -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Drivers -->
+            <section id="tab-drivers" class="tab-pane">
+                <div class="search-bar-container">
+                    <div class="search-input-wrap">
+                        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                        <input type="text" id="search-drivers" class="search-input" placeholder="Search drivers by name or phone..." data-i18n-placeholder="search_drivers_placeholder">
+                    </div>
+                </div>
+
+                <div class="drivers-grid" id="drivers-list">
+                    <!-- Cards dynamically rendered by JS -->
+                </div>
+                <div class="pagination-container" id="drivers-pagination"></div>
+            </section>
+
+            <!-- Tab: Passengers -->
+            <section id="tab-passengers" class="tab-pane">
+                <div class="search-bar-container">
+                    <div class="search-input-wrap">
+                        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                        <input type="text" id="search-passengers" class="search-input" placeholder="Search passengers by name or phone..." data-i18n-placeholder="search_passengers_placeholder">
+                    </div>
+                </div>
+
+                <div class="passengers-list-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th data-i18n="table_name">Name</th>
+                                <th data-i18n="table_phone">Phone Number</th>
+                                <th data-i18n="table_verification">Verification Status</th>
+                                <th data-i18n="table_rating">Rating</th>
+                                <th data-i18n="table_bookings">Completed Bookings</th>
+                                <th data-i18n="table_joined">Joined Date</th>
+                                <th class="text-right" data-i18n="table_actions">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="passengers-list">
+                            <!-- Rows dynamically rendered by JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination-container" id="passengers-pagination"></div>
+            </section>
+
+            <!-- Tab: Revenue Analytics -->
+            <section id="tab-revenue" class="tab-pane">
+                <!-- Mini KPIs -->
+                <div class="kpi-grid">
+                    <div class="kpi-card gradient-card">
+                        <div class="kpi-card-header">
+                            <span class="kpi-label" data-i18n="kpi_debt_owed">Total Generated Revenue</span>
+                            <i class="fa-solid fa-money-bill-trend-up kpi-icon"></i>
+                        </div>
+                        <div class="kpi-value" id="kpi-rev-total">៛0</div>
+                        <div class="kpi-meta" id="kpi-rev-total-usd">$0.00 USD</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-card-header">
+                            <span class="kpi-label" data-i18n="kpi_monthly_revenue">Monthly Revenue</span>
+                            <i class="fa-solid fa-calendar-days kpi-icon"></i>
+                        </div>
+                        <div class="kpi-value" id="kpi-rev-month">៛0</div>
+                        <div class="kpi-meta" id="kpi-rev-month-usd">$0.00 USD</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-card-header">
+                            <span class="kpi-label" data-i18n="kpi_daily_revenue">Daily Revenue</span>
+                            <i class="fa-solid fa-clock kpi-icon"></i>
+                        </div>
+                        <div class="kpi-value" id="kpi-rev-today">៛0</div>
+                        <div class="kpi-meta" id="kpi-rev-today-usd">$0.00 USD</div>
+                    </div>
+                </div>
+
+                <!-- Chart Card -->
+                <div class="content-card">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2 class="headline-sm" data-i18n="title_revenue">Revenue Trends</h2>
+                        <div class="header-actions" style="gap: 5px;">
+                            <button class="btn btn-chip success active" id="btn-chart-daily" data-i18n="chart_toggle_daily">Daily View</button>
+                            <button class="btn btn-chip secondary" id="btn-chart-monthly" data-i18n="chart_toggle_monthly">Monthly View</button>
+                        </div>
+                    </div>
+                    <div style="position: relative; height: 350px; width: 100%;">
+                        <canvas id="revenue-chart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Data Grid Split -->
+                <div class="layout-grid">
+                    <div class="content-card col-span-2">
+                        <div class="card-header">
+                            <h2 class="headline-sm" data-i18n="nav_revenue">Income Details</h2>
+                        </div>
+                        <div class="passengers-list-wrap" style="max-height: 300px; overflow-y: auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="table_period">Period / Date</th>
+                                        <th class="text-right" data-i18n="table_revenue_khr">Revenue (KHR)</th>
+                                        <th class="text-right" data-i18n="table_revenue_usd">Revenue (USD)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="revenue-table-body">
+                                    <!-- Rows populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Promotions and Ads Tab -->
+            <section id="tab-promotions" class="tab-pane">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg); align-items: start;">
+                    
+                    <!-- Left Column: Discount Tickets -->
+                    <div class="content-card" style="padding: var(--spacing-lg);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md);">
+                            <h3 style="font-family: var(--font-display); font-weight:800; color: var(--color-primary); margin:0;">
+                                <i class="fa-solid fa-ticket" style="margin-right: 6px;"></i> System Discount Tickets
+                            </h3>
+                            <button class="btn btn-primary" id="btn-add-discount" style="padding: 0.5rem 1rem;">
+                                <i class="fa-solid fa-plus"></i> Add Ticket
+                            </button>
+                        </div>
+                        
+                        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Title</th>
+                                        <th>Discount</th>
+                                        <th>Status</th>
+                                        <th>Expiry</th>
+                                        <th class="text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="discounts-table-body">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Right Column: Banner Ads slider list -->
+                    <div class="content-card" style="padding: var(--spacing-lg);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md);">
+                            <h3 style="font-family: var(--font-display); font-weight:800; color: var(--color-primary); margin:0;">
+                                <i class="fa-solid fa-rectangle-ad" style="margin-right: 6px;"></i> Home Banner Ads
+                            </h3>
+                            <button class="btn btn-primary" id="btn-add-ad" style="padding: 0.5rem 1rem;">
+                                <i class="fa-solid fa-plus"></i> Add Banner Ad
+                            </button>
+                        </div>
+                        
+                        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Banner</th>
+                                        <th>Title</th>
+                                        <th>Action Link</th>
+                                        <th>Status</th>
+                                        <th class="text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ads-table-body">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal: Settle Debt -->
+    <div class="modal-overlay" id="settle-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2 data-i18n="settle_title">Settle Driver Fee Debt</h2>
+                <button class="btn-close" id="btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <p data-i18n="settle_desc">This action marks all outstanding "owed" trip fee entries for this driver as "settled" and resets the driver's accumulated cash debt to zero.</p>
+                <div class="driver-summary-block">
+                    <div class="summary-item">
+                        <span class="summary-label" data-i18n="settle_driver_name_lbl">Driver Name</span>
+                        <span class="summary-value" id="settle-driver-name">—</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label" data-i18n="settle_driver_debt_lbl">Current Outstanding Debt</span>
+                        <span class="summary-value highlight-text" id="settle-driver-debt">—</span>
+                    </div>
+                </div>
+                <form id="settle-form" class="settle-form">
+                    <input type="hidden" id="settle-driver-id">
+                    <div class="form-group">
+                        <label for="settle-notes" data-i18n="settle_notes_lbl">Settlement Reference / Notes</label>
+                        <input type="text" id="settle-notes" placeholder="e.g. Paid cash at office, ABA txn #123456" data-i18n-placeholder="settle_notes_placeholder" required>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" id="btn-cancel-settle" data-i18n="settle_cancel">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-solid fa-hand-holding-dollar"></i> <span data-i18n="settle_submit">Record Settlement</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Trip Detail & Live Map Tracking & Edit/Delete -->
+    <div class="modal-overlay" id="trip-detail-modal">
+        <div class="modal-card" style="max-width: 960px; width: 90vw; display: grid; grid-template-columns: 1.2fr 1fr; gap: var(--spacing-md); padding: 0; overflow: hidden; border-radius: var(--radius-2xl); height: 580px;">
+            <!-- Left Panel: Live Map & Trip summary -->
+            <div style="display: flex; flex-direction: column; background-color: var(--color-surface-container-low); border-right: 1px solid var(--color-surface-container); height: 100%;">
+                <div style="position: relative; flex-grow: 1; background-color: #efeded; height: calc(100% - 130px);">
+                    <div id="trip-detail-map" style="width:100%; height:100%;"></div>
+                </div>
+                <div style="padding: var(--spacing-md); height: 130px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center;">
+                    <h3 id="detail-trip-route" style="font-family: var(--font-display); font-weight:800; font-size:1.15rem; color:var(--color-primary); margin: 0 0 4px 0;">Sway Rieng -> Phnom Penh</h3>
+                    <div id="detail-trip-time" class="body-sm" style="margin-bottom: 6px;"><i class="fa-regular fa-clock"></i> 9:21 PM</div>
+                    
+                    <div style="display: flex; flex-direction: row; gap: var(--spacing-md); margin-top: 4px;">
+                        <div class="stub-item" style="font-size:0.75rem; justify-content: flex-start;"><i class="fa-solid fa-id-card"></i> <span id="detail-driver-name">—</span></div>
+                        <div class="stub-item" style="font-size:0.75rem; justify-content: flex-start;"><i class="fa-solid fa-car"></i> <span id="detail-vehicle">—</span></div>
+                        <div class="stub-item" style="font-size:0.75rem; justify-content: flex-start;"><i class="fa-solid fa-ticket"></i> <span id="detail-bookings">—</span></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right Panel: Edit / Actions Form -->
+            <div style="padding: var(--spacing-lg); display: flex; flex-direction: column; justify-content: space-between; height: 100%; box-sizing: border-box;">
+                <div class="modal-header" style="border:none; padding:0; margin-bottom: var(--spacing-sm);">
+                    <h2 data-i18n="trip_detail_title" style="font-size: 1.25rem; margin:0;">Manage Trip</h2>
+                    <button class="btn-close" id="btn-close-trip-modal"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                
+                <form id="trip-edit-form" style="display: flex; flex-direction: column; gap: var(--spacing-md); flex-grow: 1; justify-content: center; margin: var(--spacing-sm) 0;">
+                    <input type="hidden" id="edit-trip-id">
+                    
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="edit-trip-status" data-i18n="edit_trip_status_lbl" style="margin-bottom: 4px; font-weight:700;">Trip Status</label>
+                        <select id="edit-trip-status" class="search-input" style="padding: 0.6rem 1rem; cursor: pointer;">
+                            <option value="scheduled">Scheduled</option>
+                            <option value="active">Active</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="edit-trip-price" data-i18n="edit_trip_price_lbl" style="margin-bottom: 4px; font-weight:700;">Price Per Seat (KHR)</label>
+                        <input type="number" id="edit-trip-price" class="search-input" style="padding: 0.6rem 1rem;" required>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="edit-trip-total-seats" data-i18n="edit_trip_total_seats_lbl" style="margin-bottom: 4px; font-weight:700;">Total Seating Capacity</label>
+                        <input type="number" id="edit-trip-total-seats" class="search-input" style="padding: 0.6rem 1rem;" required>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="edit-trip-avail-seats" data-i18n="edit_trip_avail_seats_lbl" style="margin-bottom: 4px; font-weight:700;">Available Seats</label>
+                        <input type="number" id="edit-trip-avail-seats" class="search-input" style="padding: 0.6rem 1rem;" required>
+                    </div>
+                    
+                    <div class="modal-footer" style="padding: 0; margin-top: var(--spacing-md); border:none; gap: var(--spacing-sm); flex-direction: column; width: 100%;">
+                        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem 1.5rem; font-size: 0.9rem;">
+                            <i class="fa-solid fa-save"></i> <span data-i18n="trip_save_btn">Save Changes</span>
+                        </button>
+                        <button type="button" class="btn btn-danger" id="btn-delete-trip" style="width: 100%; padding: 0.75rem 1.5rem; font-size: 0.9rem;">
+                            <i class="fa-solid fa-trash-can"></i> <span data-i18n="trip_delete_btn">Delete Trip</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Create/Edit Discount Ticket -->
+    <div class="modal-overlay" id="discount-modal">
+        <div class="modal-card promo-modal-card">
+            <div class="modal-header">
+                <h2 class="headline-sm" id="discount-modal-title">Create Discount Ticket</h2>
+                <button class="btn-close" id="btn-close-discount-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-modal-discount" class="settings-form promo-modal-form">
+                <input type="hidden" id="edit-discount-id">
+                <div class="form-group">
+                    <label for="modal-disc-code">Promo Code (e.g. WELCOME15)</label>
+                    <input type="text" id="modal-disc-code" class="search-input" style="padding: 0.6rem 1rem;" required>
+                </div>
+                <div class="promo-form-grid">
+                    <div class="form-group">
+                        <label for="modal-disc-title">Title (EN)</label>
+                        <input type="text" id="modal-disc-title" class="search-input" style="padding: 0.6rem 1rem;" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="modal-disc-title-kh">Title (KH)</label>
+                        <input type="text" id="modal-disc-title-kh" class="search-input" style="padding: 0.6rem 1rem;" required>
+                    </div>
+                </div>
+                <div class="promo-form-grid">
+                    <div class="form-group">
+                        <label for="modal-disc-percent">Discount Percent (0-100%)</label>
+                        <input type="number" id="modal-disc-percent" class="search-input" style="padding: 0.6rem 1rem;" min="0" max="100" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="modal-disc-expiry">Expiry Date</label>
+                        <input type="date" id="modal-disc-expiry" class="search-input" style="padding: 0.6rem 1rem;" required>
+                    </div>
+                </div>
+                <div class="promo-form-grid">
+                    <div class="form-group">
+                        <label for="modal-disc-desc">Description (EN)</label>
+                        <input type="text" id="modal-disc-desc" class="search-input" style="padding: 0.6rem 1rem;">
+                    </div>
+                    <div class="form-group">
+                        <label for="modal-disc-desc-kh">Description (KH)</label>
+                        <input type="text" id="modal-disc-desc-kh" class="search-input" style="padding: 0.6rem 1rem;">
+                    </div>
+                </div>
+                <div class="form-group toggle-group" style="margin-top: 4px; display: flex; align-items: center; justify-content: space-between;">
+                    <div class="toggle-label-wrap">
+                        <label for="modal-disc-active" style="font-weight: 700; margin-bottom: 0;">Is Active / Show to passengers</label>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="modal-disc-active" checked>
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="modal-footer promo-modal-footer">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-save"></i> <span id="discount-modal-save-label">Save Ticket</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Create/Edit Active Ad Banner -->
+    <div class="modal-overlay" id="ad-modal">
+        <div class="modal-card promo-modal-card">
+            <div class="modal-header">
+                <h2 class="headline-sm" id="ad-modal-title">Create Banner Ad</h2>
+                <button class="btn-close" id="btn-close-ad-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-modal-ad" class="settings-form promo-modal-form">
+                <input type="hidden" id="edit-ad-id">
+                <div class="promo-form-grid">
+                    <div class="form-group">
+                        <label for="modal-ad-title">Title (EN)</label>
+                        <input type="text" id="modal-ad-title" class="search-input" style="padding: 0.6rem 1rem;" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="modal-ad-title-kh">Title (KH)</label>
+                        <input type="text" id="modal-ad-title-kh" class="search-input" style="padding: 0.6rem 1rem;" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="modal-ad-image-file">Banner Photo</label>
+                    <input type="file" id="modal-ad-image-file" class="search-input" style="padding: 0.6rem 1rem;" accept="image/jpeg,image/png,image/webp,image/gif">
+                    <input type="hidden" id="modal-ad-image-url">
+                    <small style="color:var(--color-on-surface-variant); font-size:0.7rem;">Upload a photo from this device. JPEG, PNG, WebP, or GIF up to 5 MB.</small>
+                    <img id="modal-ad-image-preview" class="promo-upload-preview" alt="Banner preview">
+                </div>
+                <div class="form-group">
+                    <label for="modal-ad-link">Link URL (Optional)</label>
+                    <input type="text" id="modal-ad-link" class="search-input" style="padding: 0.6rem 1rem;" placeholder="e.g. /promotions">
+                </div>
+                <div class="promo-form-grid">
+                    <div class="form-group">
+                        <label for="modal-ad-desc">Description (EN)</label>
+                        <input type="text" id="modal-ad-desc" class="search-input" style="padding: 0.6rem 1rem;">
+                    </div>
+                    <div class="form-group">
+                        <label for="modal-ad-desc-kh">Description (KH)</label>
+                        <input type="text" id="modal-ad-desc-kh" class="search-input" style="padding: 0.6rem 1rem;">
+                    </div>
+                </div>
+                <div class="form-group toggle-group" style="margin-top: 4px; display: flex; align-items: center; justify-content: space-between;">
+                    <div class="toggle-label-wrap">
+                        <label for="modal-ad-active" style="font-weight: 700; margin-bottom: 0;">Is Active / Show to passengers</label>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="modal-ad-active" checked>
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="modal-footer promo-modal-footer">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-save"></i> <span id="ad-modal-save-label">Save Banner</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Sidebar Overlay for mobile/tablet drawer -->
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Custom JS -->
+    <script src="js/app.js?v=1.4"></script>
+</body>
+</html>

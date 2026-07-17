@@ -1,0 +1,2170 @@
+// My Travel Command Dashboard JavaScript
+document.addEventListener('DOMContentLoaded', () => {
+    // API Base URL (relative to this page)
+    const API_BASE = '/travel/admin';
+
+    // Cambodia 25 Provinces list for searchable select components
+    const CAMBODIA_PROVINCES = [
+        { kh: "ភ្នំពេញ", en: "Phnom Penh" },
+        { kh: "បន្ទាយមានជ័យ", en: "Banteay Meanchey" },
+        { kh: "បាត់ដំបង", en: "Battambang" },
+        { kh: "កំពង់ចាម", en: "Kampong Cham" },
+        { kh: "កំពង់ឆ្នាំង", en: "Kampong Chhnang" },
+        { kh: "កំពង់ស្ពឺ", en: "Kampong Speu" },
+        { kh: "កំពង់ធំ", en: "Kampong Thom" },
+        { kh: "កំពត", en: "Kampot" },
+        { kh: "កណ្ដាល", en: "Kandal" },
+        { kh: "កោះកុង", en: "Koh Kong" },
+        { kh: "ក្រចេះ", en: "Kratie" },
+        { kh: "មណ្ឌលគិរី", en: "Mondulkiri" },
+        { kh: "ឧត្តរមានជ័យ", en: "Oddar Meanchey" },
+        { kh: "ប៉ៃលិន", en: "Pailin" },
+        { kh: "ព្រះសីហនុ", en: "Preah Sihanouk" },
+        { kh: "ព្រះវិហារ", en: "Preah Vihear" },
+        { kh: "ពោធិ៍សាត់", en: "Pursat" },
+        { kh: "ព្រៃវែង", en: "Prey Veng" },
+        { kh: "រតនគិរី", en: "Ratanakiri" },
+        { kh: "សៀមរាប", en: "Siem Reap" },
+        { kh: "ស្ទឹងត្រែង", en: "Stung Treng" },
+        { kh: "ស្វាយរៀង", en: "Svay Rieng" },
+        { kh: "តាកែវ", en: "Takeo" },
+        { kh: "ត្បូងឃ្មុំ", en: "Tboung Khmum" },
+        { kh: "កែប", en: "Kep" }
+    ];
+
+    // Translations Dictionary
+    const TRANSLATIONS = {
+        en: {
+            doc_title: "My Travel - Command Dashboard",
+            brand_title: "MY TRAVEL",
+            brand_subtitle: "Kinetic Precision Framework",
+            nav_overview: "System Overview",
+            nav_map: "Live Tracking Map",
+            nav_trips: "Trip Operations",
+            nav_drivers: "Driver Management",
+            nav_passengers: "Passenger Management",
+            nav_revenue: "Revenue Analytics",
+            system_online: "SYSTEM ONLINE (PP)",
+            title_overview: "System Overview",
+            subtitle_overview: "Real-time status updates and operations control",
+            title_map: "Live Tracking Map",
+            subtitle_map: "Real-time location of active and scheduled drivers",
+            title_trips: "Trip Operations",
+            subtitle_trips: "Track scheduled and active trips day-by-day with passenger booking counts",
+            title_drivers: "Driver Management",
+            subtitle_drivers: "Inspect, verify, lock, and change tiers for driver partners",
+            title_passengers: "Passenger Management",
+            subtitle_passengers: "Monitor and verify passenger accounts",
+            title_revenue: "Revenue Analytics",
+            subtitle_revenue: "Track and analyze My Travel daily and monthly system earnings",
+            nav_promotions: "Promotions & Ads",
+            title_promotions: "Promotions & Ads Management",
+            subtitle_promotions: "Manage system discount coupons and homepage banner ads",
+            btn_refresh: "Refresh Data",
+            kpi_active_vehicles: "Active Vehicles",
+            kpi_registered_drivers: "Registered Drivers",
+            kpi_total_passengers: "Total Passengers",
+            kpi_verified_customers: "Verified Customers",
+            kpi_active_trips: "Active Trips",
+            kpi_trip_sub: "En Route / Scheduled",
+            kpi_debt_owed: "Total Debt Owed",
+            config_title: "System Configuration",
+            config_enable_digital: "Enable Digital ABA Payments",
+            config_enable_digital_desc: "Allow passengers to upload ABA transaction screenshots",
+            config_auto_lock: "Auto-Lock Owed Drivers",
+            config_auto_lock_desc: "Automatically lock driver when debt limit is breached",
+            config_limit_usd: "Cash Debt Limit (USD)",
+            config_limit_khr: "Cash Debt Limit (KHR)",
+            config_save: "Save Configuration",
+            preset_title: "Operational Presets",
+            preset_desc: "Utilize database shortcuts to test specific dashboard states.",
+            preset_btn: "Seed Demo Data",
+            map_overview_label: "My Travel Map",
+            map_active_trip: "Active Trip",
+            map_scheduled_trip: "Scheduled Trip",
+            map_locked_driver: "Locked Driver",
+            search_drivers_placeholder: "Search drivers by name or phone...",
+            search_passengers_placeholder: "Search passengers by name or phone...",
+            table_name: "Name",
+            table_phone: "Phone Number",
+            table_verification: "Verification Status",
+            table_rating: "Rating",
+            table_bookings: "Completed Bookings",
+            table_joined: "Joined Date",
+            table_actions: "Actions",
+            settle_title: "Settle Driver Fee Debt",
+            settle_desc: "This action marks all outstanding \"owed\" trip fee entries for this driver as \"settled\" and resets the driver's accumulated cash debt to zero.",
+            settle_driver_name_lbl: "Driver Name",
+            settle_driver_debt_lbl: "Current Outstanding Debt",
+            settle_notes_lbl: "Settlement Reference / Notes",
+            settle_notes_placeholder: "e.g. Paid cash at office, ABA txn #123456",
+            settle_cancel: "Cancel",
+            settle_submit: "Record Settlement",
+            toast_refresh: "My Travel dashboard data refreshed.",
+            toast_settings_saved: "Settings saved and lock limits updated successfully.",
+            toast_settings_error: "Error saving settings.",
+            toast_network_error: "Network error occurred.",
+            toast_verified: "User verification status toggled successfully.",
+            toast_lock_updated: "Driver lock status updated.",
+            toast_membership_updated: "Driver membership changed successfully.",
+            toast_settled: "Driver fee debt settled and account unlocked.",
+            
+            // Revenue translations
+            kpi_monthly_revenue: "Monthly Revenue",
+            kpi_daily_revenue: "Daily Revenue",
+            chart_toggle_daily: "Daily View",
+            chart_toggle_monthly: "Monthly View",
+            table_period: "Period / Date",
+            table_revenue_usd: "Revenue (USD)",
+            table_revenue_khr: "Revenue (KHR)",
+
+            // Trips translations & analytics
+            trip_clear_filter: "Clear Filters",
+            txt_no_trips: "No trips found matching filter criteria.",
+            filter_status_all: "All Statuses",
+            filter_status_scheduled: "Scheduled",
+            filter_status_active: "Active",
+            filter_status_completed: "Completed",
+            filter_status_cancelled: "Cancelled",
+            filter_dep_placeholder: "Departure...",
+            filter_dest_placeholder: "Destination...",
+            kpi_total_trips: "Total Trips",
+            kpi_total_bookings: "Total Bookings",
+            kpi_occupancy_rate: "Seat Occupancy",
+            chart_trips_status: "Trips by Status",
+
+            // Trip Detail Modal translations
+            trip_detail_title: "Manage Trip Operations",
+            edit_trip_status_lbl: "Trip Status",
+            edit_trip_price_lbl: "Price Per Seat (KHR)",
+            edit_trip_total_seats_lbl: "Total Seating Capacity",
+            edit_trip_avail_seats_lbl: "Available Seats",
+            trip_save_btn: "Save Changes",
+            trip_delete_btn: "Delete Trip",
+            toast_trip_saved: "Trip details updated successfully.",
+            toast_trip_deleted: "Trip deleted successfully.",
+            txt_confirm_delete_trip: "Are you sure you want to delete this trip? This will delete all passenger bookings associated with it.",
+
+            // Dynamic texts
+            status_verified: "Verified",
+            status_unverified: "Unverified",
+            status_open: "Open",
+            status_locked: "Locked",
+            btn_unverify: "Unverify",
+            btn_verify: "Verify",
+            btn_lock: "Lock",
+            btn_unlock: "Unlock",
+            btn_settle: "Settle",
+            option_normal: "Normal User",
+            option_pro: "Membership Pro",
+            option_vip: "VIP Member",
+            txt_driver: "Driver",
+            txt_vehicle: "Vehicle",
+            txt_seats: "Seats",
+            txt_status: "Status",
+            txt_speed: "Speed",
+            txt_heading: "Heading",
+            txt_no_drivers: "No drivers found matching search criteria.",
+            txt_no_passengers: "No passengers found matching search criteria.",
+            txt_seeding: "Seeding database, please wait...",
+            txt_seeding_success: "Demo data seeded successfully!",
+            txt_seeding_error: "Failed to seed demo data."
+        },
+        km: {
+            doc_title: "ម៉ាយ ត្រាវែល - ផ្ទាំងគ្រប់គ្រង",
+            brand_title: "ម៉ាយ ត្រាវែល",
+            brand_subtitle: "ក្របខ័ណ្ឌគំរូរចនា Kinetic Precision",
+            nav_overview: "ទិដ្ឋភាពទូទៅនៃប្រព័ន្ធ",
+            nav_map: "ផែនទីតាមដានផ្ទាល់",
+            nav_trips: "ប្រវត្តិធ្វើដំណើរ",
+            nav_drivers: "ការគ្រប់គ្រងអ្នកបើកបរ",
+            nav_passengers: "ការគ្រប់គ្រងអ្នកដំណើរ",
+            nav_revenue: "វិភាគចំណូលសរុប",
+            system_online: "ប្រព័ន្ធដំណើរការធម្មតា (ភ្នំពេញ)",
+            title_overview: "ទិដ្ឋភាពទូទៅនៃប្រព័ន្ធ",
+            subtitle_overview: "ការធ្វើបច្ចុប្បន្នភាពស្ថានភាពពេលវេលាជាក់ស្តែងនិងការគ្រប់គ្រងប្រតិបត្តិការ",
+            title_map: "ផែនទីតាមដានផ្ទាល់",
+            subtitle_map: "ទីតាំងពេលវេលាជាក់ស្តែងរបស់អ្នកបើកបរដែលកំពុងសកម្មនិងបានគ្រោងទុក",
+            title_trips: "ប្រវត្តិធ្វើដំណើរ",
+            subtitle_trips: "តាមដានការធ្វើដំណើរប្រចាំថ្ងៃ និងចំនួនកក់សំបុត្ររបស់អ្នកដំណើរ",
+            title_drivers: "ការគ្រប់គ្រងអ្នកបើកបរ",
+            subtitle_drivers: "ត្រួតពិនិត្យ ផ្ទៀងផ្ទាត់ ចាក់សោ និងផ្លាស់ប្តូរកម្រិតសមាជិកភាពរបស់អ្នកបើកបរ",
+            title_passengers: "ការគ្រប់គ្រងអ្នកដំណើរ",
+            subtitle_passengers: "ត្រួតពិនិត្យនិងផ្ទៀងផ្ទាត់គណនីអ្នកដំណើរ",
+            title_revenue: "វិភាគចំណូលសរុប",
+            subtitle_revenue: "តាមដាននិងវិភាគការរកចំណូលប្រចាំថ្ងៃនិងប្រចាំខែរបស់ប្រព័ន្ធ ម៉ាយ ត្រាវែល",
+            nav_promotions: "ប្រូម៉ូសិន និងការផ្សព្វផ្សាយ",
+            title_promotions: "ការគ្រប់គ្រងប្រូម៉ូសិន និងការផ្សព្វផ្សាយ",
+            subtitle_promotions: "គ្រប់គ្រងប័ណ្ណបញ្ចុះតម្លៃប្រព័ន្ធ និងផ្ទាំងផ្សព្វផ្សាយស្លាយនៅទំព័រដើម",
+            btn_refresh: "ទាញយកទិន្នន័យថ្មី",
+            kpi_active_vehicles: "យានយន្តសកម្ម",
+            kpi_registered_drivers: "អ្នកបើកបរដែលបានចុះឈ្មោះ",
+            kpi_total_passengers: "អ្នកដំណើរសរុប",
+            kpi_verified_customers: "អតិថិជនបានផ្ទៀងផ្ទាត់",
+            kpi_active_trips: "ការធ្វើដំណើរដែលកំពុងដំណើរការ",
+            kpi_trip_sub: "កំពុងធ្វើដំណើរ / បានគ្រោងទុក",
+            kpi_debt_owed: "បំណុលត្រូវសងសរុប",
+            config_title: "ការកំណត់រចនាសម្ព័ន្ធប្រព័ន្ធ",
+            config_enable_digital: "បើកការទូទាត់ ABA ឌីជីថល",
+            config_enable_digital_desc: "អនុញ្ញាតឱ្យអ្នកដំណើរផ្ទុកឡើងរូបថតអេក្រង់ប្រតិបត្តិការ ABA",
+            config_auto_lock: "ចាក់សោអ្នកបើកបរជំពាក់ស្វ័យប្រវត្តិ",
+            config_auto_lock_desc: "ចាក់សោគណនីអ្នកបើកបរដោយស្វ័យប្រវត្តិនៅពេលលើសដែនកំណត់បំណុល",
+            config_limit_usd: "ដែនកំណត់បំណុលសាច់ប្រាក់ (USD)",
+            config_limit_khr: "ដែនកំណត់បំណុលសាច់ប្រាក់ (KHR)",
+            config_save: "រក្សាទុកការកំណត់",
+            preset_title: "ទិន្នន័យសាកល្បងប្រព័ន្ធ",
+            preset_desc: "ប្រើប្រាស់ផ្លូវកាត់មូលដ្ឋានទិន្នន័យដើម្បីសាកល្បងស្ថានភាពផ្ទាំងគ្រប់គ្រងជាក់លាក់។",
+            preset_btn: "បញ្ចូលទិន្នន័យសាកល្បង",
+            map_overview_label: "ផែនទី ម៉ាយ ត្រាវែល",
+            map_active_trip: "កំពុងធ្វើដំណើរ",
+            map_scheduled_trip: "បានគ្រោងទុក",
+            map_locked_driver: "អ្នកបើកបរត្រូវបានចាក់សោ",
+            search_drivers_placeholder: "ស្វែងរកអ្នកបើកបរតាមឈ្មោះឬលេខទូរស័ព្ទ...",
+            search_passengers_placeholder: "ស្វែងរកអ្នកដំណើរតាមឈ្មោះឬលេខទូរស័ព្ទ...",
+            table_name: "ឈ្មោះ",
+            table_phone: "លេខទូរស័ព្ទ",
+            table_verification: "ស្ថានភាពផ្ទៀងផ្ទាត់",
+            table_rating: "ការវាយតម្លៃ",
+            table_bookings: "ការកក់ដែលបានបញ្ចប់",
+            table_joined: "កាលបរិច្ឆេទចូលរួម",
+            table_actions: "សកម្មភាព",
+            settle_title: "ទូទាត់បំណុលកម្រៃសេវារបស់អ្នកបើកបរ",
+            settle_desc: "សកម្មភាពនេះសម្គាល់រាល់ការបញ្ចូលថ្លៃសេវាធ្វើដំណើរ \"ជំពាក់\" សម្រាប់អ្នកបើកបរនេះថា \"បានទូទាត់\" និងកំណត់បំណុលសាច់ប្រាក់បង្គររបស់អ្នកបើកបរទៅសូន្យវិញ។",
+            settle_driver_name_lbl: "ឈ្មោះអ្នកបើកបរ",
+            settle_driver_debt_lbl: "បំណុលបច្ចុប្បន្នដែលមិនទាន់ទូទាត់",
+            settle_notes_lbl: "ឯកសារយោងទូទាត់ / កំណត់ចំណាំ",
+            settle_notes_placeholder: "ឧទាហរណ៍៖ បង់ប្រាក់ផ្ទាល់នៅការិយាល័យ, ប្រតិបត្តិការ ABA #123456",
+            settle_cancel: "បោះបង់",
+            settle_submit: "កត់ត្រាការទូទាត់",
+            toast_refresh: "ទិន្នន័យផ្ទាំងគ្រប់គ្រង ម៉ាយ ត្រាវែល ត្រូវបានទាញយកថ្មី។",
+            toast_settings_saved: "រក្សាទុកការកំណត់ និងធ្វើបច្ចុប្បន្នភាពដែនកំណត់ចាក់សោដោយជោគជ័យ។",
+            toast_settings_error: "មានកំហុសក្នុងការរក្សាទុកការកំណត់។",
+            toast_network_error: "មានកំហុសបណ្តាញកើតឡើង។",
+            toast_verified: "ស្ថានភាពផ្ទៀងផ្ទាត់របស់អ្នកប្រើប្រាស់ត្រូវបានធ្វើបច្ចុប្បន្នភាព។",
+            toast_lock_updated: "ស្ថានភាពចាក់សោរបស់អ្នកបើកបរត្រូវបានធ្វើបច្ចុប្បន្នភាព។",
+            toast_membership_updated: "កម្រិតសមាជិកភាពរបស់អ្នកបើកបរត្រូវបានផ្លាស់ប្តូរដោយជោគជ័យ។",
+            toast_settled: "បំណុលកម្រៃសេវារបស់អ្នកបើកបរត្រូវបានទូទាត់រួចរាល់ និងបានបើកដំណើរការគណនីឡើងវិញ។",
+            
+            // Revenue translations
+            kpi_monthly_revenue: "ចំណូលប្រចាំខែ",
+            kpi_daily_revenue: "ចំណូលប្រចាំថ្ងៃ",
+            chart_toggle_daily: "មើលប្រចាំថ្ងៃ",
+            chart_toggle_monthly: "មើលប្រចាំខែ",
+            table_period: "រយៈពេល / កាលបរិច្ឆេទ",
+            table_revenue_usd: "ចំណូល (USD)",
+            table_revenue_khr: "ចំណូល (KHR)",
+
+            // Trips translations & analytics
+            trip_clear_filter: "សម្អាតតម្រង",
+            txt_no_trips: "រកមិនឃើញការធ្វើដំណើរដែលត្រូវគ្នានឹងការស្វែងរកឡើយ។",
+            filter_status_all: "ស្ថានភាពទាំងអស់",
+            filter_status_scheduled: "បានគ្រោងទុក",
+            filter_status_active: "កំពុងដំណើរការ",
+            filter_status_completed: "បានបញ្ចប់",
+            filter_status_cancelled: "បានបោះបង់",
+            filter_dep_placeholder: "ខេត្តចេញដំណើរ...",
+            filter_dest_placeholder: "ខេត្តគោលដៅ...",
+            kpi_total_trips: "ជើងដំណើរសរុប",
+            kpi_total_bookings: "ការកក់សំបុត្រសរុប",
+            kpi_occupancy_rate: "អត្រាប្រើប្រាស់កៅអី",
+            chart_trips_status: "ជើងដំណើរតាមស្ថានភាព",
+
+            // Trip Detail Modal translations
+            trip_detail_title: "គ្រប់គ្រងជើងដំណើរ",
+            edit_trip_status_lbl: "ស្ថានភាពជើងដំណើរ",
+            edit_trip_price_lbl: "តម្លៃក្នុងមួយកៅអី (៛)",
+            edit_trip_total_seats_lbl: "ចំនួនកៅអីសរុប",
+            edit_trip_avail_seats_lbl: "ចំនួនកៅអីនៅសល់",
+            trip_save_btn: "រក្សាទុកការកែប្រែ",
+            trip_delete_btn: "លុបជើងដំណើរនេះ",
+            toast_trip_saved: "បានធ្វើបច្ចុប្បន្នភាពព័ត៌មានជើងដំណើរដោយជោគជ័យ។",
+            toast_trip_deleted: "បានលុបជើងដំណើរដោយជោគជ័យ។",
+            txt_confirm_delete_trip: "តើអ្នកពិតជាចង់លុបជើងដំណើរនេះមែនទេ? ការលុបនេះនឹងលុបរាល់ការកក់របស់អ្នកដំណើរទាំងអស់ដែលពាក់ព័ន្ធ។",
+
+            // Dynamic texts
+            status_verified: "បានផ្ទៀងផ្ទាត់",
+            status_unverified: "មិនទាន់ផ្ទៀងផ្ទាត់",
+            status_open: "ធម្មតា",
+            status_locked: "ចាក់សោ",
+            btn_unverify: "លុបការផ្ទៀងផ្ទាត់",
+            btn_verify: "ផ្ទៀងផ្ទាត់",
+            btn_lock: "ចាក់សោ",
+            btn_unlock: "បើកសោ",
+            btn_settle: "ទូទាត់",
+            option_normal: "អ្នកប្រើប្រាស់ធម្មតា",
+            option_pro: "សមាជិកប្រូ (Pro)",
+            option_vip: "សមាជិកវីអាយភី (VIP)",
+            txt_driver: "អ្នកបើកបរ",
+            txt_vehicle: "យានយន្ត",
+            txt_seats: "កៅអី",
+            txt_status: "ស្ថានភាព",
+            txt_speed: "ល្បឿន",
+            txt_heading: "ទិសដៅ",
+            txt_no_drivers: "រកមិនឃើញអ្នកបើកបរដែលត្រូវគ្នានឹងការស្វែងរករបស់អ្នកឡើយ។",
+            txt_no_passengers: "រកមិនឃើញអ្នកដំណើរដែលត្រូវគ្នានឹងការស្វែងរករបស់អ្នកឡើយ។",
+            txt_seeding: "កំពុងបញ្ចូលទិន្នន័យសាកល្បង ម៉ាយ ត្រាវែល សូមរង់ចាំ...",
+            txt_seeding_success: "បានបញ្ចូលទិន្នន័យសាកល្បងដោយជោគជ័យ!",
+            txt_seeding_error: "ការបញ្ចូលទិន្នន័យសាកល្បងបានបរាជ័យ។"
+        }
+    };
+
+    // Geographic Coordinates of Cambodia Provinces for Map Rendering
+    const PROVINCE_COORDINATES = {
+        "ភ្នំពេញ": [11.5564, 104.9282],
+        "Phnom Penh": [11.5564, 104.9282],
+        "បន្ទាយមានជ័យ": [13.5857, 102.9737],
+        "Banteay Meanchey": [13.5857, 102.9737],
+        "បាត់ដំបង": [13.0957, 103.2022],
+        "Battambang": [13.0957, 103.2022],
+        "កំពង់ចាម": [11.9934, 105.4633],
+        "Kampong Cham": [11.9934, 105.4633],
+        "កំពង់ឆ្នាំង": [12.2500, 104.6667],
+        "Kampong Chhnang": [12.2500, 104.6667],
+        "កំពង់ស្ពឺ": [11.4533, 104.5210],
+        "Kampong Speu": [11.4533, 104.5210],
+        "កំពង់ធំ": [12.7111, 104.8887],
+        "Kampong Thom": [12.7111, 104.8887],
+        "កំពត": [10.6108, 104.1818],
+        "Kampot": [10.6108, 104.1818],
+        "កណ្ដាល": [11.4833, 104.9500],
+        "Kandal": [11.4833, 104.9500],
+        "កោះកុង": [11.6152, 102.9776],
+        "Koh Kong": [11.6152, 102.9776],
+        "ក្រចេះ": [12.4881, 106.0188],
+        "Kratie": [12.4881, 106.0188],
+        "មណ្ឌលគិរី": [12.4558, 107.1903],
+        "Mondulkiri": [12.4558, 107.1903],
+        "ឧត្តរមានជ័យ": [14.1756, 103.5186],
+        "Oddar Meanchey": [14.1756, 103.5186],
+        "ប៉ៃលិន": [12.8489, 102.6092],
+        "Pailin": [12.8489, 102.6092],
+        "ព្រះសីហនុ": [10.6253, 103.5298],
+        "Sihanoukville": [10.6253, 103.5298],
+        "Preah Sihanouk": [10.6253, 103.5298],
+        "ព្រះវិហារ": [13.8073, 104.9782],
+        "Preah Vihear": [13.8073, 104.9782],
+        "ពោធិ៍សាត់": [12.5333, 103.9167],
+        "Pursat": [12.5333, 103.9167],
+        "ព្រៃវែង": [11.4868, 105.3253],
+        "Prey Veng": [11.4868, 105.3253],
+        "រតនគិរី": [13.7388, 106.9873],
+        "Ratanakiri": [13.7388, 106.9873],
+        "សៀមរាប": [13.3633, 103.8564],
+        "Siem Reap": [13.3633, 103.8564],
+        "ស្ទឹងត្រែង": [13.5259, 105.9683],
+        "Stung Treng": [13.5259, 105.9683],
+        "ស្វាយរៀង": [11.0878, 105.7994],
+        "Svay Rieng": [11.0878, 105.7994],
+        "តាកែវ": [10.9900, 104.7849],
+        "Takeo": [10.9900, 104.7849],
+        "ត្បូងឃ្មុំ": [11.9422, 105.6567],
+        "Tboung Khmum": [11.9422, 105.6567],
+        "កែប": [10.4829, 104.3167],
+        "Kep": [10.4829, 104.3167]
+    };
+
+    // App state variables
+    let currentLanguage = localStorage.getItem('lang') || 'en';
+    let map = null;
+    let tripMarkers = [];
+    let currentDrivers = [];
+    let currentPassengers = [];
+    let currentTrips = [];
+    let appSettings = null;
+    let activeTabId = 'overview';
+
+    // Pagination state
+    let driverCurrentPage = 1;
+    const driverPageSize = 6;
+    let passengerCurrentPage = 1;
+    const passengerPageSize = 10;
+
+    // Revenue state
+    let revenueData = null;
+    let revenueChart = null;
+    let activeChartPeriod = 'daily';
+
+    // Trips analytics state
+    let tripsStatusChart = null;
+    let detailMap = null;
+    let detailMarker = null;
+
+    // Elements
+    const sidebarNav = document.querySelectorAll('.nav-item');
+    const tabPanes = document.querySelectorAll('.tab-pane');
+    const pageTitle = document.getElementById('page-title');
+    const pageSubtitle = document.getElementById('page-subtitle');
+    const btnRefreshAll = document.getElementById('btn-refresh-all');
+    const btnSeedDemo = document.getElementById('btn-seed-demo');
+    const presetStatus = document.getElementById('preset-status');
+    const langSelect = document.getElementById('lang-select');
+    
+    // KPI elements
+    const kpiTotalDrivers = document.getElementById('kpi-total-drivers');
+    const kpiTotalPassengers = document.getElementById('kpi-total-passengers');
+    const kpiActiveTrips = document.getElementById('kpi-active-trips');
+    const kpiTotalOwed = document.getElementById('kpi-total-owed');
+    const kpiTotalOwedUsd = document.getElementById('kpi-total-owed-usd');
+    const driversList = document.getElementById('drivers-list');
+    const passengersList = document.getElementById('passengers-list');
+    const searchDriversInput = document.getElementById('search-drivers');
+    const searchPassengersInput = document.getElementById('search-passengers');
+    const settleModal = document.getElementById('settle-modal');
+    const settleForm = document.getElementById('settle-form');
+    const settleDriverId = document.getElementById('settle-driver-id');
+    const settleDriverName = document.getElementById('settle-driver-name');
+    const settleDriverDebt = document.getElementById('settle-driver-debt');
+    const settleNotesInput = document.getElementById('settle-notes');
+    const btnCloseModal = document.getElementById('btn-close-modal');
+    const btnCancelSettle = document.getElementById('btn-cancel-settle');
+
+    // Revenue elements
+    const kpiRevTotal = document.getElementById('kpi-rev-total');
+    const kpiRevTotalUsd = document.getElementById('kpi-rev-total-usd');
+    const kpiRevMonth = document.getElementById('kpi-rev-month');
+    const kpiRevMonthUsd = document.getElementById('kpi-rev-month-usd');
+    const kpiRevToday = document.getElementById('kpi-rev-today');
+    const kpiRevTodayUsd = document.getElementById('kpi-rev-today-usd');
+    const btnChartDaily = document.getElementById('btn-chart-daily');
+    const btnChartMonthly = document.getElementById('btn-chart-monthly');
+    const revenueTableBody = document.getElementById('revenue-table-body');
+
+    // Trips tab elements
+    const tripDateFilter = document.getElementById('trip-date-filter');
+    const tripStatusFilter = document.getElementById('trip-status-filter');
+    const tripDepartureFilter = document.getElementById('trip-departure-filter');
+    const departureDropdownList = document.getElementById('departure-dropdown-list');
+    const tripDestinationFilter = document.getElementById('trip-destination-filter');
+    const destinationDropdownList = document.getElementById('destination-dropdown-list');
+    const btnClearDateFilter = document.getElementById('btn-clear-date-filter');
+    const tripsByDayList = document.getElementById('trips-by-day-list');
+
+    // Trips KPI elements
+    const kpiTripsTotal = document.getElementById('kpi-trips-total');
+    const kpiTripsBookings = document.getElementById('kpi-trips-bookings');
+    const kpiTripsActive = document.getElementById('kpi-trips-active');
+    const kpiTripsOccupancy = document.getElementById('kpi-trips-occupancy');
+
+    // Trip detail modal elements
+    const tripDetailModal = document.getElementById('trip-detail-modal');
+    const btnCloseTripModal = document.getElementById('btn-close-trip-modal');
+    const tripEditForm = document.getElementById('trip-edit-form');
+    const editTripId = document.getElementById('edit-trip-id');
+    const editTripStatus = document.getElementById('edit-trip-status');
+    const editTripPrice = document.getElementById('edit-trip-price');
+    const editTripTotalSeats = document.getElementById('edit-trip-total-seats');
+    const editTripAvailSeats = document.getElementById('edit-trip-avail-seats');
+    const btnDeleteTrip = document.getElementById('btn-delete-trip');
+    const detailTripRoute = document.getElementById('detail-trip-route');
+    const detailTripTime = document.getElementById('detail-trip-time');
+    const detailDriverName = document.getElementById('detail-driver-name');
+    const detailVehicle = document.getElementById('detail-vehicle');
+    const detailBookings = document.getElementById('detail-bookings');
+
+    // Settings Elements
+    const settingsForm = document.getElementById('settings-form');
+    const enableDigitalPaymentInput = document.getElementById('enable_digital_payment');
+    const autoLockOnLimitInput = document.getElementById('auto_lock_on_limit');
+    const driverCashDebtLimitUsdInput = document.getElementById('driver_cash_debt_limit_usd');
+    const driverCashDebtLimitKhrInput = document.getElementById('driver_cash_debt_limit_khr');
+
+    // Promotions and Ads Elements
+    const btnAddDiscount = document.getElementById('btn-add-discount');
+    const btnCloseDiscountModal = document.getElementById('btn-close-discount-modal');
+    const discountModal = document.getElementById('discount-modal');
+    const formModalDiscount = document.getElementById('form-modal-discount');
+    const btnAddAd = document.getElementById('btn-add-ad');
+    const btnCloseAdModal = document.getElementById('btn-close-ad-modal');
+    const adModal = document.getElementById('ad-modal');
+    const formModalAd = document.getElementById('form-modal-ad');
+    const discountsTableBody = document.getElementById('discounts-table-body');
+    const adsTableBody = document.getElementById('ads-table-body');
+    const modalAdImageFile = document.getElementById('modal-ad-image-file');
+    const modalAdImageUrl = document.getElementById('modal-ad-image-url');
+    const modalAdImagePreview = document.getElementById('modal-ad-image-preview');
+
+    // Setup Custom Searchable Dropdowns for Provinces
+    setupSearchableDropdown(tripDepartureFilter, departureDropdownList);
+    setupSearchableDropdown(tripDestinationFilter, destinationDropdownList);
+
+    function setupSearchableDropdown(inputEl, listEl) {
+        const renderOptions = (filterText = '') => {
+            listEl.innerHTML = '';
+            const searchVal = filterText.toLowerCase();
+
+            const filtered = CAMBODIA_PROVINCES.filter(p => 
+                p.kh.toLowerCase().includes(searchVal) || 
+                p.en.toLowerCase().includes(searchVal)
+            );
+
+            if (filtered.length === 0) {
+                listEl.classList.remove('active');
+                return;
+            }
+
+            filtered.forEach(p => {
+                const item = document.createElement('div');
+                item.className = 'dropdown-item';
+                const displayText = currentLanguage === 'km' ? `${p.kh} (${p.en})` : `${p.en} (${p.kh})`;
+                item.textContent = displayText;
+                
+                item.addEventListener('click', () => {
+                    inputEl.value = currentLanguage === 'km' ? p.kh : p.en;
+                    listEl.classList.remove('active');
+                    renderTrips();
+                });
+                listEl.appendChild(item);
+            });
+            listEl.classList.add('active');
+        };
+
+        inputEl.addEventListener('focus', () => {
+            renderOptions(inputEl.value);
+        });
+
+        inputEl.addEventListener('input', () => {
+            renderOptions(inputEl.value);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!inputEl.contains(e.target) && !listEl.contains(e.target)) {
+                listEl.classList.remove('active');
+            }
+        });
+    }
+
+    // Handle initial language state
+    langSelect.value = currentLanguage;
+    updateLanguageUI();
+
+    // Language selector change listener
+    langSelect.addEventListener('change', (e) => {
+        currentLanguage = e.target.value;
+        localStorage.setItem('lang', currentLanguage);
+        updateLanguageUI();
+        renderDrivers();
+        renderPassengers();
+        if (activeTabId === 'trips') {
+            renderTrips();
+        }
+        if (activeTabId === 'revenue') {
+            renderRevenueData();
+        }
+        if (map) loadMapTrips();
+    });
+
+    // Client-side translation updater
+    function updateLanguageUI() {
+        const dict = TRANSLATIONS[currentLanguage];
+        
+        // Translate elements with data-i18n
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (dict[key]) {
+                el.textContent = dict[key];
+            }
+        });
+
+        // Translate placeholders
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+            const key = el.getAttribute('data-i18n-placeholder');
+            if (dict[key]) {
+                el.setAttribute('placeholder', dict[key]);
+            }
+        });
+
+        // Set document title
+        document.title = dict.doc_title;
+
+        // Correct page title and subtitle dynamically based on active tab
+        pageTitle.textContent = dict[`title_${activeTabId}`];
+        pageSubtitle.textContent = dict[`subtitle_${activeTabId}`];
+    }
+
+    // Tab Switching Logic
+    sidebarNav.forEach(nav => {
+        nav.addEventListener('click', (e) => {
+            e.preventDefault();
+            activeTabId = nav.getAttribute('data-tab');
+
+            sidebarNav.forEach(n => n.classList.remove('active'));
+            nav.classList.add('active');
+
+            tabPanes.forEach(pane => {
+                pane.classList.remove('active');
+                if (pane.id === `tab-${activeTabId}`) {
+                    pane.classList.add('active');
+                }
+            });
+
+            // Auto close mobile sidebar when tab clicked
+            const sidebarEl = document.getElementById('app-sidebar');
+            const overlayEl = document.getElementById('sidebar-overlay');
+            if (sidebarEl && sidebarEl.classList.contains('active')) {
+                sidebarEl.classList.remove('active');
+                if (overlayEl) overlayEl.classList.remove('active');
+            }
+
+            // Update page title/subtitle
+            updateLanguageUI();
+
+            // Trigger map render
+            if (activeTabId === 'map') {
+                setTimeout(() => {
+                    initMap();
+                }, 100);
+            }
+
+            // Trigger trips load
+            if (activeTabId === 'trips') {
+                loadTrips();
+            }
+
+            // Trigger revenue render
+            if (activeTabId === 'revenue') {
+                loadRevenue();
+            }
+
+            // Trigger promotions load
+            if (activeTabId === 'promotions') {
+                loadPromotionsData();
+            }
+        });
+    });
+
+    // Mobile Sidebar Drawer Toggle Listeners
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    const sidebarClose = document.getElementById('btn-close-sidebar');
+    const appSidebar = document.getElementById('app-sidebar');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+
+    if (sidebarToggle && appSidebar && sidebarOverlay) {
+        sidebarToggle.addEventListener('click', () => {
+            appSidebar.classList.add('active');
+            sidebarOverlay.classList.add('active');
+        });
+    }
+
+    if (sidebarClose && appSidebar && sidebarOverlay) {
+        sidebarClose.addEventListener('click', () => {
+            appSidebar.classList.remove('active');
+            sidebarOverlay.classList.remove('active');
+        });
+    }
+
+    if (sidebarOverlay && appSidebar) {
+        sidebarOverlay.addEventListener('click', () => {
+            appSidebar.classList.remove('active');
+            sidebarOverlay.classList.remove('active');
+        });
+    }
+
+    // Initialize Leaflet Map (Cambodia / Phnom Penh focus)
+    function initMap() {
+        if (map) {
+            map.invalidateSize();
+            loadMapTrips();
+            return;
+        }
+
+        // Phnom Penh Coordinates
+        const phnomPenh = [11.5564, 104.9282];
+        
+        // Initialize Map
+        map = L.map('fleet-map', {
+            zoomControl: true
+        }).setView(phnomPenh, 8);
+
+        // CartoDB Positron Tile Layer (Premium light style matching water #fbf9f8 / land #dbd9d9)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 20
+        }).addTo(map);
+
+        loadMapTrips();
+    }
+
+    // Load active driver tracking locations onto the map
+    async function loadMapTrips() {
+        if (!map) return;
+
+        // Clear existing markers
+        tripMarkers.forEach(m => map.removeLayer(m));
+        tripMarkers = [];
+
+        try {
+            const response = await fetch(`${API_BASE}/trips`);
+            const trips = await response.json();
+            const dict = TRANSLATIONS[currentLanguage];
+
+            trips.forEach(trip => {
+                // Determine marker position: Use dynamic live location, fallback to mapped departure province coordinates
+                let lat = trip.live_lat;
+                let lng = trip.live_lng;
+
+                if (lat === null || lng === null) {
+                    const provinceCoords = PROVINCE_COORDINATES[trip.departure_province];
+                    if (provinceCoords) {
+                        lat = provinceCoords[0];
+                        lng = provinceCoords[1];
+                    } else {
+                        // National capital fallback
+                        lat = 11.5564;
+                        lng = 104.9282;
+                    }
+                }
+
+                // Color code markers based on driver status
+                let markerColor = '#fbbc00'; // Warning (amber yellow) for scheduled
+                if (trip.status === 'active') {
+                    markerColor = '#006d43'; // Emerald green for active/live tracking
+                } else if (trip.status === 'locked' || trip.status === 'cancelled') {
+                    markerColor = '#ba1a1a'; // Red
+                }
+
+                // Create circular marker representing driver tracking point
+                const marker = L.circleMarker([lat, lng], {
+                    radius: 10,
+                    fillColor: markerColor,
+                    fillOpacity: 0.85,
+                    stroke: true,
+                    color: '#ffffff',
+                    weight: 2
+                }).addTo(map);
+
+                const speedText = trip.live_speed_kph ? `${trip.live_speed_kph} km/h` : '0 km/h';
+                const headingText = trip.live_heading ? `${trip.live_heading}°` : 'N/A';
+
+                // Popup contents in active language
+                const popupContent = `
+                    <div style="min-width: 210px;">
+                        <h4 style="margin-bottom: 5px; font-family: 'Manrope', sans-serif; font-size: 0.9rem; color: #001b44;">
+                            ${trip.departure_province} <i class="fa-solid fa-arrow-right" style="font-size: 0.75rem; margin: 0 4px;"></i> ${trip.destination_province}
+                        </h4>
+                        <div style="font-size: 0.75rem; line-height: 1.4; color: #434750;">
+                            <div><strong>${dict.txt_driver}:</strong> ${trip.driver_name} (${trip.driver_phone})</div>
+                            <div><strong>${dict.txt_vehicle}:</strong> ${trip.vehicle_model} (${trip.vehicle_plate})</div>
+                            <div><strong>${dict.txt_seats}:</strong> ${trip.available_seats} / ${trip.total_seats}</div>
+                            <div style="margin-top: 5px; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 5px;">
+                                <strong>${dict.txt_status}:</strong> <span style="text-transform: uppercase; font-weight: 700; color: ${markerColor}">${trip.status}</span>
+                            </div>
+                            <div style="background: #f5f3f3; padding: 4px 8px; border-radius: 4px; margin-top: 6px;">
+                                <div><i class="fa-solid fa-gauge"></i> <strong>${dict.txt_speed}:</strong> ${speedText}</div>
+                                <div><i class="fa-solid fa-compass"></i> <strong>${dict.txt_heading}:</strong> ${headingText}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                marker.bindPopup(popupContent);
+                tripMarkers.push(marker);
+            });
+        } catch (error) {
+            console.error('Error loading driver map coordinates:', error);
+        }
+    }
+
+    // Fetch all trips for day-by-day operations
+    async function loadTrips() {
+        try {
+            const response = await fetch(`${API_BASE}/trips`);
+            currentTrips = await response.json();
+            renderTrips();
+        } catch (error) {
+            console.error('Error loading trips database:', error);
+        }
+    }
+
+    // Render Trips grouped day-by-day with ticket layout and status charts
+    function renderTrips() {
+        tripsByDayList.innerHTML = '';
+        const dict = TRANSLATIONS[currentLanguage];
+
+        const dateVal = tripDateFilter.value;
+        const statusVal = tripStatusFilter.value;
+        const departureVal = tripDepartureFilter.value.trim().toLowerCase();
+        const destinationVal = tripDestinationFilter.value.trim().toLowerCase();
+
+        // 1. Filter trips
+        const filteredTrips = currentTrips.filter(trip => {
+            const dateKey = trip.departure_time.split('T')[0];
+            
+            if (dateVal && dateKey !== dateVal) return false;
+            if (statusVal && trip.status !== statusVal) return false;
+            
+            // Check departure province matching either English or Khmer name
+            if (departureVal) {
+                const matchedProv = CAMBODIA_PROVINCES.find(p => 
+                    p.kh.toLowerCase() === departureVal || 
+                    p.en.toLowerCase() === departureVal
+                );
+                if (matchedProv) {
+                    const departureTripLower = trip.departure_province.toLowerCase();
+                    if (departureTripLower !== matchedProv.kh.toLowerCase() && departureTripLower !== matchedProv.en.toLowerCase()) {
+                        return false;
+                    }
+                } else {
+                    const tripDepLower = trip.departure_province.toLowerCase();
+                    if (!tripDepLower.includes(departureVal)) return false;
+                }
+            }
+
+            // Check destination province matching either English or Khmer name
+            if (destinationVal) {
+                const matchedProv = CAMBODIA_PROVINCES.find(p => 
+                    p.kh.toLowerCase() === destinationVal || 
+                    p.en.toLowerCase() === destinationVal
+                );
+                if (matchedProv) {
+                    const destinationTripLower = trip.destination_province.toLowerCase();
+                    if (destinationTripLower !== matchedProv.kh.toLowerCase() && destinationTripLower !== matchedProv.en.toLowerCase()) {
+                        return false;
+                    }
+                } else {
+                    const tripDestLower = trip.destination_province.toLowerCase();
+                    if (!tripDestLower.includes(destinationVal)) return false;
+                }
+            }
+            
+            return true;
+        });
+
+        // 2. Compute and Render Analytics
+        let totalBookings = 0;
+        let totalActive = 0;
+        let occupiedSeats = 0;
+        let capacitySeats = 0;
+        const statusCounts = { scheduled: 0, active: 0, completed: 0, cancelled: 0 };
+
+        filteredTrips.forEach(t => {
+            totalBookings += t.bookings_count;
+            if (t.status === 'active') totalActive++;
+            
+            statusCounts[t.status] = (statusCounts[t.status] || 0) + 1;
+            
+            capacitySeats += t.total_seats;
+            const booked = t.total_seats - t.available_seats;
+            occupiedSeats += Math.max(0, booked);
+        });
+
+        const occupancyRate = capacitySeats > 0 ? Math.round((occupiedSeats / capacitySeats) * 100) : 0;
+
+        // If filters are active, show filtered stats. Otherwise, fallback to the API-delivered summary values to respect "all get from api"!
+        const hasActiveFilters = dateVal || statusVal || departureVal || destinationVal;
+        
+        if (hasActiveFilters) {
+            kpiTripsTotal.textContent = filteredTrips.length;
+            kpiTripsBookings.textContent = totalBookings;
+            kpiTripsActive.textContent = totalActive;
+            kpiTripsOccupancy.textContent = `${occupancyRate}%`;
+        } else {
+            // Re-load summary to ensure we are completely synced with the API
+            loadSummary();
+        }
+
+        renderTripsStatusChart(statusCounts);
+
+        // 3. Group by Day YYYY-MM-DD
+        const groups = {};
+        filteredTrips.forEach(trip => {
+            const dateKey = trip.departure_time.split('T')[0];
+            if (!groups[dateKey]) {
+                groups[dateKey] = [];
+            }
+            groups[dateKey].push(trip);
+        });
+
+        const sortedDays = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+
+        if (sortedDays.length === 0) {
+            tripsByDayList.innerHTML = `
+                <div class="content-card text-center" style="padding: 3rem;">
+                    <p class="body-md">${dict.txt_no_trips}</p>
+                </div>
+            `;
+            return;
+        }
+
+        sortedDays.forEach(day => {
+            const trips = groups[day];
+            
+            const dateObj = new Date(day);
+            const dateStr = dateObj.toLocaleDateString(currentLanguage === 'en' ? 'en-US' : 'km-KH', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+
+            const groupDiv = document.createElement('div');
+            groupDiv.className = 'day-group';
+            
+            const tripsCountLabel = currentLanguage === 'en' 
+                ? `${trips.length} trip(s)` 
+                : `${trips.length} ជើងដំណើរ`;
+
+            groupDiv.innerHTML = `
+                <div class="day-group-header">
+                    <span class="day-title">${dateStr}</span>
+                    <span class="day-trip-count">${tripsCountLabel}</span>
+                </div>
+                <div class="trips-day-grid" id="day-grid-${day}"></div>
+            `;
+
+            tripsByDayList.appendChild(groupDiv);
+            const grid = document.getElementById(`day-grid-${day}`);
+
+            trips.forEach(trip => {
+                const card = document.createElement('div');
+                card.className = 'trip-ticket';
+                card.style.cursor = 'pointer';
+                
+                let statusColorHex = '#fbbc00';
+                if (trip.status === 'active') statusColorHex = '#006d43';
+                else if (trip.status === 'completed') statusColorHex = '#001b44';
+                else if (trip.status === 'cancelled') statusColorHex = '#ba1a1a';
+                card.style.setProperty('--status-color', statusColorHex);
+                
+                card.addEventListener('click', () => openTripDetailModal(trip.id));
+
+                const tripTimeStr = new Date(trip.departure_time).toLocaleTimeString(currentLanguage === 'en' ? 'en-US' : 'km-KH', {
+                    hour: 'numeric',
+                    minute: '2-digit'
+                });
+
+                card.innerHTML = `
+                    <div class="ticket-main">
+                        <div class="ticket-train-route">
+                            <div class="route-station dep-station">
+                                <span class="time-large">${tripTimeStr}</span>
+                                <span class="station-name">${trip.departure_province}</span>
+                            </div>
+                            <div class="route-connector-line">
+                                <span class="route-dot"></span>
+                                <div class="route-track">
+                                    <i class="fa-solid fa-train-subway"></i>
+                                </div>
+                                <span class="route-dot"></span>
+                            </div>
+                            <div class="route-station arr-station">
+                                <span class="time-large">—:—</span>
+                                <span class="station-name">${trip.destination_province}</span>
+                            </div>
+                        </div>
+                        <div class="ticket-footer-row">
+                            <span class="ticket-price">៛${trip.price_per_seat.toLocaleString()}</span>
+                            <span class="ticket-status-badge status-${trip.status}">${trip.status}</span>
+                        </div>
+                    </div>
+
+                    <div class="ticket-stub-modern">
+                        <div class="stub-meta-row">
+                            <div class="stub-meta-item">
+                                <i class="fa-solid fa-chair"></i>
+                                <span class="stub-seats">${trip.available_seats}/${trip.total_seats}</span>
+                                <span class="stub-label" data-i18n="txt_seats">SEATS</span>
+                            </div>
+                            <div class="stub-meta-item" style="background-color: var(--color-success-container); border-color: var(--color-success-container);">
+                                <i class="fa-solid fa-ticket" style="color: var(--color-success);"></i>
+                                <span class="stub-bookings" style="color: var(--color-success);">${trip.bookings_count}</span>
+                                <span class="stub-label" style="color: var(--color-success); font-weight:800;">BOOKED</span>
+                            </div>
+                        </div>
+                        <div class="stub-driver-info">
+                            <div class="stub-driver-name" title="${trip.driver_name}">${trip.driver_name}</div>
+                            <div class="stub-car-plate">${trip.vehicle_plate}</div>
+                        </div>
+                    </div>
+                `;
+
+                grid.appendChild(card);
+            });
+        });
+    }
+
+    // Render trips status Doughnut chart
+    function renderTripsStatusChart(statusCounts) {
+        const ctx = document.getElementById('trips-status-chart').getContext('2d');
+        const dict = TRANSLATIONS[currentLanguage];
+
+        const labels = [
+            dict.filter_status_scheduled,
+            dict.filter_status_active,
+            dict.filter_status_completed,
+            dict.filter_status_cancelled
+        ];
+        const data = [
+            statusCounts.scheduled,
+            statusCounts.active,
+            statusCounts.completed,
+            statusCounts.cancelled
+        ];
+
+        if (tripsStatusChart) {
+            tripsStatusChart.destroy();
+        }
+
+        tripsStatusChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: [
+                        '#fbbc00', // yellow/scheduled
+                        '#006d43', // green/active
+                        '#001b44', // navy/completed
+                        '#ba1a1a'  // red/cancelled
+                    ],
+                    borderWidth: 1,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            boxWidth: 10,
+                            font: {
+                                family: "'Manrope', sans-serif",
+                                size: 10,
+                                weight: '600'
+                            }
+                        }
+                    }
+                },
+                cutout: '70%'
+            }
+        });
+    }
+
+    // Open detailed view of selected trip
+    window.openTripDetailModal = (tripId) => {
+        const trip = currentTrips.find(t => t.id === tripId);
+        if (!trip) return;
+
+        // Populate forms
+        editTripId.value = trip.id;
+        editTripStatus.value = trip.status;
+        editTripPrice.value = Math.round(trip.price_per_seat);
+        editTripTotalSeats.value = trip.total_seats;
+        editTripAvailSeats.value = trip.available_seats;
+
+        // Set route info text
+        detailTripRoute.textContent = `${trip.departure_province} → ${trip.destination_province}`;
+        const timeStr = new Date(trip.departure_time).toLocaleTimeString(currentLanguage === 'en' ? 'en-US' : 'km-KH', {
+            hour: 'numeric',
+            minute: '2-digit'
+        });
+        detailTripTime.innerHTML = `<i class="fa-regular fa-clock"></i> ${timeStr}`;
+        detailDriverName.textContent = trip.driver_name;
+        detailVehicle.textContent = `${trip.vehicle_model} (${trip.vehicle_plate})`;
+        
+        detailBookings.textContent = currentLanguage === 'en' 
+            ? `${trip.bookings_count} Bookings`
+            : `${trip.bookings_count} ការកក់`;
+
+        // Render modal active overlay
+        tripDetailModal.classList.add('active');
+
+        // Init/re-render detail map with live car coordinate
+        setTimeout(() => {
+            initDetailMap(trip);
+        }, 150);
+    };
+
+    function initDetailMap(trip) {
+        let lat = trip.live_lat;
+        let lng = trip.live_lng;
+
+        if (lat === null || lng === null) {
+            const provinceCoords = PROVINCE_COORDINATES[trip.departure_province];
+            if (provinceCoords) {
+                lat = provinceCoords[0];
+                lng = provinceCoords[1];
+            } else {
+                lat = 11.5564;
+                lng = 104.9282;
+            }
+        }
+
+        if (detailMap) {
+            detailMap.setView([lat, lng], 10);
+            if (detailMarker) {
+                detailMarker.setLatLng([lat, lng]);
+            } else {
+                detailMarker = L.circleMarker([lat, lng], {
+                    radius: 8,
+                    fillColor: '#006d43',
+                    fillOpacity: 0.8,
+                    stroke: true,
+                    color: '#ffffff',
+                    weight: 2
+                }).addTo(detailMap);
+            }
+            detailMap.invalidateSize();
+            return;
+        }
+
+        detailMap = L.map('trip-detail-map', {
+            zoomControl: false
+        }).setView([lat, lng], 10);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 20
+        }).addTo(detailMap);
+
+        detailMarker = L.circleMarker([lat, lng], {
+            radius: 8,
+            fillColor: '#006d43',
+            fillOpacity: 0.8,
+            stroke: true,
+            color: '#ffffff',
+            weight: 2
+        }).addTo(detailMap);
+
+        detailMap.invalidateSize();
+    }
+
+    function closeTripModal() {
+        tripDetailModal.classList.remove('active');
+    }
+
+    btnCloseTripModal.addEventListener('click', closeTripModal);
+    tripDetailModal.addEventListener('click', (e) => {
+        if (e.target === tripDetailModal) closeTripModal();
+    });
+
+    // Save changes to trip details
+    tripEditForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const dict = TRANSLATIONS[currentLanguage];
+        const tripId = editTripId.value;
+
+        const payload = {
+            status: editTripStatus.value,
+            price_per_seat: parseFloat(editTripPrice.value),
+            total_seats: parseInt(editTripTotalSeats.value),
+            available_seats: parseInt(editTripAvailSeats.value)
+        };
+
+        try {
+            const response = await fetch(`${API_BASE}/trips/${tripId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                showToast(dict.toast_trip_saved);
+                closeTripModal();
+                loadTrips();
+                loadSummary();
+            } else {
+                showToast(dict.toast_network_error, true);
+            }
+        } catch (error) {
+            console.error('Error saving trip edits:', error);
+            showToast(dict.toast_network_error, true);
+        }
+    });
+
+    // Delete trip
+    btnDeleteTrip.addEventListener('click', async () => {
+        const dict = TRANSLATIONS[currentLanguage];
+        const tripId = editTripId.value;
+
+        if (!confirm(dict.txt_confirm_delete_trip)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE}/trips/${tripId}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                showToast(dict.toast_trip_deleted);
+                closeTripModal();
+                loadTrips();
+                loadSummary();
+            } else {
+                showToast(dict.toast_network_error, true);
+            }
+        } catch (error) {
+            console.error('Error deleting trip:', error);
+            showToast(dict.toast_network_error, true);
+        }
+    });
+
+    // Filters event listeners
+    tripDateFilter.addEventListener('change', renderTrips);
+    tripStatusFilter.addEventListener('change', renderTrips);
+    tripDepartureFilter.addEventListener('input', renderTrips);
+    tripDestinationFilter.addEventListener('input', renderTrips);
+
+    btnClearDateFilter.addEventListener('click', () => {
+        tripDateFilter.value = '';
+        tripStatusFilter.value = '';
+        tripDepartureFilter.value = '';
+        tripDestinationFilter.value = '';
+        renderTrips();
+    });
+
+    // Refresh Overview KPIs
+    async function loadSummary() {
+        try {
+            const response = await fetch(`${API_BASE}/summary`);
+            const data = await response.json();
+
+            kpiTotalDrivers.textContent = data.total_drivers;
+            kpiTotalPassengers.textContent = data.total_passengers;
+            kpiActiveTrips.textContent = data.active_trips;
+            
+            // Format Khmer Riel and USD Owed
+            kpiTotalOwed.textContent = `៛${data.total_owed_khr.toLocaleString()}`;
+            kpiTotalOwedUsd.textContent = `$${data.total_owed_usd.toFixed(2)} USD`;
+
+            // Operational KPIs directly from API
+            if (kpiTripsTotal) kpiTripsTotal.textContent = data.total_trips;
+            if (kpiTripsBookings) kpiTripsBookings.textContent = data.total_bookings;
+            if (kpiTripsActive) kpiTripsActive.textContent = data.active_trips;
+            if (kpiTripsOccupancy) kpiTripsOccupancy.textContent = `${Math.round(data.seat_occupancy_rate)}%`;
+
+            // Populate settings inputs
+            appSettings = data.settings;
+            enableDigitalPaymentInput.checked = appSettings.enable_digital_payment;
+            autoLockOnLimitInput.checked = appSettings.auto_lock_on_limit;
+            driverCashDebtLimitUsdInput.value = appSettings.driver_cash_debt_limit_usd;
+            driverCashDebtLimitKhrInput.value = appSettings.driver_cash_debt_limit_khr;
+        } catch (error) {
+            console.error('Error loading summary stats:', error);
+        }
+    }
+
+    // Save Settings
+    settingsForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const dict = TRANSLATIONS[currentLanguage];
+        
+        const payload = {
+            enable_digital_payment: enableDigitalPaymentInput.checked,
+            auto_lock_on_limit: autoLockOnLimitInput.checked,
+            driver_cash_debt_limit_usd: parseFloat(driverCashDebtLimitUsdInput.value),
+            driver_cash_debt_limit_khr: parseInt(driverCashDebtLimitKhrInput.value)
+        };
+
+        try {
+            const response = await fetch(`${API_BASE}/settings`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                showToast(dict.toast_settings_saved);
+                loadSummary();
+                if (activeTabId === 'drivers') loadDrivers();
+            } else {
+                showToast(dict.toast_settings_error, true);
+            }
+        } catch (error) {
+            console.error('Error saving settings:', error);
+            showToast(dict.toast_network_error, true);
+        }
+    });
+
+    // Seed Demo Data
+    if (btnSeedDemo && presetStatus) {
+        btnSeedDemo.addEventListener('click', async () => {
+            const dict = TRANSLATIONS[currentLanguage];
+            btnSeedDemo.disabled = true;
+            presetStatus.textContent = dict.txt_seeding;
+            presetStatus.style.color = 'var(--color-primary)';
+            
+            try {
+                const response = await fetch(`${API_BASE}/seed-demo`, {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    presetStatus.textContent = dict.txt_seeding_success;
+                    presetStatus.style.color = 'var(--color-success)';
+                    loadSummary();
+                    if (map) loadMapTrips();
+                    loadDrivers();
+                    loadPassengers();
+                    if (activeTabId === 'trips') loadTrips();
+                    if (activeTabId === 'revenue') loadRevenue();
+                } else {
+                    presetStatus.textContent = dict.txt_seeding_error;
+                    presetStatus.style.color = 'var(--color-error)';
+                }
+            } catch (error) {
+                console.error('Error seeding demo data:', error);
+                presetStatus.textContent = dict.toast_network_error;
+                presetStatus.style.color = 'var(--color-error)';
+            } finally {
+                setTimeout(() => {
+                    btnSeedDemo.disabled = false;
+                    presetStatus.textContent = '';
+                }, 5000);
+            }
+        });
+    }
+
+    // Load Drivers
+    async function loadDrivers() {
+        try {
+            const response = await fetch(`${API_BASE}/users?role=driver`);
+            currentDrivers = await response.json();
+            driverCurrentPage = 1;
+            renderDrivers();
+        } catch (error) {
+            console.error('Error loading drivers:', error);
+        }
+    }
+
+    // Render Drivers Grid with client-side Pagination
+    function renderDrivers() {
+        driversList.innerHTML = '';
+        const searchVal = searchDriversInput.value.toLowerCase();
+        const dict = TRANSLATIONS[currentLanguage];
+
+        const filtered = currentDrivers.filter(driver => 
+            driver.full_name.toLowerCase().includes(searchVal) || 
+            driver.phone.includes(searchVal)
+        );
+
+        const totalPages = Math.ceil(filtered.length / driverPageSize) || 1;
+        if (driverCurrentPage > totalPages) {
+            driverCurrentPage = totalPages;
+        }
+
+        const paginated = filtered.slice((driverCurrentPage - 1) * driverPageSize, driverCurrentPage * driverPageSize);
+
+        if (filtered.length === 0) {
+            driversList.innerHTML = `
+                <div class="content-card col-span-3 text-center" style="grid-column: span 3; padding: 2rem;">
+                    <p class="body-md">${dict.txt_no_drivers}</p>
+                </div>
+            `;
+            document.getElementById('drivers-pagination').innerHTML = '';
+            return;
+        }
+
+        paginated.forEach(driver => {
+            const isLocked = driver.wallet ? driver.wallet.is_locked : false;
+            const walletOwedKhr = driver.wallet ? driver.wallet.total_owed_khr : 0;
+            const walletOwedUsd = driver.wallet ? driver.wallet.total_owed_usd : 0;
+            
+            // Dynamically resolve defaults from API settings to avoid hardcoded fallbacks
+            const fallbackLimitKhr = appSettings ? appSettings.driver_cash_debt_limit_khr : 80000;
+            const fallbackLimitUsd = appSettings ? appSettings.driver_cash_debt_limit_usd : 20;
+
+            const creditLimitKhr = driver.wallet && driver.wallet.credit_limit_khr !== null ? driver.wallet.credit_limit_khr : fallbackLimitKhr;
+            const creditLimitUsd = driver.wallet && driver.wallet.credit_limit_usd !== null ? driver.wallet.credit_limit_usd : fallbackLimitUsd;
+
+            const card = document.createElement('div');
+            card.className = 'driver-card';
+
+            const mTier = driver.membership_code || 'normal';
+            
+            // Build driver card HTML in selected language
+            card.innerHTML = `
+                <div class="driver-card-header">
+                    <div class="driver-info-main">
+                        <span class="driver-name">${driver.full_name}</span>
+                        <span class="driver-phone">${driver.phone}</span>
+                        <div class="driver-tier-block" style="margin-top: 4px;">
+                            <span class="membership-badge ${mTier}">${driver.membership_label || 'Normal'}</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+                        <span class="status-pill ${driver.is_verified ? 'active' : 'unverified'}">
+                            ${driver.is_verified ? `<i class="fa-solid fa-circle-check"></i> ${dict.status_verified}` : dict.status_unverified}
+                        </span>
+                        <span class="status-pill ${isLocked ? 'locked' : 'active'}" style="margin-top: 4px;">
+                            ${isLocked ? `<i class="fa-solid fa-lock"></i> ${dict.status_locked}` : `<i class="fa-solid fa-circle-check"></i> ${dict.status_open}`}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="driver-stats-row">
+                    <div class="driver-stat">
+                        <span class="driver-stat-val">${driver.rating_avg.toFixed(1)} <i class="fa-solid fa-star" style="color:var(--color-warning); font-size:0.75rem;"></i></span>
+                        <span class="driver-stat-lbl">Rating</span>
+                    </div>
+                    <div class="driver-stat">
+                        <span class="driver-stat-val">${driver.rating_count}</span>
+                        <span class="driver-stat-lbl">Votes</span>
+                    </div>
+                    <div class="driver-stat">
+                        <span class="driver-stat-val">${driver.completed_trips}</span>
+                        <span class="driver-stat-lbl">Trips</span>
+                    </div>
+                </div>
+
+                <div class="driver-financial-block">
+                    <div class="financial-owed-row">
+                        <span class="financial-owed-lbl">${dict.kpi_debt_owed}</span>
+                        <span class="financial-owed-val">៛${walletOwedKhr.toLocaleString()} / $${walletOwedUsd.toFixed(2)}</span>
+                    </div>
+                    <div class="financial-limit-meta">
+                        Limit: ៛${creditLimitKhr.toLocaleString()} / $${creditLimitUsd.toFixed(2)}
+                    </div>
+                </div>
+
+                <div class="driver-actions">
+                    <button class="btn btn-chip ${driver.is_verified ? 'secondary' : 'success'}" onclick="toggleVerify('${driver.id}')">
+                        ${driver.is_verified ? dict.btn_unverify : dict.btn_verify}
+                    </button>
+                    <button class="btn btn-chip ${isLocked ? 'success' : 'danger'}" onclick="toggleLock('${driver.id}', ${isLocked})">
+                        ${isLocked ? dict.btn_unlock : dict.btn_lock}
+                    </button>
+                    
+                    <div class="driver-actions-bottom">
+                        <select onchange="changeMembershipTier('${driver.id}', this.value)">
+                            <option value="normal" ${mTier === 'normal' ? 'selected' : ''}>${dict.option_normal}</option>
+                            <option value="pro" ${mTier === 'pro' ? 'selected' : ''}>${dict.option_pro}</option>
+                            <option value="vip" ${mTier === 'vip' ? 'selected' : ''}>${dict.option_vip}</option>
+                        </select>
+                        <button class="btn btn-primary btn-chip" style="flex-grow:0; padding: 0.4rem 0.8rem;" onclick="openSettleModal('${driver.id}', '${driver.full_name}', ${walletOwedKhr}, ${walletOwedUsd})">
+                            <i class="fa-solid fa-hand-holding-dollar"></i> ${dict.btn_settle}
+                        </button>
+                    </div>
+                </div>
+            `;
+            driversList.appendChild(card);
+        });
+
+        renderDriversPagination(filtered.length);
+    }
+
+    // Driver pagination button builder
+    function renderDriversPagination(totalCount) {
+        const pagEl = document.getElementById('drivers-pagination');
+        pagEl.innerHTML = '';
+        
+        const totalPages = Math.ceil(totalCount / driverPageSize) || 1;
+
+        // Prev btn
+        const prevBtn = document.createElement('button');
+        prevBtn.className = 'btn btn-chip secondary';
+        prevBtn.disabled = driverCurrentPage === 1;
+        prevBtn.innerHTML = '<i class="fa-solid fa-chevron-left"></i>';
+        prevBtn.addEventListener('click', () => {
+            if (driverCurrentPage > 1) {
+                driverCurrentPage--;
+                renderDrivers();
+            }
+        });
+
+        // Page info
+        const info = document.createElement('span');
+        info.className = 'page-info';
+        info.textContent = currentLanguage === 'en' 
+            ? `Page ${driverCurrentPage} of ${totalPages}`
+            : `ទំព័រ ${driverCurrentPage} នៃ ${totalPages}`;
+
+        // Next btn
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'btn btn-chip secondary';
+        nextBtn.disabled = driverCurrentPage === totalPages;
+        nextBtn.innerHTML = '<i class="fa-solid fa-chevron-right"></i>';
+        nextBtn.addEventListener('click', () => {
+            if (driverCurrentPage < totalPages) {
+                driverCurrentPage++;
+                renderDrivers();
+            }
+        });
+
+        pagEl.appendChild(prevBtn);
+        pagEl.appendChild(info);
+        pagEl.appendChild(nextBtn);
+    }
+
+    searchDriversInput.addEventListener('input', () => {
+        driverCurrentPage = 1;
+        renderDrivers();
+    });
+
+    searchPassengersInput.addEventListener('input', () => {
+        passengerCurrentPage = 1;
+        renderPassengers();
+    });
+
+    // Global action helpers
+    window.toggleVerify = async (userId) => {
+        const dict = TRANSLATIONS[currentLanguage];
+        try {
+            const response = await fetch(`${API_BASE}/users/${userId}/toggle-verification`, {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                showToast(dict.toast_verified);
+                loadDrivers();
+                loadPassengers();
+                loadSummary();
+            } else {
+                showToast(dict.toast_network_error, true);
+            }
+        } catch (error) {
+            console.error('Error toggling verification:', error);
+            showToast(dict.toast_network_error, true);
+        }
+    };
+
+    window.toggleLock = async (userId, currentlyLocked) => {
+        const dict = TRANSLATIONS[currentLanguage];
+        let reason = null;
+        if (!currentlyLocked) {
+            reason = prompt(currentLanguage === 'en' ? 'Enter a reason for manual lock override (optional):' : 'បញ្ចូលមូលហេតុនៃការចាក់សោ (ស្រេចចិត្ត)៖');
+            if (reason === null) return;
+        }
+
+        const url = reason 
+            ? `${API_BASE}/users/${userId}/toggle-wallet-lock?reason=${encodeURIComponent(reason)}` 
+            : `${API_BASE}/users/${userId}/toggle-wallet-lock`;
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                showToast(dict.toast_lock_updated);
+                loadDrivers();
+            } else {
+                showToast(dict.toast_network_error, true);
+            }
+        } catch (error) {
+            console.error('Error toggling wallet lock:', error);
+            showToast(dict.toast_network_error, true);
+        }
+    };
+
+    window.changeMembershipTier = async (userId, tier) => {
+        const dict = TRANSLATIONS[currentLanguage];
+        try {
+            const response = await fetch(`${API_BASE}/users/${userId}/change-membership?tier=${tier}`, {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                showToast(dict.toast_membership_updated);
+                loadDrivers();
+            } else {
+                showToast(dict.toast_network_error, true);
+            }
+        } catch (error) {
+            console.error('Error changing membership:', error);
+            showToast(dict.toast_network_error, true);
+        }
+    };
+
+    // Settle Modal Control
+    window.openSettleModal = (driverId, name, owedKhr, owedUsd) => {
+        settleDriverId.value = driverId;
+        settleDriverName.textContent = name;
+        settleDriverDebt.textContent = `៛${owedKhr.toLocaleString()} / $${owedUsd.toFixed(2)} USD`;
+        settleNotesInput.value = '';
+        settleModal.classList.add('active');
+    };
+
+    function closeModal() {
+        settleModal.classList.remove('active');
+    }
+
+    btnCloseModal.addEventListener('click', closeModal);
+    btnCancelSettle.addEventListener('click', closeModal);
+    settleModal.addEventListener('click', (e) => {
+        if (e.target === settleModal) closeModal();
+    });
+
+    // Record Debt Settlement
+    settleForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const dict = TRANSLATIONS[currentLanguage];
+
+        const payload = {
+            driver_id: settleDriverId.value,
+            notes: settleNotesInput.value
+        };
+
+        try {
+            const response = await fetch(`${API_BASE}/wallet/settle`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                showToast(dict.toast_settled);
+                closeModal();
+                loadDrivers();
+                loadSummary();
+            } else {
+                showToast(dict.toast_network_error, true);
+            }
+        } catch (error) {
+            console.error('Error settling debt:', error);
+            showToast(dict.toast_network_error, true);
+        }
+    });
+
+    // Load Passengers
+    async function loadPassengers() {
+        try {
+            const response = await fetch(`${API_BASE}/users?role=passenger`);
+            currentPassengers = await response.json();
+            passengerCurrentPage = 1;
+            renderPassengers();
+        } catch (error) {
+            console.error('Error loading passengers:', error);
+        }
+    }
+
+    // Render Passengers list table with Pagination
+    function renderPassengers() {
+        passengersList.innerHTML = '';
+        const searchVal = searchPassengersInput.value.toLowerCase();
+        const dict = TRANSLATIONS[currentLanguage];
+
+        const filtered = currentPassengers.filter(passenger => 
+            passenger.full_name.toLowerCase().includes(searchVal) || 
+            passenger.phone.includes(searchVal)
+        );
+
+        const totalPages = Math.ceil(filtered.length / passengerPageSize) || 1;
+        if (passengerCurrentPage > totalPages) {
+            passengerCurrentPage = totalPages;
+        }
+
+        const paginated = filtered.slice((passengerCurrentPage - 1) * passengerPageSize, passengerCurrentPage * passengerPageSize);
+
+        if (filtered.length === 0) {
+            passengersList.innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center" style="padding: 2rem; color: var(--color-on-surface-variant);">
+                        ${dict.txt_no_passengers}
+                    </td>
+                </tr>
+            `;
+            document.getElementById('passengers-pagination').innerHTML = '';
+            return;
+        }
+
+        paginated.forEach(p => {
+            const tr = document.createElement('tr');
+            
+            const dateStr = new Date(p.created_at).toLocaleDateString(currentLanguage === 'en' ? 'en-US' : 'km-KH', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+
+            tr.innerHTML = `
+                <td style="font-family: var(--font-display); font-weight:600; color:var(--color-primary);">${p.full_name}</td>
+                <td>${p.phone}</td>
+                <td>
+                    <span class="status-pill ${p.is_verified ? 'active' : 'unverified'}">
+                        ${p.is_verified ? `<i class="fa-solid fa-circle-check"></i> ${dict.status_verified}` : dict.status_unverified}
+                    </span>
+                </td>
+                <td>${p.rating_avg.toFixed(1)} <i class="fa-solid fa-star" style="color:var(--color-warning); font-size:0.75rem;"></i></td>
+                <td>${p.completed_trips} ${currentLanguage === 'en' ? 'bookings' : 'ការកក់'}</td>
+                <td>${dateStr}</td>
+                <td class="text-right">
+                    <button class="btn-chip ${p.is_verified ? 'danger' : 'success'}" onclick="toggleVerify('${p.id}')">
+                        ${p.is_verified ? dict.btn_unverify : dict.btn_verify}
+                    </button>
+                </td>
+            `;
+            passengersList.appendChild(tr);
+        });
+
+        renderPassengersPagination(filtered.length);
+    }
+
+    // Passengers pagination button builder
+    function renderPassengersPagination(totalCount) {
+        const pagEl = document.getElementById('passengers-pagination');
+        pagEl.innerHTML = '';
+        
+        const totalPages = Math.ceil(totalCount / passengerPageSize) || 1;
+
+        // Prev btn
+        const prevBtn = document.createElement('button');
+        prevBtn.className = 'btn btn-chip secondary';
+        prevBtn.disabled = passengerCurrentPage === 1;
+        prevBtn.innerHTML = '<i class="fa-solid fa-chevron-left"></i>';
+        prevBtn.addEventListener('click', () => {
+            if (passengerCurrentPage > 1) {
+                passengerCurrentPage--;
+                renderPassengers();
+            }
+        });
+
+        // Page info
+        const info = document.createElement('span');
+        info.className = 'page-info';
+        info.textContent = currentLanguage === 'en' 
+            ? `Page ${passengerCurrentPage} of ${totalPages}`
+            : `ទំព័រ ${passengerCurrentPage} នៃ ${totalPages}`;
+
+        // Next btn
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'btn btn-chip secondary';
+        nextBtn.disabled = passengerCurrentPage === totalPages;
+        nextBtn.innerHTML = '<i class="fa-solid fa-chevron-right"></i>';
+        nextBtn.addEventListener('click', () => {
+            if (passengerCurrentPage < totalPages) {
+                passengerCurrentPage++;
+                renderPassengers();
+            }
+        });
+
+        pagEl.appendChild(prevBtn);
+        pagEl.appendChild(info);
+        pagEl.appendChild(nextBtn);
+    }
+
+    // Toast Notifications
+    function showToast(message, isError = false) {
+        const toast = document.createElement('div');
+        toast.style.position = 'fixed';
+        toast.style.bottom = '20px';
+        toast.style.right = '20px';
+        toast.style.background = isError ? 'var(--color-error)' : 'var(--color-primary)';
+        toast.style.color = '#ffffff';
+        toast.style.padding = '10px 20px';
+        toast.style.borderRadius = 'var(--radius-xl)';
+        toast.style.boxShadow = '0 10px 20px rgba(0, 27, 68, 0.2)';
+        toast.style.fontFamily = 'var(--font-display)';
+        toast.style.fontWeight = '600';
+        toast.style.fontSize = '0.8rem';
+        toast.style.zIndex = '99999';
+        toast.style.transition = 'all 0.3s ease';
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+
+        toast.textContent = message;
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateY(0)';
+        }, 50);
+
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(10px)';
+            setTimeout(() => {
+                document.body.removeChild(toast);
+            }, 300);
+        }, 4000);
+    }
+
+    // Refresh action
+    btnRefreshAll.addEventListener('click', () => {
+        loadSummary();
+        if (map) loadMapTrips();
+        loadDrivers();
+        loadPassengers();
+        if (activeTabId === 'trips') loadTrips();
+        if (activeTabId === 'revenue') loadRevenue();
+        if (activeTabId === 'promotions') loadPromotionsData();
+        showToast(TRANSLATIONS[currentLanguage].toast_refresh);
+    });
+    
+
+    if (btnAddDiscount) {
+        btnAddDiscount.addEventListener('click', () => {
+            formModalDiscount.reset();
+            document.getElementById('edit-discount-id').value = '';
+            document.getElementById('discount-modal-title').textContent = currentLanguage === 'en' ? 'Create Discount Ticket' : 'បង្កើតប័ណ្ណបញ្ចុះតម្លៃ';
+            document.getElementById('discount-modal-save-label').textContent = currentLanguage === 'en' ? 'Create Ticket' : 'បង្កើតប័ណ្ណ';
+            discountModal.classList.add('active');
+        });
+    }
+
+    if (btnCloseDiscountModal) {
+        btnCloseDiscountModal.addEventListener('click', () => {
+            discountModal.classList.remove('active');
+        });
+    }
+
+    if (btnAddAd) {
+        btnAddAd.addEventListener('click', () => {
+            formModalAd.reset();
+            document.getElementById('edit-ad-id').value = '';
+            modalAdImageUrl.value = '';
+            if (modalAdImagePreview) {
+                modalAdImagePreview.removeAttribute('src');
+                modalAdImagePreview.style.display = 'none';
+            }
+            document.getElementById('ad-modal-title').textContent = currentLanguage === 'en' ? 'Create Banner Ad' : 'បង្កើតផ្ទាំងផ្សព្វផ្សាយ';
+            document.getElementById('ad-modal-save-label').textContent = currentLanguage === 'en' ? 'Create Banner' : 'បង្កើតផ្ទាំងផ្សាយ';
+            adModal.classList.add('active');
+        });
+    }
+
+    if (btnCloseAdModal) {
+        btnCloseAdModal.addEventListener('click', () => {
+            adModal.classList.remove('active');
+        });
+    }
+
+    if (modalAdImageFile && modalAdImagePreview) {
+        modalAdImageFile.addEventListener('change', () => {
+            const file = modalAdImageFile.files && modalAdImageFile.files[0];
+            if (!file) {
+                modalAdImagePreview.removeAttribute('src');
+                modalAdImagePreview.style.display = 'none';
+                return;
+            }
+            modalAdImagePreview.src = URL.createObjectURL(file);
+            modalAdImagePreview.style.display = 'block';
+        });
+    }
+
+    async function uploadSelectedAdImage(editId) {
+        const file = modalAdImageFile && modalAdImageFile.files ? modalAdImageFile.files[0] : null;
+        if (!file) {
+            const existingImageUrl = modalAdImageUrl ? modalAdImageUrl.value : '';
+            if (editId && existingImageUrl) return existingImageUrl;
+            throw new Error('missing_ad_image');
+        }
+
+        if (!file.type.startsWith('image/')) {
+            throw new Error('invalid_ad_image_type');
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            throw new Error('ad_image_too_large');
+        }
+
+        const response = await fetch(`${API_BASE}/ads/upload-image`, {
+            method: 'POST',
+            headers: { 'Content-Type': file.type },
+            body: file
+        });
+        if (!response.ok) {
+            throw new Error('ad_image_upload_failed');
+        }
+
+        const data = await response.json();
+        if (!data.image_url) {
+            throw new Error('ad_image_upload_failed');
+        }
+        return data.image_url;
+    }
+
+    if (formModalDiscount) {
+        formModalDiscount.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const dict = TRANSLATIONS[currentLanguage];
+            const editId = document.getElementById('edit-discount-id').value;
+            
+            // Validate Percent
+            const percentVal = parseInt(document.getElementById('modal-disc-percent').value);
+            if (isNaN(percentVal) || percentVal < 0 || percentVal > 100) {
+                showToast(currentLanguage === 'en' ? 'Discount percent must be between 0 and 100.' : 'ភាគរយបញ្ចុះតម្លៃត្រូវតែនៅចន្លោះពី 0 ដល់ 100។', true);
+                return;
+            }
+
+            // Validate Expiry Date
+            const expiryVal = document.getElementById('modal-disc-expiry').value;
+            let expiresAt = null;
+            if (expiryVal) {
+                try {
+                    expiresAt = new Date(expiryVal).toISOString();
+                } catch (err) {
+                    showToast(currentLanguage === 'en' ? 'Invalid expiry date format.' : 'ទម្រង់កាលបរិច្ឆេទផុតកំណត់មិនត្រឹមត្រូវ។', true);
+                    return;
+                }
+            } else {
+                showToast(currentLanguage === 'en' ? 'Expiry date is required.' : 'តម្រូវឱ្យមានកាលបរិច្ឆេទផុតកំណត់។', true);
+                return;
+            }
+
+            const payload = {
+                code: document.getElementById('modal-disc-code').value.trim(),
+                title: document.getElementById('modal-disc-title').value.trim(),
+                title_kh: document.getElementById('modal-disc-title-kh').value.trim(),
+                discount_percent: percentVal,
+                expires_at: expiresAt,
+                description: document.getElementById('modal-disc-desc').value.trim() || null,
+                description_kh: document.getElementById('modal-disc-desc-kh').value.trim() || null,
+                is_active: document.getElementById('modal-disc-active').checked
+            };
+
+            try {
+                const url = editId ? `${API_BASE}/discounts/${editId}` : `${API_BASE}/discounts`;
+                const method = editId ? 'PUT' : 'POST';
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (response.ok) {
+                    const msg = editId 
+                        ? (currentLanguage === 'en' ? 'Discount ticket updated successfully.' : 'ប័ណ្ណបញ្ចុះតម្លៃត្រូវបានកែប្រែដោយជោគជ័យ។')
+                        : (currentLanguage === 'en' ? 'Discount ticket created successfully.' : 'ប័ណ្ណបញ្ចុះតម្លៃត្រូវបានបង្កើតដោយជោគជ័យ។');
+                    showToast(msg);
+                    formModalDiscount.reset();
+                    discountModal.classList.remove('active');
+                    loadPromotionsData();
+                } else {
+                    showToast(dict.toast_network_error, true);
+                }
+            } catch (error) {
+                console.error('Error saving discount:', error);
+                showToast(dict.toast_network_error, true);
+            }
+        });
+    }
+
+    if (formModalAd) {
+        formModalAd.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const dict = TRANSLATIONS[currentLanguage];
+            const editId = document.getElementById('edit-ad-id').value;
+
+            try {
+                const imageUrl = await uploadSelectedAdImage(editId);
+                const payload = {
+                    title: document.getElementById('modal-ad-title').value.trim(),
+                    title_kh: document.getElementById('modal-ad-title-kh').value.trim(),
+                    image_url: imageUrl,
+                    link_url: document.getElementById('modal-ad-link').value.trim() || null,
+                    description: document.getElementById('modal-ad-desc').value.trim() || null,
+                    description_kh: document.getElementById('modal-ad-desc-kh').value.trim() || null,
+                    is_active: document.getElementById('modal-ad-active').checked
+                };
+                const url = editId ? `${API_BASE}/ads/${editId}` : `${API_BASE}/ads`;
+                const method = editId ? 'PUT' : 'POST';
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (response.ok) {
+                    const msg = editId 
+                        ? (currentLanguage === 'en' ? 'Ad banner updated successfully.' : 'ផ្ទាំងផ្សព្វផ្សាយស្លាយត្រូវបានកែប្រែដោយជោគជ័យ។')
+                        : (currentLanguage === 'en' ? 'Ad banner created successfully.' : 'ផ្ទាំងផ្សព្វផ្សាយស្លាយត្រូវបានបង្កើតដោយជោគជ័យ។');
+                    showToast(msg);
+                    formModalAd.reset();
+                    adModal.classList.remove('active');
+                    loadPromotionsData();
+                } else {
+                    showToast(dict.toast_network_error, true);
+                }
+            } catch (error) {
+                console.error('Error saving ad banner:', error);
+                if (error.message === 'missing_ad_image') {
+                    showToast(currentLanguage === 'en' ? 'Please choose a banner photo from this device.' : 'សូមជ្រើសរើសរូបថតផ្ទាំងផ្សព្វផ្សាយពីឧបករណ៍នេះ។', true);
+                } else if (error.message === 'ad_image_too_large') {
+                    showToast(currentLanguage === 'en' ? 'Banner photo must be 5 MB or smaller.' : 'រូបថតផ្ទាំងផ្សព្វផ្សាយត្រូវតែមានទំហំ 5 MB ឬតូចជាងនេះ។', true);
+                } else if (error.message === 'invalid_ad_image_type') {
+                    showToast(currentLanguage === 'en' ? 'Banner photo must be an image file.' : 'រូបថតផ្ទាំងផ្សព្វផ្សាយត្រូវតែជាឯកសាររូបភាព។', true);
+                } else {
+                    showToast(dict.toast_network_error, true);
+                }
+            }
+        });
+    }
+
+    async function loadPromotionsData() {
+        if (!discountsTableBody || !adsTableBody) return;
+        try {
+            const discResp = await fetch(`${API_BASE}/discounts`);
+            const discounts = await discResp.json();
+            discountsTableBody.innerHTML = '';
+            
+            if (!Array.isArray(discounts)) {
+                discountsTableBody.innerHTML = `<tr><td colspan="6" class="text-center" style="padding:2rem; color:var(--color-danger);">Failed to load discount tickets.</td></tr>`;
+            } else if (discounts.length === 0) {
+                discountsTableBody.innerHTML = `<tr><td colspan="6" class="text-center" style="padding:2rem;">No discount tickets found.</td></tr>`;
+            } else {
+                discounts.forEach(d => {
+                    const tr = document.createElement('tr');
+                    const expDate = new Date(d.expires_at).toLocaleDateString(currentLanguage === 'en' ? 'en-US' : 'km-KH');
+                    const titleText = currentLanguage === 'km' ? d.title_kh : d.title;
+                    const descText = currentLanguage === 'km' ? (d.description_kh || '') : (d.description || '');
+                    
+                    const statusText = d.is_active 
+                        ? (currentLanguage === 'en' ? 'Active' : 'សកម្ម') 
+                        : (currentLanguage === 'en' ? 'Inactive' : 'មិនសកម្ម');
+                    const statusClass = d.is_active ? 'status-active' : 'status-cancelled';
+
+                    tr.innerHTML = `
+                        <td style="font-family:var(--font-display); font-weight:800; color:var(--color-primary);">${d.code}</td>
+                        <td>
+                            <div>${titleText}</div>
+                            <small style="color:var(--color-on-surface-variant); font-size:0.65rem;">${descText}</small>
+                        </td>
+                        <td style="font-weight:700; color:var(--color-success);">${d.discount_percent}%</td>
+                        <td>
+                            <span class="ticket-status-badge ${statusClass}">${statusText}</span>
+                        </td>
+                        <td>${expDate}</td>
+                        <td class="text-right" style="white-space: nowrap;">
+                            <button class="btn btn-chip" onclick="openEditDiscountModal('${d.id}')" style="margin-right: 4px;">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            <button class="btn btn-chip danger" onclick="deleteDiscountTicket('${d.id}')">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </td>
+                    `;
+                    discountsTableBody.appendChild(tr);
+                });
+            }
+
+            const adsResp = await fetch(`${API_BASE}/ads`);
+            const ads = await adsResp.json();
+            adsTableBody.innerHTML = '';
+            
+            if (!Array.isArray(ads)) {
+                adsTableBody.innerHTML = `<tr><td colspan="5" class="text-center" style="padding:2rem; color:var(--color-danger);">Failed to load banner ads.</td></tr>`;
+            } else if (ads.length === 0) {
+                adsTableBody.innerHTML = `<tr><td colspan="5" class="text-center" style="padding:2rem;">No banner ads found.</td></tr>`;
+            } else {
+                ads.forEach(ad => {
+                    const tr = document.createElement('tr');
+                    const titleText = currentLanguage === 'km' ? ad.title_kh : ad.title;
+                    const descText = currentLanguage === 'km' ? (ad.description_kh || '') : (ad.description || '');
+                    
+                    const statusText = ad.is_active 
+                        ? (currentLanguage === 'en' ? 'Active' : 'សកម្ម') 
+                        : (currentLanguage === 'en' ? 'Inactive' : 'មិនសកម្ម');
+                    const statusClass = ad.is_active ? 'status-active' : 'status-cancelled';
+
+                    tr.innerHTML = `
+                        <td>
+                            <img src="${ad.image_url}" style="width:75px; height:42px; object-fit:cover; border-radius:var(--radius-md);" onerror="this.src='https://placehold.co/75x42?text=Banner'">
+                        </td>
+                        <td>
+                            <div style="font-weight:700;">${titleText}</div>
+                            <small style="color:var(--color-on-surface-variant); font-size:0.65rem;">${descText}</small>
+                        </td>
+                        <td style="font-family:monospace; font-size:0.7rem;">${ad.link_url || '—'}</td>
+                        <td>
+                            <span class="ticket-status-badge ${statusClass}">${statusText}</span>
+                        </td>
+                        <td class="text-right" style="white-space: nowrap;">
+                            <button class="btn btn-chip" onclick="openEditAdModal('${ad.id}')" style="margin-right: 4px;">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            <button class="btn btn-chip danger" onclick="deleteAdSlide('${ad.id}')">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </td>
+                    `;
+                    adsTableBody.appendChild(tr);
+                });
+            }
+        } catch (error) {
+            console.error('Error loading promotions data:', error);
+        }
+    }
+
+    window.openEditDiscountModal = async (discountId) => {
+        try {
+            const response = await fetch(`${API_BASE}/discounts`);
+            const discounts = await response.json();
+            if (!Array.isArray(discounts)) return;
+            const discount = discounts.find(d => d.id === discountId);
+            if (!discount) return;
+
+            document.getElementById('edit-discount-id').value = discount.id;
+            document.getElementById('modal-disc-code').value = discount.code;
+            document.getElementById('modal-disc-title').value = discount.title;
+            document.getElementById('modal-disc-title-kh').value = discount.title_kh;
+            document.getElementById('modal-disc-percent').value = discount.discount_percent;
+            
+            const expiryDate = discount.expires_at.split('T')[0];
+            document.getElementById('modal-disc-expiry').value = expiryDate;
+            document.getElementById('modal-disc-desc').value = discount.description || '';
+            document.getElementById('modal-disc-desc-kh').value = discount.description_kh || '';
+            document.getElementById('modal-disc-active').checked = discount.is_active;
+
+            document.getElementById('discount-modal-title').textContent = currentLanguage === 'en' ? 'Edit Discount Ticket' : 'កែសម្រួលប័ណ្ណបញ្ចុះតម្លៃ';
+            document.getElementById('discount-modal-save-label').textContent = currentLanguage === 'en' ? 'Save Changes' : 'រក្សាទុកការផ្លាស់ប្តូរ';
+            
+            discountModal.classList.add('active');
+        } catch (error) {
+            console.error('Error opening edit discount modal:', error);
+        }
+    };
+
+    window.openEditAdModal = async (adId) => {
+        try {
+            const response = await fetch(`${API_BASE}/ads`);
+            const ads = await response.json();
+            if (!Array.isArray(ads)) return;
+            const ad = ads.find(a => a.id === adId);
+            if (!ad) return;
+
+            document.getElementById('edit-ad-id').value = ad.id;
+            document.getElementById('modal-ad-title').value = ad.title;
+            document.getElementById('modal-ad-title-kh').value = ad.title_kh;
+            modalAdImageUrl.value = ad.image_url;
+            if (modalAdImageFile) modalAdImageFile.value = '';
+            if (modalAdImagePreview) {
+                modalAdImagePreview.src = ad.image_url;
+                modalAdImagePreview.style.display = 'block';
+            }
+            document.getElementById('modal-ad-link').value = ad.link_url || '';
+            document.getElementById('modal-ad-desc').value = ad.description || '';
+            document.getElementById('modal-ad-desc-kh').value = ad.description_kh || '';
+            document.getElementById('modal-ad-active').checked = ad.is_active;
+
+            document.getElementById('ad-modal-title').textContent = currentLanguage === 'en' ? 'Edit Banner Ad' : 'កែសម្រួលផ្ទាំងផ្សព្វផ្សាយ';
+            document.getElementById('ad-modal-save-label').textContent = currentLanguage === 'en' ? 'Save Changes' : 'រក្សាទុកការផ្លាស់ប្តូរ';
+
+            adModal.classList.add('active');
+        } catch (error) {
+            console.error('Error opening edit ad modal:', error);
+        }
+    };
+
+    window.deleteDiscountTicket = async (ticketId) => {
+        if (!confirm(currentLanguage === 'en' ? 'Delete this discount ticket?' : 'តើអ្នកចង់លុបប័ណ្ណបញ្ចុះតម្លៃនេះមែនទេ?')) return;
+        try {
+            const response = await fetch(`${API_BASE}/discounts/${ticketId}`, { method: 'DELETE' });
+            if (response.ok) {
+                showToast(currentLanguage === 'en' ? 'Discount ticket deleted.' : 'បានលុបប័ណ្ណបញ្ចុះតម្លៃ។');
+                loadPromotionsData();
+            }
+        } catch (error) {
+            console.error('Error deleting discount:', error);
+        }
+    };
+
+    window.deleteAdSlide = async (adId) => {
+        if (!confirm(currentLanguage === 'en' ? 'Delete this banner ad?' : 'តើអ្នកចង់លុបការផ្សព្វផ្សាយនេះមែនទេ?')) return;
+        try {
+            const response = await fetch(`${API_BASE}/ads/${adId}`, { method: 'DELETE' });
+            if (response.ok) {
+                showToast(currentLanguage === 'en' ? 'Ad deleted.' : 'បានលុបការផ្សព្វផ្សាយ។');
+                loadPromotionsData();
+            }
+        } catch (error) {
+            console.error('Error deleting ad:', error);
+        }
+    };
+
+    // Sequential Promise Chaining to guarantee appSettings are loaded before drivers/passengers rendering
+    loadSummary().then(() => {
+        loadDrivers();
+        loadPassengers();
+    });
+});

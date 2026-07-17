@@ -1,17 +1,19 @@
+import asyncio
 import json
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, selectinload, sessionmaker
 from sqlalchemy.pool import StaticPool
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from uuid import UUID, uuid4
 
 import app.routes.travel as travel_routes
+import app.routes.live_ws as live_ws_routes
 
 from app.main import app
 from app.db import get_db
-from app.models import AppRuntimeSetting, AuthToken, Booking, DriverWallet, Trip, TrustedDevice, User, UserNotification, Vehicle
+from app.models import AppRuntimeSetting, AuthToken, Booking, DriverMembership, DriverWallet, DriverWalletEntry, Trip, TrustedDevice, User, UserNotification, Vehicle
 
 # Monkey-patch ARRAY type for SQLite compatibility
 from sqlalchemy import ARRAY as _ARRAY
@@ -65,6 +67,7 @@ TrustedDevice.__table__.create(bind=test_engine)
 Vehicle.__table__.create(bind=test_engine)
 Trip.__table__.create(bind=test_engine)
 DriverWallet.__table__.create(bind=test_engine)
+DriverMembership.__table__.create(bind=test_engine)
 AppRuntimeSetting.__table__.create(bind=test_engine)
 
 client = TestClient(app)
@@ -110,7 +113,14 @@ def _create_booking_related_tables() -> None:
     DriverWalletEntry.__table__.create(bind=test_engine, checkfirst=True)
 
 
-def _insert_booking(booking_id: str, trip_id: str, passenger_id: str, pickup_status: str = "pending") -> None:
+def _insert_booking(
+    booking_id: str,
+    trip_id: str,
+    passenger_id: str,
+    pickup_status: str = "pending",
+    *,
+    total_price: float = 5.0,
+) -> None:
     """Insert a booking using hex UUIDs for SQLite ORM compatibility."""
     from uuid import UUID as _UUID
     bid = _UUID(booking_id).hex
@@ -121,7 +131,7 @@ def _insert_booking(booking_id: str, trip_id: str, passenger_id: str, pickup_sta
             "INSERT INTO bookings (id, trip_id, passenger_id, seat_numbers, total_price, "
             "payment_method, payment_status, pickup_status, status, created_at) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (bid, tid, pid, "[1]", 5.0, "cash", "pending", pickup_status, "confirmed", "2026-06-15 11:30:00"),
+            (bid, tid, pid, "[1]", total_price, "cash", "pending", pickup_status, "confirmed", "2026-06-15 11:30:00"),
         )
 
 
@@ -152,6 +162,7 @@ def setup_function() -> None:
         connection.exec_driver_sql("DROP TABLE IF EXISTS bookings")
     Trip.__table__.drop(bind=test_engine, checkfirst=True)
     Vehicle.__table__.drop(bind=test_engine, checkfirst=True)
+    DriverMembership.__table__.drop(bind=test_engine, checkfirst=True)
     DriverWallet.__table__.drop(bind=test_engine, checkfirst=True)
     AppRuntimeSetting.__table__.drop(bind=test_engine, checkfirst=True)
     UserNotification.__table__.drop(bind=test_engine, checkfirst=True)
@@ -164,6 +175,7 @@ def setup_function() -> None:
     Vehicle.__table__.create(bind=test_engine)
     Trip.__table__.create(bind=test_engine)
     DriverWallet.__table__.create(bind=test_engine)
+    DriverMembership.__table__.create(bind=test_engine)
     AppRuntimeSetting.__table__.create(bind=test_engine)
     _create_bookings_table()
     _create_booking_live_locations_table()
@@ -252,6 +264,51 @@ def _create_trip_for_test(
     return response.json()["id"]
 
 
+def test_vehicle_type_is_derived_from_seat_type() -> None:
+    token = _signup_driver()
+
+    response = client.post(
+        "/travel/vehicles",
+        headers=_auth_headers(token),
+        json={
+            "plate_number": "2AB-8888",
+            "seat_type": 4,
+            "vehicle_type": "bus",
+            "model": "Prius",
+            "color": "White",
+            "company_name": "Demo Travel",
+        },
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["seat_type"] == 4
+    assert body["vehicle_type"] == "sedan"
+
+
+def test_vehicle_type_is_rederived_when_seat_type_changes() -> None:
+    token = _signup_driver()
+    vehicle_id = _create_vehicle(token)
+
+    response = client.patch(
+        f"/travel/vehicles/{vehicle_id}",
+        headers=_auth_headers(token),
+        json={
+            "plate_number": "2AB-9999",
+            "seat_type": 30,
+            "vehicle_type": "sedan",
+            "model": "County",
+            "color": "White",
+            "company_name": "Demo Travel",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["seat_type"] == 30
+    assert body["vehicle_type"] == "minibus"
+
+
 def test_trusted_device_login_issues_new_token_without_password() -> None:
     signup_response = client.post(
         "/travel/auth/signup",
@@ -288,20 +345,47 @@ def test_trusted_device_login_issues_new_token_without_password() -> None:
 
 def test_app_config_returns_google_places_key_from_backend_env(monkeypatch) -> None:
     monkeypatch.setenv("GOOGLE_PLACES_API_KEY", "backend-places-key")
+    monkeypatch.delenv("GOOGLE_PLACES_API_KEY_ANDROID", raising=False)
+    monkeypatch.delenv("GOOGLE_PLACES_API_KEY_IOS", raising=False)
 
     response = client.get("/travel/app-config")
 
     assert response.status_code == 200
-    assert response.json() == {"google_places_api_key": "backend-places-key"}
+    assert response.json() == {
+        "google_places_api_key": "backend-places-key",
+        "google_places_api_key_android": "backend-places-key",
+        "google_places_api_key_ios": "backend-places-key",
+    }
+
+
+def test_app_config_returns_platform_google_places_keys(monkeypatch) -> None:
+    monkeypatch.setenv("GOOGLE_PLACES_API_KEY", "shared-places-key")
+    monkeypatch.setenv("GOOGLE_PLACES_API_KEY_ANDROID", "android-places-key")
+    monkeypatch.setenv("GOOGLE_PLACES_API_KEY_IOS", "ios-places-key")
+
+    response = client.get("/travel/app-config")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "google_places_api_key": "shared-places-key",
+        "google_places_api_key_android": "android-places-key",
+        "google_places_api_key_ios": "ios-places-key",
+    }
 
 
 def test_app_config_omits_google_places_key_when_backend_env_missing(monkeypatch) -> None:
     monkeypatch.delenv("GOOGLE_PLACES_API_KEY", raising=False)
+    monkeypatch.delenv("GOOGLE_PLACES_API_KEY_ANDROID", raising=False)
+    monkeypatch.delenv("GOOGLE_PLACES_API_KEY_IOS", raising=False)
 
     response = client.get("/travel/app-config")
 
     assert response.status_code == 200
-    assert response.json() == {"google_places_api_key": None}
+    assert response.json() == {
+        "google_places_api_key": None,
+        "google_places_api_key_android": None,
+        "google_places_api_key_ios": None,
+    }
 
 
 def test_signup_succeeds_without_trusted_device_when_table_is_missing() -> None:
@@ -628,6 +712,58 @@ def test_complete_trip_rejects_completion_before_departure_time(monkeypatch) -> 
     get_response = client.get(f"/travel/trips/{trip_id}")
     assert get_response.status_code == 200
     assert get_response.json()["status"] == "scheduled"
+
+
+def test_complete_trip_posts_wallet_cash_collected_as_khr(monkeypatch) -> None:
+    frozen_now = datetime(2026, 6, 15, 11, 45, 0)
+    monkeypatch.setattr(travel_routes, "phnom_penh_now", lambda: frozen_now)
+
+    driver_token = _signup_driver()
+    passenger_token = _signup_passenger()
+    vehicle_id = _create_vehicle(driver_token)
+
+    create_response = client.post(
+        "/travel/trips",
+        headers=_auth_headers(driver_token),
+        json={
+            "vehicle_id": vehicle_id,
+            "departure_province": "ភ្នំពេញ",
+            "destination_province": "កណ្ដាល",
+            "departure_time": "2026-06-15T11:30:00",
+            "price_per_seat": 12000,
+            "total_seats": 4,
+            "available_seats": 3,
+            "status": "active",
+        },
+    )
+    assert create_response.status_code == 201
+    trip_id = create_response.json()["id"]
+
+    passenger_id = client.get(
+        "/travel/auth/me",
+        headers=_auth_headers(passenger_token),
+    ).json()["id"]
+    booking_id = str(uuid4())
+    _insert_booking(
+        booking_id,
+        trip_id,
+        passenger_id,
+        "passenger_boarded",
+        total_price=12000,
+    )
+
+    complete_response = client.post(
+        f"/travel/trips/{trip_id}/complete",
+        headers=_auth_headers(driver_token),
+    )
+
+    assert complete_response.status_code == 200
+    assert complete_response.json()["status"] == "completed"
+
+    with TestingSessionLocal() as db:
+        wallet_entry = db.execute(select(DriverWalletEntry)).scalar_one()
+        assert wallet_entry.cash_collected_khr == 12000
+        assert wallet_entry.service_fee_khr == 4000
 
 
 def test_search_trips_repairs_future_trip_marked_completed_too_early(monkeypatch) -> None:
@@ -1024,6 +1160,7 @@ def test_driver_arrived_uses_pickup_point_when_passenger_location_stale(monkeypa
     data = response.json()
     assert data["pickup_status"] == "driver_arrived"
     assert data["driver_arrived_at"] is not None
+    assert data["passenger_live_location"] is None
 
 
 def test_boarding_request_requires_driver_arrived_first(monkeypatch) -> None:
@@ -1333,6 +1470,40 @@ def test_passenger_live_location(monkeypatch) -> None:
     assert loc_resp.status_code == 200
     assert loc_resp.json()["status"] == "ok"
 
+    with test_engine.begin() as connection:
+        connection.exec_driver_sql(
+            "UPDATE bookings SET pickup_status = ? WHERE id = ?",
+            ("driver_arrived", UUID(booking_id).hex),
+        )
+
+    arrived_loc_resp = client.put(
+        f"/travel/bookings/{booking_id}/passenger-live-location",
+        headers=_auth_headers(passenger_token),
+        json={"lat": 11.5566, "lng": 104.9284, "accuracy_m": 9},
+    )
+    assert arrived_loc_resp.status_code == 200
+    assert arrived_loc_resp.json()["status"] == "ok"
+
+    with test_engine.begin() as connection:
+        connection.exec_driver_sql(
+            "UPDATE bookings SET pickup_status = ? WHERE id = ?",
+            ("passenger_boarded", UUID(booking_id).hex),
+        )
+
+    boarded_loc_resp = client.put(
+        f"/travel/bookings/{booking_id}/passenger-live-location",
+        headers=_auth_headers(passenger_token),
+        json={"lat": 11.5567, "lng": 104.9285, "accuracy_m": 8},
+    )
+    assert boarded_loc_resp.status_code == 400
+    assert boarded_loc_resp.json()["detail"] == "Location tracking is only active before boarding"
+
+    with test_engine.begin() as connection:
+        connection.exec_driver_sql(
+            "UPDATE bookings SET pickup_status = ? WHERE id = ?",
+            ("driver_arrived", UUID(booking_id).hex),
+        )
+
     # Driver checks proximity
     prox_resp = client.get(
         f"/travel/bookings/{booking_id}/proximity",
@@ -1344,6 +1515,107 @@ def test_passenger_live_location(monkeypatch) -> None:
     assert prox["passenger_location_fresh"] is True
     assert prox["distance_m"] > 0
     assert prox["within_threshold"] is True
+
+
+def test_live_location_websocket_accepts_passenger_location(monkeypatch) -> None:
+    monkeypatch.setattr(live_ws_routes, "SessionLocal", TestingSessionLocal)
+
+    driver_token = _signup_driver()
+    passenger_token = _signup_passenger("098765438")
+    other_passenger_token = _signup_passenger("098765439")
+    vehicle_id = _create_vehicle(driver_token)
+
+    trip_response = client.post(
+        "/travel/trips",
+        headers=_auth_headers(driver_token),
+        json={
+            "vehicle_id": vehicle_id,
+            "departure_province": "Phnom Penh",
+            "destination_province": "Kandal",
+            "departure_time": "2026-06-15T11:30:00",
+            "departure_lat": 11.5564,
+            "departure_lng": 104.9282,
+            "price_per_seat": 5,
+            "total_seats": 4,
+            "available_seats": 4,
+            "status": "scheduled",
+        },
+    )
+    assert trip_response.status_code == 201
+    trip_id = trip_response.json()["id"]
+
+    with TestingSessionLocal() as db:
+        passenger = db.execute(
+            select(User).where(User.phone == "098765438")
+        ).scalar_one()
+        booking_id = str(uuid4())
+        _insert_booking(booking_id, trip_id, str(passenger.id))
+
+    passenger_user = live_ws_routes._user_from_token(passenger_token)
+    other_passenger_user = live_ws_routes._user_from_token(other_passenger_token)
+    driver_user = live_ws_routes._user_from_token(driver_token)
+    assert passenger_user is not None
+    assert other_passenger_user is not None
+    assert driver_user is not None
+    assert live_ws_routes._authorized_rooms(
+        passenger_user,
+        trip_id,
+        booking_id,
+    ) == {f"booking:{booking_id}"}
+    assert live_ws_routes._authorized_rooms(
+        driver_user,
+        trip_id,
+        booking_id,
+    ) == {f"trip:{trip_id}", f"booking:{booking_id}"}
+    assert live_ws_routes._authorized_rooms(
+        other_passenger_user,
+        trip_id,
+        booking_id,
+    ) == set()
+
+    broadcast_rooms: list[str] = []
+
+    async def capture_broadcast(room: str, payload: dict) -> None:
+        broadcast_rooms.append(room)
+
+    monkeypatch.setattr(live_ws_routes.hub, "broadcast", capture_broadcast)
+    asyncio.run(
+        live_ws_routes._handle_driver_location(
+            driver_user,
+            {
+                "trip_id": trip_id,
+                "lat": 11.5564,
+                "lng": 104.9282,
+            },
+        )
+    )
+    assert f"trip:{trip_id}" in broadcast_rooms
+    assert f"booking:{booking_id}" in broadcast_rooms
+
+    with client.websocket_connect(
+        f"/travel/live/ws?token={passenger_token}&booking_id={booking_id}&trip_id={trip_id}"
+    ) as passenger_ws:
+        passenger_ws.send_json(
+            {
+                "type": "passenger_location",
+                "booking_id": booking_id,
+                "lat": 11.5565,
+                "lng": 104.9283,
+                "accuracy_m": 8,
+            }
+        )
+
+    with TestingSessionLocal() as db:
+        booking = db.execute(
+            select(Booking)
+            .options(selectinload(Booking.live_location))
+            .where(Booking.id == UUID(booking_id))
+        ).scalar_one()
+
+    assert booking.live_location is not None
+    assert float(booking.live_location.lat) == 11.5565
+    assert float(booking.live_location.lng) == 104.9283
+    assert float(booking.live_location.accuracy_m) == 8
 
 
 def test_expired_trip_cancels_active_bookings_and_clears_passenger_active_state(monkeypatch) -> None:
@@ -1384,6 +1656,47 @@ def test_expired_trip_cancels_active_bookings_and_clears_passenger_active_state(
     )
     assert passenger_active.status_code == 200
     assert passenger_active.json()["booking"] is None
+
+
+def test_active_booking_keeps_past_departure_pickup_trackable(monkeypatch) -> None:
+    frozen_now = datetime(2026, 6, 20, 12, 0, 0)
+    monkeypatch.setattr(travel_routes, "phnom_penh_now", lambda: frozen_now)
+
+    driver_token = _signup_driver()
+    passenger_token = _signup_passenger()
+    vehicle_id = _create_vehicle(driver_token)
+    trip_id = _create_trip_for_test(
+        driver_token,
+        vehicle_id,
+        departure_time="2026-06-20T11:00:00",
+    )
+
+    with TestingSessionLocal() as db:
+        passenger = db.execute(
+            select(User).where(User.role == "passenger")
+        ).scalar_one()
+        booking_id = str(uuid4())
+        _insert_booking(
+            booking_id,
+            trip_id,
+            str(passenger.id),
+            pickup_status="driver_arrived",
+        )
+        trip = db.get(Trip, UUID(trip_id))
+        assert trip is not None
+        trip.live_location_expires_at = datetime(2026, 6, 20, 13, 0, 0)
+        db.commit()
+
+    passenger_active = client.get(
+        "/travel/bookings/active",
+        headers=_auth_headers(passenger_token),
+    )
+
+    assert passenger_active.status_code == 200
+    active_booking = passenger_active.json()["booking"]
+    assert active_booking is not None
+    assert active_booking["id"] == booking_id
+    assert active_booking["pickup_status"] == "driver_arrived"
 
 
 def test_expired_daily_trip_creates_next_scheduled_repeat(monkeypatch) -> None:
@@ -1619,6 +1932,46 @@ def test_find_trips_now_endpoint() -> None:
     assert len(data["trips"]) == 1
     assert data["trips"][0]["id"] == trip_id
 
+    # A selected destination is broader than the passenger's detected route.
+    # This trip reaches Phnom Penh from a different corridor and must still be
+    # offered so the passenger can decide whether its route is suitable.
+    alternate_route_response = client.post(
+        "/travel/trips",
+        headers=_auth_headers(token),
+        json={
+            "vehicle_id": vehicle_id,
+            "departure_province": "Battambang",
+            "destination_province": "Phnom Penh",
+            "departure_time": (datetime.now() + timedelta(hours=3)).isoformat(),
+            "departure_lat": 13.0957,
+            "departure_lng": 103.2022,
+            "repeat_mode": "none",
+            "auto_repeat_weekly": False,
+            "has_return_schedule": False,
+            "price_per_seat": 7,
+            "total_seats": 15,
+            "available_seats": 15,
+            "status": "scheduled",
+        },
+    )
+    assert alternate_route_response.status_code == 201
+    alternate_trip_id = alternate_route_response.json()["id"]
+
+    destination_response = client.get(
+        "/travel/trips/find-now",
+        params={
+            "lat": 12.71123,
+            "lng": 104.88991,
+            "destination_province": "Phnom Penh",
+        },
+        headers=_auth_headers(token),
+    )
+    assert destination_response.status_code == 200
+    destination_trip_ids = {
+        trip["id"] for trip in destination_response.json()["trips"]
+    }
+    assert destination_trip_ids == {trip_id, alternate_trip_id}
+
 
 def test_find_trips_now_prioritizes_nearest_active_trip() -> None:
     near_token = _signup_driver()
@@ -1832,3 +2185,66 @@ def test_signup_driver_avatar_validation() -> None:
     )
     assert response.status_code == 201
     assert response.json()["user"]["avatar_url"] == "data:image/jpeg;base64,dummy_driver_avatar_bytes"
+
+
+def test_signup_passenger_avatar_is_optional_and_returned() -> None:
+    response = client.post(
+        "/travel/auth/signup",
+        json={
+            "phone": "099999992",
+            "full_name": "Passenger With Avatar",
+            "role": "passenger",
+            "password": "strongpass123",
+            "avatar_url": "data:image/png;base64,dummy_passenger_avatar_bytes",
+        },
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["user"]["avatar_url"] == "data:image/png;base64,dummy_passenger_avatar_bytes"
+
+    me_response = client.get(
+        "/travel/auth/me",
+        headers=_auth_headers(body["token"]),
+    )
+    assert me_response.status_code == 200
+    assert me_response.json()["avatar_url"] == "data:image/png;base64,dummy_passenger_avatar_bytes"
+
+
+def test_update_current_user_profile() -> None:
+    token = _signup_passenger("099999993")
+    avatar_url = "data:image/png;base64,updated_passenger_avatar_bytes"
+
+    response = client.patch(
+        "/travel/auth/me",
+        headers=_auth_headers(token),
+        json={
+            "full_name": "Updated Passenger",
+            "avatar_url": avatar_url,
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["full_name"] == "Updated Passenger"
+    assert body["avatar_url"] == avatar_url
+
+    me_response = client.get("/travel/auth/me", headers=_auth_headers(token))
+    assert me_response.status_code == 200
+    assert me_response.json()["full_name"] == "Updated Passenger"
+    assert me_response.json()["avatar_url"] == avatar_url
+
+
+def test_update_current_user_profile_can_clear_avatar() -> None:
+    token = _signup_passenger("099999994")
+
+    response = client.patch(
+        "/travel/auth/me",
+        headers=_auth_headers(token),
+        json={
+            "avatar_url": "   ",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["avatar_url"] is None

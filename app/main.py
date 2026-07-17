@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect, text
 
 from .db import engine
@@ -8,6 +9,8 @@ from .routes.travel import router as travel_router
 from .routes.passenger import router as passenger_router
 from .routes.addresses import router as addresses_router
 from .routes.driver_fee import router as driver_fee_router
+from .routes.admin import router as admin_router
+from .routes.live_ws import router as live_ws_router
 
 app = FastAPI(
     title="Learning FastAPI",
@@ -15,7 +18,7 @@ app = FastAPI(
     description="A small FastAPI starter for learning how to build APIs.",
     servers=[
         {
-            "url": "http://192.168.1.35:8000",
+            "url": "http://192.168.10.151:8000",
             "description": "Local development server",
         }
     ],
@@ -70,3 +73,20 @@ app.include_router(travel_router)
 app.include_router(passenger_router)
 app.include_router(addresses_router)
 app.include_router(driver_fee_router)
+app.include_router(admin_router)
+app.include_router(live_ws_router)
+
+
+class NoCacheStaticFiles(StaticFiles):
+    def is_not_modified(self, response_headers, request_headers) -> bool:
+        return False
+
+    def file_response(self, *args, **kwargs):
+        response = super().file_response(*args, **kwargs)
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
+
+
+app.mount("/admin", NoCacheStaticFiles(directory="app/static", html=True), name="admin")

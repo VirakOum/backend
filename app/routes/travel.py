@@ -20,7 +20,12 @@ from ..auth import (
 	register_trusted_device,
 	verify_password,
 )
-from ..config import ENABLE_DIGITAL_PAYMENT, get_google_places_api_key
+from ..config import (
+	ENABLE_DIGITAL_PAYMENT,
+	get_google_places_api_key,
+	get_google_places_api_key_android,
+	get_google_places_api_key_ios,
+)
 from ..db import get_db
 from ..models import Address, Booking, BookingLiveLocation, BookingPaymentInstruction, DriverWalletEntry, NotificationPreference, Payment, SupportTicket, Trip, User, UserNotification, Vehicle, phnom_penh_now
 from .driver_fee import (
@@ -72,6 +77,7 @@ from ..schemas import (
 	TripVehicleInfo,
 	UserCreate,
 	UserRead,
+	UserUpdate,
 	VehicleCreate,
 	VehicleRead,
 	VehicleUpdate,
@@ -82,7 +88,7 @@ from ..schemas import (
 router = APIRouter(prefix="/travel", tags=["travel"])
 
 BOOKING_SEAT_HOLD_STATUSES = {"pending", "confirmed"}
-DEFAULT_CURRENCY = "USD"
+DEFAULT_CURRENCY = "KHR"
 ABA_PAYMENT_LINK_RE = re.compile(r"https://pay\.ababank\.com/[a-zA-Z0-9/]+")
 PHNOM_PENH_TZ = ZoneInfo("Asia/Phnom_Penh")
 
@@ -341,6 +347,18 @@ def _build_auth_response(
 		user=UserRead.model_validate(user),
 		trusted_device=trusted_device,
 	)
+
+
+def _vehicle_type_for_seat_count(seat_count: int) -> str:
+	if seat_count <= 5:
+		return "sedan"
+	if seat_count <= 9:
+		return "suv"
+	if seat_count <= 16:
+		return "van"
+	if seat_count <= 30:
+		return "minibus"
+	return "bus"
 
 
 def _ensure_next_repeated_trip(db: Session, trip: Trip, now_local: datetime) -> bool:
@@ -642,7 +660,7 @@ def _sync_booking_completion_from_trip(
 			continue
 
 		trip_price = Decimal(str(booking.total_price or 0))
-		cash_collected_khr = int(_money(trip_price) * Decimal("4000"))
+		cash_collected_khr = int(_money(trip_price))
 		driver_wallet = get_or_create_driver_wallet(db, driver_id=trip.driver_id)
 		wallet_entry = DriverWalletEntry(
 			driver_id=trip.driver_id,
@@ -721,7 +739,11 @@ def _build_booking_with_trip_read(booking: Booking) -> BookingWithTripRead:
 	if booking.trip is not None and booking.trip.driver is not None:
 		driver_contact_phone = booking.trip.driver.phone
 	passenger_live_location = None
-	if booking.live_location is not None:
+	if (
+		booking.live_location is not None
+		and booking.live_location.expires_at is not None
+		and phnom_penh_now() <= booking.live_location.expires_at
+	):
 		passenger_live_location = BookingLiveLocationInfo(
 			lat=float(booking.live_location.lat),
 			lng=float(booking.live_location.lng),
@@ -1202,8 +1224,8 @@ def _create_boarding_requested_notification(db: Session, booking: Booking) -> No
 		UserNotification(
 			user_id=booking.passenger_id,
 			type="boarding_requested",
-			title="Driver requests boarding",
-			body="Your driver has requested that you confirm boarding.",
+			title="Driver arrived",
+			body="Your driver has arrived. Please prepare to board.",
 			trip_id=booking.trip_id,
 			booking_id=booking.id,
 			is_read=False,
@@ -1320,6 +1342,26 @@ def get_me(current_user: User = Depends(get_current_user)) -> UserRead:
 	return UserRead.model_validate(current_user)
 
 
+@router.patch("/auth/me", response_model=UserRead)
+def update_me(
+	payload: UserUpdate,
+	db: Session = Depends(get_db),
+	current_user: User = Depends(get_current_user),
+) -> UserRead:
+	if payload.full_name is not None:
+		full_name = payload.full_name.strip()
+		if not full_name:
+			raise HTTPException(status_code=422, detail="Full name is required")
+		current_user.full_name = full_name
+	if payload.avatar_url is not None:
+		avatar_url = payload.avatar_url.strip()
+		current_user.avatar_url = avatar_url or None
+	db.add(current_user)
+	db.commit()
+	db.refresh(current_user)
+	return UserRead.model_validate(current_user)
+
+
 @router.get("/users/{user_id}", response_model=UserRead)
 def get_user(
 	user_id: UUID,
@@ -1351,7 +1393,9 @@ def create_vehicle(
 	if existing_plate is not None:
 		raise HTTPException(status_code=409, detail="Plate number already exists")
 
-	vehicle = Vehicle(**payload.model_dump(), owner_id=current_user.id)
+	vehicle_data = payload.model_dump()
+	vehicle_data["vehicle_type"] = _vehicle_type_for_seat_count(payload.seat_type)
+	vehicle = Vehicle(**vehicle_data, owner_id=current_user.id)
 	db.add(vehicle)
 	db.commit()
 	db.refresh(vehicle)
@@ -1409,6 +1453,10 @@ def update_vehicle(
 		).scalar_one_or_none()
 		if existing_plate is not None:
 			raise HTTPException(status_code=409, detail="Plate number already exists")
+	if "seat_type" in update_data:
+		update_data["vehicle_type"] = _vehicle_type_for_seat_count(update_data["seat_type"])
+	else:
+		update_data.pop("vehicle_type", None)
 	for field, value in update_data.items():
 		setattr(vehicle, field, value)
 	db.commit()
@@ -1837,7 +1885,11 @@ def find_trips_now(
                 proximity_match = True
                 proximity_distance_km = dist
                 
-        if route_match or proximity_match:
+        # Once the passenger chooses a destination province, show every trip
+        # going there. Cambodia routes often have valid alternatives that do
+        # not pass through the passenger's detected road or province.
+        destination_match = bool(destination_province)
+        if destination_match or route_match or proximity_match:
             matched_trips.append(
                 (
                     trip,
@@ -2064,7 +2116,11 @@ def get_active_booking(
 			Booking.passenger_id == current_user.id,
 			Booking.status.in_(["pending", "confirmed"]),
 			Trip.status.in_(["scheduled", "active"]),
-			(Trip.status == "active") | (Trip.departure_time >= now),
+			(
+				(Trip.status == "active")
+				| (Trip.departure_time >= now)
+				| Booking.pickup_status.in_(["pending", "driver_arrived"])
+			),
 		)
 		.order_by(Trip.departure_time.asc())
 	).scalars().all()
@@ -2286,6 +2342,48 @@ def driver_request_boarding(
 	booking.pickup_status = "passenger_boarded"
 	booking.status = "confirmed"
 	_create_boarding_confirmed_notification(db, booking)
+	db.commit()
+	db.refresh(booking)
+	return _build_booking_with_trip_read(booking)
+
+
+@router.post("/bookings/{booking_id}/boarding/ping", response_model=BookingWithTripRead)
+def driver_ping_passenger(
+	booking_id: UUID,
+	db: Session = Depends(get_db),
+	current_user: User = Depends(get_current_user),
+) -> BookingWithTripRead:
+	_expire_stale_trips_and_bookings(db)
+	if current_user.role != "driver":
+		raise HTTPException(status_code=403, detail="Only drivers can ping passenger")
+
+	booking = db.execute(
+		select(Booking)
+		.options(
+			selectinload(Booking.trip).selectinload(Trip.driver),
+			selectinload(Booking.trip).selectinload(Trip.vehicle),
+			selectinload(Booking.trip).selectinload(Trip.bookings),
+			selectinload(Booking.passenger),
+			selectinload(Booking.live_location),
+			selectinload(Booking.payment_instruction),
+			selectinload(Booking.payments),
+			selectinload(Booking.wallet_entries),
+		)
+		.where(Booking.id == booking_id)
+	).scalar_one_or_none()
+	if booking is None:
+		raise HTTPException(status_code=404, detail="Booking not found")
+	if booking.trip is None or booking.trip.driver_id != current_user.id:
+		raise HTTPException(status_code=403, detail="You can only ping for your own trip")
+	if booking.status == "cancelled":
+		raise HTTPException(status_code=400, detail="Cancelled bookings cannot be pinged")
+	if booking.pickup_status != "driver_arrived":
+		raise HTTPException(status_code=400, detail="You must mark arrival before pinging passenger")
+
+	now = phnom_penh_now()
+	booking.driver_requested_boarding_at = now
+	booking.boarding_confirmation_expires_at = now + timedelta(seconds=60)
+	_create_boarding_requested_notification(db, booking)
 	db.commit()
 	db.refresh(booking)
 	return _build_booking_with_trip_read(booking)
@@ -2807,7 +2905,7 @@ def create_support_ticket(
 @router.get("/support/config", response_model=SupportConfigResponse)
 def get_support_config() -> SupportConfigResponse:
 	return SupportConfigResponse(
-		telegram_username=os.getenv("SUPPORT_TELEGRAM_USERNAME", "ride_support"),
+		telegram_username=os.getenv("SUPPORT_TELEGRAM_USERNAME", "MyTravel_Taxi_bot"),
 		support_phone=os.getenv("SUPPORT_PHONE"),
 		support_email=os.getenv("SUPPORT_EMAIL"),
 	)
@@ -2816,8 +2914,12 @@ def get_support_config() -> SupportConfigResponse:
 @router.get("/app-config", response_model=AppConfigResponse)
 def get_app_config() -> AppConfigResponse:
 	google_places_api_key = get_google_places_api_key()
+	google_places_api_key_android = get_google_places_api_key_android()
+	google_places_api_key_ios = get_google_places_api_key_ios()
 	return AppConfigResponse(
 		google_places_api_key=google_places_api_key or None,
+		google_places_api_key_android=google_places_api_key_android or None,
+		google_places_api_key_ios=google_places_api_key_ios or None,
 	)
 
 

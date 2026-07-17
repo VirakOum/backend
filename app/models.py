@@ -482,6 +482,8 @@ class DriverWallet(Base):
     credit_limit_khr: Mapped[int] = mapped_column(Integer, default=80000, nullable=False)
     is_locked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     locked_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    admin_locked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    admin_locked_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
     last_entry_posted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_settled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, nullable=False)
@@ -595,3 +597,36 @@ class DriverInvoice(Base):
         CheckConstraint("status IN ('pending', 'issued', 'paid', 'overdue', 'failed', 'void')", name="driver_invoice_status_check"),
         Index("idx_driver_invoices_driver_created", "driver_id", "created_at"),
     )
+
+
+class SystemDiscountTicket(Base):
+    __tablename__ = "system_discount_tickets"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    title: Mapped[str] = mapped_column(String(100), nullable=False)
+    title_kh: Mapped[str] = mapped_column(String(100), nullable=False)
+    discount_percent: Mapped[int] = mapped_column(Integer, nullable=False)
+    description: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    description_kh: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("discount_percent >= 0 AND discount_percent <= 100", name="discount_ticket_percent_check"),
+    )
+
+
+class SystemAd(Base):
+    __tablename__ = "system_ads"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    title: Mapped[str] = mapped_column(String(100), nullable=False)
+    title_kh: Mapped[str] = mapped_column(String(100), nullable=False)
+    image_url: Mapped[str] = mapped_column(String(255), nullable=False)
+    link_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    description: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    description_kh: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, nullable=False)

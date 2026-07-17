@@ -39,3 +39,11 @@ AUTO_LOCK_DRIVER_ON_DEBT_LIMIT = _env_flag(
 
 def get_google_places_api_key() -> str:
     return _env_text("GOOGLE_PLACES_API_KEY")
+
+
+def get_google_places_api_key_android() -> str:
+    return _env_text("GOOGLE_PLACES_API_KEY_ANDROID") or get_google_places_api_key()
+
+
+def get_google_places_api_key_ios() -> str:
+    return _env_text("GOOGLE_PLACES_API_KEY_IOS") or get_google_places_api_key()

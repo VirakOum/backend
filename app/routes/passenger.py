@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from ..auth import get_current_user
 from ..db import get_db
-from ..models import PassengerQuickPlace, Trip, User, phnom_penh_now
+from ..models import PassengerQuickPlace, Trip, User, SystemDiscountTicket, SystemAd, phnom_penh_now
 from ..schemas import (
     NearbyDriverItem,
     NearbyDriversResponse,
@@ -18,6 +18,8 @@ from ..schemas import (
     ScheduleOption,
     TripSearchConfigResponse,
     TripRead,
+    SystemDiscountTicketRead,
+    SystemAdRead
 )
 
 router = APIRouter(prefix="/passenger", tags=["passenger"])
@@ -334,3 +336,37 @@ def list_passenger_trips(
     )
     rows = db.execute(query).scalars().all()
     return [_build_trip_read(row) for row in rows]
+
+
+@router.get("/discounts", response_model=list[SystemDiscountTicketRead])
+def list_passenger_active_discounts(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[SystemDiscountTicketRead]:
+    if current_user.role != "passenger":
+        raise HTTPException(status_code=403, detail="Only passengers can view discount tickets")
+
+    now = phnom_penh_now()
+    return db.execute(
+        select(SystemDiscountTicket)
+        .where(
+            SystemDiscountTicket.is_active == True,
+            SystemDiscountTicket.expires_at > now
+        )
+        .order_by(SystemDiscountTicket.created_at.desc())
+    ).scalars().all()
+
+
+@router.get("/ads", response_model=list[SystemAdRead])
+def list_passenger_active_ads(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[SystemAdRead]:
+    if current_user.role != "passenger":
+        raise HTTPException(status_code=403, detail="Only passengers can view active advertisements")
+
+    return db.execute(
+        select(SystemAd)
+        .where(SystemAd.is_active == True)
+        .order_by(SystemAd.created_at.desc())
+    ).scalars().all()

@@ -132,6 +132,11 @@ class UserCreate(BaseModel):
     device_name: str | None = Field(default=None, max_length=120)
 
 
+class UserUpdate(BaseModel):
+    full_name: str | None = Field(default=None, min_length=1, max_length=100)
+    avatar_url: str | None = None
+
+
 class UserRead(BaseModel):
     id: UUID
     phone: str
@@ -283,7 +288,7 @@ class TripPromotionInfo(BaseModel):
     discount_percent: int
     original_price_per_seat: float
     final_price_per_seat: float
-    currency: str = "USD"
+    currency: str = "KHR"
 
 
 class TripLiveLocationInfo(BaseModel):
@@ -322,7 +327,7 @@ class TripRead(BaseModel):
     return_departure_time: datetime | None = None
     return_trip_id: UUID | None = None
     price_per_seat: float
-    currency: str = "USD"
+    currency: str = "KHR"
     total_seats: int
     available_seats: int
     booked_seat_numbers: list[int] = Field(default_factory=list)
@@ -399,7 +404,7 @@ class BookingRead(BaseModel):
     passenger_id: UUID
     seat_numbers: list[int]
     total_price: float
-    currency: str = "USD"
+    currency: str = "KHR"
     payment_method: BookingPaymentMethod
     payment_status: BookingPaymentStatus = "pending"
     pickup_status: BookingPickupStatus = "pending"
@@ -468,7 +473,7 @@ class PaymentRead(BaseModel):
     transaction_id: str
     payment_method: str
     amount: float
-    currency: str = "USD"
+    currency: str = "KHR"
     status: str
     paid_at: datetime | None
     created_at: datetime
@@ -568,7 +573,7 @@ class ActiveBookingResponse(BaseModel):
 
 class WalletSummaryResponse(BaseModel):
     total_spent: float
-    currency: str = "USD"
+    currency: str = "KHR"
     confirmed_payments_count: int
     wallet_balance: float = 0.0
     refund_total: float = 0.0
@@ -579,7 +584,7 @@ class WalletTransactionItem(BaseModel):
     transaction_id: str
     type: str
     amount: float
-    currency: str = "USD"
+    currency: str = "KHR"
     status: str
     payment_method: str
     booking_id: UUID
@@ -631,6 +636,8 @@ class SupportConfigResponse(BaseModel):
 
 class AppConfigResponse(BaseModel):
     google_places_api_key: str | None = None
+    google_places_api_key_android: str | None = None
+    google_places_api_key_ios: str | None = None
 
 
 class SafetyConfigResponse(BaseModel):
@@ -762,3 +769,53 @@ class DriverFeeSummaryResponse(BaseModel):
     invoices: list[DriverInvoiceSummaryRead]
     digital_payment_enabled: bool = False
     recent_entries: list[DriverWalletEntryRead] = Field(default_factory=list)
+
+
+class SystemDiscountTicketRead(BaseModel):
+    id: UUID
+    code: str
+    title: str
+    title_kh: str
+    discount_percent: int
+    description: str | None = None
+    description_kh: str | None = None
+    is_active: bool
+    expires_at: datetime
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SystemDiscountTicketCreate(BaseModel):
+    code: str
+    title: str
+    title_kh: str
+    discount_percent: int
+    description: str | None = None
+    description_kh: str | None = None
+    expires_at: datetime
+    is_active: bool = True
+
+
+class SystemAdRead(BaseModel):
+    id: UUID
+    title: str
+    title_kh: str
+    image_url: str
+    link_url: str | None = None
+    description: str | None = None
+    description_kh: str | None = None
+    is_active: bool
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SystemAdCreate(BaseModel):
+    title: str
+    title_kh: str
+    image_url: str
+    link_url: str | None = None
+    description: str | None = None
+    description_kh: str | None = None
+    is_active: bool = True

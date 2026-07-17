@@ -223,7 +223,10 @@ def evaluate_driver_wallet_lock(
         float(wallet.total_owed_usd or 0) >= float(wallet.credit_limit_usd or 0)
         or int(wallet.total_owed_khr or 0) >= int(wallet.credit_limit_khr or 0)
     )
-    if settings.auto_lock_on_limit and over_limit:
+    if getattr(wallet, "admin_locked", False):
+        wallet.is_locked = True
+        wallet.locked_reason = getattr(wallet, "admin_locked_reason", None) or "Locked by administrator."
+    elif settings.auto_lock_on_limit and over_limit:
         wallet.is_locked = True
         wallet.locked_reason = (
             "Driver debt limit reached. Please settle wallet debt before publishing new trips."
