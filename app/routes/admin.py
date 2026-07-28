@@ -20,13 +20,18 @@ from ..models import (
     AppRuntimeSetting,
     SystemDiscountTicket,
     SystemAd,
+    SystemMessage,
+    UserNotification,
     phnom_penh_now
 )
 from ..schemas import (
     SystemDiscountTicketRead,
     SystemDiscountTicketCreate,
     SystemAdRead,
-    SystemAdCreate
+    SystemAdCreate,
+    SystemMessageRead,
+    SystemMessageCreate,
+    SystemMessageUpdate
 )
 from .driver_fee import evaluate_driver_wallet_lock, get_runtime_settings, MEMBERSHIP_CATALOG
 
@@ -781,4 +786,94 @@ def delete_admin_ad(ad_id: uuid.UUID, db: Session = Depends(get_db)) -> None:
     if not ad:
         raise HTTPException(status_code=404, detail="Ad not found")
     db.delete(ad)
+    db.commit()
+
+
+# System Messages / Information Broadcast Endpoints
+@router.get("/messages", response_model=List[SystemMessageRead])
+def list_admin_messages(db: Session = Depends(get_db)) -> Any:
+    return db.execute(select(SystemMessage).order_by(SystemMessage.created_at.desc())).scalars().all()
+
+
+@router.post("/messages", response_model=SystemMessageRead)
+def create_admin_message(payload: SystemMessageCreate, db: Session = Depends(get_db)) -> Any:
+    msg = SystemMessage(
+        title=payload.title,
+        body=payload.body,
+        target_role=payload.target_role,
+        message_type=payload.message_type,
+        is_active=payload.is_active,
+        is_pinned=payload.is_pinned,
+        broadcast_to_notifications=payload.broadcast_to_notifications,
+        expires_at=payload.expires_at,
+    )
+    db.add(msg)
+    db.commit()
+    db.refresh(msg)
+
+    if payload.broadcast_to_notifications:
+        stmt = select(User)
+        if payload.target_role == "driver":
+            stmt = stmt.where(User.role == "driver")
+        elif payload.target_role == "passenger":
+            stmt = stmt.where(User.role == "passenger")
+        users = db.execute(stmt).scalars().all()
+        notif_type = "system_announcement" if payload.message_type in ("announcement", "warning") else "system_info"
+        for user in users:
+            notif = UserNotification(
+                user_id=user.id,
+                type=notif_type,
+                title=payload.title,
+                body=payload.body,
+                is_read=False,
+            )
+            db.add(notif)
+        db.commit()
+
+    return msg
+
+
+@router.put("/messages/{message_id}", response_model=SystemMessageRead)
+def update_admin_message(message_id: uuid.UUID, payload: SystemMessageUpdate, db: Session = Depends(get_db)) -> Any:
+    msg = db.get(SystemMessage, message_id)
+    if not msg:
+        raise HTTPException(status_code=404, detail="System message not found")
+    if payload.title is not None:
+        msg.title = payload.title
+    if payload.body is not None:
+        msg.body = payload.body
+    if payload.target_role is not None:
+        msg.target_role = payload.target_role
+    if payload.message_type is not None:
+        msg.message_type = payload.message_type
+    if payload.is_active is not None:
+        msg.is_active = payload.is_active
+    if payload.is_pinned is not None:
+        msg.is_pinned = payload.is_pinned
+    if payload.broadcast_to_notifications is not None:
+        msg.broadcast_to_notifications = payload.broadcast_to_notifications
+    if payload.expires_at is not None:
+        msg.expires_at = payload.expires_at
+    db.commit()
+    db.refresh(msg)
+    return msg
+
+
+@router.post("/messages/{message_id}/toggle-active", response_model=SystemMessageRead)
+def toggle_admin_message_active(message_id: uuid.UUID, db: Session = Depends(get_db)) -> Any:
+    msg = db.get(SystemMessage, message_id)
+    if not msg:
+        raise HTTPException(status_code=404, detail="System message not found")
+    msg.is_active = not msg.is_active
+    db.commit()
+    db.refresh(msg)
+    return msg
+
+
+@router.delete("/messages/{message_id}", status_code=204)
+def delete_admin_message(message_id: uuid.UUID, db: Session = Depends(get_db)) -> None:
+    msg = db.get(SystemMessage, message_id)
+    if not msg:
+        raise HTTPException(status_code=404, detail="System message not found")
+    db.delete(msg)
     db.commit()

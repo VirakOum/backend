@@ -13,7 +13,9 @@ PaymentInstructionSourceType = Literal["none", "text", "manual", "qr_image", "qr
 PaymentInstructionParseStatus = Literal["missing", "parsed", "failed"]
 TripRepeatMode = Literal["none", "daily", "weekly"]
 TripStopSourceType = Literal["catalog", "manual_pin"]
-UserNotificationType = Literal["driver_arrived", "booking_created", "boarding_requested", "boarding_confirmed"]
+UserNotificationType = Literal["driver_arrived", "booking_created", "boarding_requested", "boarding_confirmed", "system_announcement", "system_info"]
+SystemMessageTargetRole = Literal["all", "driver", "passenger"]
+SystemMessageType = Literal["info", "warning", "announcement", "maintenance"]
 BoardingConfirmationStatus = Literal["none", "requested", "confirmed", "expired"]
 
 
@@ -673,6 +675,45 @@ class UserNotificationRead(BaseModel):
 class UserNotificationListResponse(BaseModel):
     unread_count: int
     notifications: list[UserNotificationRead]
+
+
+class SystemMessageCreate(BaseModel):
+    title: str = Field(..., max_length=120)
+    body: str
+    target_role: SystemMessageTargetRole = "all"
+    message_type: SystemMessageType = "info"
+    is_active: bool = True
+    is_pinned: bool = False
+    broadcast_to_notifications: bool = False
+    expires_at: datetime | None = None
+
+
+class SystemMessageUpdate(BaseModel):
+    title: str | None = Field(None, max_length=120)
+    body: str | None = None
+    target_role: SystemMessageTargetRole | None = None
+    message_type: SystemMessageType | None = None
+    is_active: bool | None = None
+    is_pinned: bool | None = None
+    broadcast_to_notifications: bool | None = None
+    expires_at: datetime | None = None
+
+
+class SystemMessageRead(BaseModel):
+    id: UUID
+    title: str
+    body: str
+    target_role: SystemMessageTargetRole
+    message_type: SystemMessageType
+    is_active: bool
+    is_pinned: bool
+    broadcast_to_notifications: bool
+    created_at: datetime
+    expires_at: datetime | None = None
+
+
+class SystemMessageListResponse(BaseModel):
+    messages: list[SystemMessageRead]
 
 
 DriverMembershipCode = Literal["normal", "pro", "vip"]

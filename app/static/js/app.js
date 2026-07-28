@@ -60,6 +60,9 @@ document.addEventListener('DOMContentLoaded', () => {
             nav_promotions: "Promotions & Ads",
             title_promotions: "Promotions & Ads Management",
             subtitle_promotions: "Manage system discount coupons and homepage banner ads",
+            nav_messages: "System Messages",
+            title_messages: "System Messages & Announcements",
+            subtitle_messages: "Broadcast informational messages and alerts to app users",
             btn_refresh: "Refresh Data",
             kpi_active_vehicles: "Active Vehicles",
             kpi_registered_drivers: "Registered Drivers",
@@ -196,6 +199,9 @@ document.addEventListener('DOMContentLoaded', () => {
             nav_promotions: "ប្រូម៉ូសិន និងការផ្សព្វផ្សាយ",
             title_promotions: "ការគ្រប់គ្រងប្រូម៉ូសិន និងការផ្សព្វផ្សាយ",
             subtitle_promotions: "គ្រប់គ្រងប័ណ្ណបញ្ចុះតម្លៃប្រព័ន្ធ និងផ្ទាំងផ្សព្វផ្សាយស្លាយនៅទំព័រដើម",
+            nav_messages: "សារប្រព័ន្ធ",
+            title_messages: "សារប្រព័ន្ធ និងការប្រកាសដំណឹង",
+            subtitle_messages: "ផ្សព្វផ្សាយសារព័ត៌មាន និងការព្រមានដល់អ្នកប្រើប្រាស់កម្មវិធី",
             btn_refresh: "ទាញយកទិន្នន័យថ្មី",
             kpi_active_vehicles: "យានយន្តសកម្ម",
             kpi_registered_drivers: "អ្នកបើកបរដែលបានចុះឈ្មោះ",
@@ -628,6 +634,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // Trigger promotions load
             if (activeTabId === 'promotions') {
                 loadPromotionsData();
+            }
+
+            // Trigger messages load
+            if (activeTabId === 'messages') {
+                loadAdminMessages();
             }
         });
     });
@@ -2159,6 +2170,145 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error('Error deleting ad:', error);
+        }
+    };
+
+    // System Messages Management
+    async function loadAdminMessages() {
+        try {
+            const response = await fetch(`${API_BASE}/messages`);
+            if (!response.ok) return;
+            const messages = await response.json();
+            const tableBody = document.getElementById('messages-table-body');
+            if (!tableBody) return;
+            tableBody.innerHTML = '';
+
+            if (!messages || messages.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 2rem; color: var(--color-text-secondary);">
+                            No system messages yet. Broadcast a new message using the form.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            messages.forEach(msg => {
+                const tr = document.createElement('tr');
+                const targetBadge = msg.target_role === 'driver' 
+                    ? '<span class="ticket-status-badge" style="background:#e0f2fe; color:#0369a1;">Drivers Only</span>'
+                    : msg.target_role === 'passenger'
+                    ? '<span class="ticket-status-badge" style="background:#fef3c7; color:#b45309;">Passengers Only</span>'
+                    : '<span class="ticket-status-badge" style="background:#f3e8ff; color:#6b21a8;">All Users</span>';
+
+                const typeColor = msg.message_type === 'warning' ? '#dc2626'
+                    : msg.message_type === 'announcement' ? '#2563eb'
+                    : msg.message_type === 'maintenance' ? '#d97706'
+                    : '#059669';
+
+                const statusClass = msg.is_active ? 'active' : 'inactive';
+                const statusText = msg.is_active ? 'Active' : 'Inactive';
+                const pinnedTag = msg.is_pinned ? ' <span style="font-size:10px; background:#fef3c7; color:#d97706; padding:2px 6px; border-radius:4px; font-weight:700;"><i class="fa-solid fa-thumbtack"></i> PINNED</span>' : '';
+
+                const createdDate = new Date(msg.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+                tr.innerHTML = `
+                    <td>
+                        <div style="font-weight: 700; color: var(--color-primary);">${escapeHtml(msg.title)}${pinnedTag}</div>
+                        <div style="font-size: 0.8rem; color: var(--color-text-secondary); max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(msg.body)}</div>
+                        <div style="font-size: 0.75rem; color: #9ca3af; margin-top: 2px;">Sent: ${createdDate}</div>
+                    </td>
+                    <td>${targetBadge}</td>
+                    <td><span style="font-weight: 700; font-size: 0.8rem; color: ${typeColor}; text-transform: uppercase;">${msg.message_type}</span></td>
+                    <td><span class="ticket-status-badge ${statusClass}">${statusText}</span></td>
+                    <td class="text-right" style="white-space: nowrap;">
+                        <button class="btn btn-chip" onclick="toggleAdminMessageActive('${msg.id}')" style="margin-right: 4px;" title="Toggle Active">
+                            <i class="fa-solid ${msg.is_active ? 'fa-eye-slash' : 'fa-eye'}"></i>
+                        </button>
+                        <button class="btn btn-chip danger" onclick="deleteAdminMessage('${msg.id}')" title="Delete Message">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        } catch (error) {
+            console.error('Error loading admin system messages:', error);
+        }
+    }
+
+    // Handle Form Submit for Creating System Message
+    const formCreateMessage = document.getElementById('form-create-message');
+    if (formCreateMessage) {
+        formCreateMessage.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const title = document.getElementById('msg-title').value.trim();
+            const body = document.getElementById('msg-body').value.trim();
+            const target_role = document.getElementById('msg-target').value;
+            const message_type = document.getElementById('msg-type').value;
+            const is_pinned = document.getElementById('msg-pinned').checked;
+            const broadcast_to_notifications = document.getElementById('msg-broadcast').checked;
+
+            if (!title || !body) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/messages`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title,
+                        body,
+                        target_role,
+                        message_type,
+                        is_active: true,
+                        is_pinned,
+                        broadcast_to_notifications
+                    })
+                });
+
+                if (response.ok) {
+                    showToast(currentLanguage === 'en' ? 'System message broadcasted successfully.' : 'បានផ្ញើសារប្រព័ន្ធដោយជោគជ័យ។');
+                    formCreateMessage.reset();
+                    document.getElementById('msg-broadcast').checked = true;
+                    loadAdminMessages();
+                } else {
+                    const err = await response.json();
+                    alert(err.detail || 'Could not broadcast message.');
+                }
+            } catch (error) {
+                console.error('Error creating system message:', error);
+            }
+        });
+    }
+
+    const btnRefreshMessages = document.getElementById('btn-refresh-messages');
+    if (btnRefreshMessages) {
+        btnRefreshMessages.addEventListener('click', loadAdminMessages);
+    }
+
+    window.toggleAdminMessageActive = async (msgId) => {
+        try {
+            const response = await fetch(`${API_BASE}/messages/${msgId}/toggle-active`, { method: 'POST' });
+            if (response.ok) {
+                showToast(currentLanguage === 'en' ? 'Message status updated.' : 'បានបច្ចុប្បន្នភាពស្ថានភាពសារ។');
+                loadAdminMessages();
+            }
+        } catch (error) {
+            console.error('Error toggling message status:', error);
+        }
+    };
+
+    window.deleteAdminMessage = async (msgId) => {
+        if (!confirm(currentLanguage === 'en' ? 'Delete this system message?' : 'តើអ្នកពិតជាចង់លុបសារប្រព័ន្ធនេះមែនទេ?')) return;
+        try {
+            const response = await fetch(`${API_BASE}/messages/${msgId}`, { method: 'DELETE' });
+            if (response.ok) {
+                showToast(currentLanguage === 'en' ? 'System message deleted.' : 'បានលុបសារប្រព័ន្ធ។');
+                loadAdminMessages();
+            }
+        } catch (error) {
+            console.error('Error deleting system message:', error);
         }
     };
 

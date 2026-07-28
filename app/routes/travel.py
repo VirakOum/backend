@@ -5,7 +5,7 @@ from binascii import Error as Base64DecodeError
 from copy import deepcopy
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select, func, inspect
+from sqlalchemy import select, func, inspect, or_
 from sqlalchemy.orm import Session, selectinload
 from uuid import UUID
 from datetime import date, datetime, time, timedelta
@@ -27,7 +27,7 @@ from ..config import (
 	get_google_places_api_key_ios,
 )
 from ..db import get_db
-from ..models import Address, Booking, BookingLiveLocation, BookingPaymentInstruction, DriverWalletEntry, NotificationPreference, Payment, SupportTicket, Trip, User, UserNotification, Vehicle, phnom_penh_now
+from ..models import Address, Booking, BookingLiveLocation, BookingPaymentInstruction, DriverWalletEntry, NotificationPreference, Payment, SupportTicket, SystemMessage, Trip, User, UserNotification, Vehicle, phnom_penh_now
 from .driver_fee import (
     evaluate_driver_wallet_lock,
     get_or_create_driver_wallet,
@@ -63,6 +63,8 @@ from ..schemas import (
 	SupportConfigResponse,
 	SupportTicketCreate,
 	SupportTicketRead,
+	SystemMessageListResponse,
+	SystemMessageRead,
 	TrustedDeviceAuthRead,
 	TrustedDeviceLoginRequest,
 	TripCreate,
@@ -3010,6 +3012,40 @@ def mark_user_notification_read(
 	db.commit()
 	db.refresh(notification)
 	return _build_user_notification_read(notification)
+
+
+@router.get("/messages/active", response_model=SystemMessageListResponse)
+def get_active_system_messages(
+	role: str = Query("all", description="Target role: all, driver, passenger"),
+	db: Session = Depends(get_db),
+) -> SystemMessageListResponse:
+	now = phnom_penh_now()
+	stmt = (
+		select(SystemMessage)
+		.where(
+			SystemMessage.is_active == True,
+			or_(SystemMessage.target_role == "all", SystemMessage.target_role == role),
+			or_(SystemMessage.expires_at.is_(None), SystemMessage.expires_at > now),
+		)
+		.order_by(SystemMessage.is_pinned.desc(), SystemMessage.created_at.desc())
+	)
+	items = db.execute(stmt).scalars().all()
+	messages = [
+		SystemMessageRead(
+			id=item.id,
+			title=item.title,
+			body=item.body,
+			target_role=item.target_role,
+			message_type=item.message_type,
+			is_active=item.is_active,
+			is_pinned=item.is_pinned,
+			broadcast_to_notifications=item.broadcast_to_notifications,
+			created_at=item.created_at,
+			expires_at=item.expires_at,
+		)
+		for item in items
+	]
+	return SystemMessageListResponse(messages=messages)
 
 
 @router.post("/payments", response_model=PaymentRead, status_code=status.HTTP_201_CREATED)

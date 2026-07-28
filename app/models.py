@@ -406,13 +406,38 @@ class UserNotification(Base):
     booking_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("bookings.id", ondelete="SET NULL"), nullable=True, index=True)
     is_read: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, nullable=False, index=True)
-
     user: Mapped["User"] = relationship("User", back_populates="notifications")
 
     __table_args__ = (
         CheckConstraint(
-            "type IN ('driver_arrived', 'booking_created', 'boarding_requested', 'boarding_confirmed')",
+            "type IN ('driver_arrived', 'booking_created', 'boarding_requested', 'boarding_confirmed', 'system_announcement', 'system_info')",
             name="user_notification_type_check",
+        ),
+    )
+
+
+class SystemMessage(Base):
+    __tablename__ = "system_messages"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    title: Mapped[str] = mapped_column(String(120), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    target_role: Mapped[str] = mapped_column(String(20), default="all", nullable=False, index=True)
+    message_type: Mapped[str] = mapped_column(String(30), default="info", nullable=False, index=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
+    is_pinned: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
+    broadcast_to_notifications: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, nullable=False, index=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+
+    __table_args__ = (
+        CheckConstraint(
+            "target_role IN ('all', 'driver', 'passenger')",
+            name="system_message_target_role_check",
+        ),
+        CheckConstraint(
+            "message_type IN ('info', 'warning', 'announcement', 'maintenance')",
+            name="system_message_type_check",
         ),
     )
 

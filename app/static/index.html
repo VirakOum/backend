@@ -62,6 +62,10 @@
                     <i class="fa-solid fa-rectangle-ad nav-icon"></i>
                     <span data-i18n="nav_promotions">Promotions & Ads</span>
                 </a>
+                <a href="#messages" class="nav-item" data-tab="messages">
+                    <i class="fa-solid fa-bullhorn nav-icon"></i>
+                    <span data-i18n="nav_messages">System Messages</span>
+                </a>
             </nav>
 
             <div class="sidebar-footer">
@@ -480,6 +484,99 @@
                                     </tr>
                                 </thead>
                                 <tbody id="ads-table-body">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                </div>
+            </section>
+
+            <!-- System Messages & Announcements Broadcast Tab -->
+            <section id="tab-messages" class="tab-pane">
+                <div style="display: grid; grid-template-columns: 1fr 1.3fr; gap: var(--spacing-lg); align-items: start;">
+                    
+                    <!-- Left Column: Create & Broadcast System Message Form -->
+                    <div class="content-card" style="padding: var(--spacing-lg);">
+                        <div style="margin-bottom: var(--spacing-md);">
+                            <h3 style="font-family: var(--font-display); font-weight:800; color: var(--color-primary); margin:0;">
+                                <i class="fa-solid fa-paper-plane" style="margin-right: 6px;"></i> Broadcast New Message
+                            </h3>
+                            <p style="font-size: 0.85rem; color: var(--color-text-secondary); margin-top: 4px;">Send announcements or information notices to app users.</p>
+                        </div>
+                        
+                        <form id="form-create-message">
+                            <div style="margin-bottom: var(--spacing-sm);">
+                                <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px;">Title</label>
+                                <input type="text" id="msg-title" class="form-control" placeholder="e.g. Service Maintenance Notice" required style="width: 100%; padding: 0.5rem; border-radius: 8px; border: 1px solid #d1d5db;">
+                            </div>
+                            
+                            <div style="margin-bottom: var(--spacing-sm);">
+                                <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px;">Message Content</label>
+                                <textarea id="msg-body" class="form-control" rows="4" placeholder="Enter message details to display to users..." required style="width: 100%; padding: 0.5rem; border-radius: 8px; border: 1px solid #d1d5db; font-family: inherit;"></textarea>
+                            </div>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-sm); margin-bottom: var(--spacing-sm);">
+                                <div>
+                                    <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px;">Target Audience</label>
+                                    <select id="msg-target" class="form-control" style="width: 100%; padding: 0.5rem; border-radius: 8px; border: 1px solid #d1d5db;">
+                                        <option value="all">All Users (Passengers & Drivers)</option>
+                                        <option value="driver">Drivers Only</option>
+                                        <option value="passenger">Passengers Only</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px;">Message Type</label>
+                                    <select id="msg-type" class="form-control" style="width: 100%; padding: 0.5rem; border-radius: 8px; border: 1px solid #d1d5db;">
+                                        <option value="info">Info Notice</option>
+                                        <option value="warning">Warning Alert</option>
+                                        <option value="announcement">Announcement</option>
+                                        <option value="maintenance">Maintenance Notice</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div style="margin-bottom: var(--spacing-md); display: flex; flex-direction: column; gap: 8px;">
+                                <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
+                                    <input type="checkbox" id="msg-pinned" style="width: 16px; height: 16px;">
+                                    <span><strong>Pin to App Home</strong> (Displays as top highlight banner)</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
+                                    <input type="checkbox" id="msg-broadcast" style="width: 16px; height: 16px;" checked>
+                                    <span><strong>Send Notification</strong> (Delivers directly to user notification inbox)</span>
+                                </label>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.65rem;">
+                                <i class="fa-solid fa-bullhorn" style="margin-right: 6px;"></i> Broadcast Message
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <!-- Right Column: System Messages List Table -->
+                    <div class="content-card" style="padding: var(--spacing-lg);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md);">
+                            <h3 style="font-family: var(--font-display); font-weight:800; color: var(--color-primary); margin:0;">
+                                <i class="fa-solid fa-list-check" style="margin-right: 6px;"></i> Active System Messages
+                            </h3>
+                            <button class="btn btn-secondary" id="btn-refresh-messages" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">
+                                <i class="fa-solid fa-rotate"></i> Refresh
+                            </button>
+                        </div>
+                        
+                        <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Title & Details</th>
+                                        <th>Target</th>
+                                        <th>Type</th>
+                                        <th>Status</th>
+                                        <th class="text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="messages-table-body">
                                     <!-- Populated by JS -->
                                 </tbody>
                             </table>
