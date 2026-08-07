@@ -22,6 +22,9 @@ app = FastAPI(
     version="0.1.0",
     description="A small FastAPI starter for learning how to build APIs.",
     root_path=root_path,
+    docs_url="/v1/api/docs",
+    redoc_url="/v1/api/redoc",
+    openapi_url="/v1/api/openapi.json",
     servers=[
         {
             "url": "https://mytravel.taxi/v1/api",
