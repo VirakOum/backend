@@ -1,6 +1,6 @@
 import os
 
-from fastapi import APIRouter, FastAPI
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect, text
@@ -14,13 +14,13 @@ from .routes.driver_fee import router as driver_fee_router
 from .routes.admin import router as admin_router
 from .routes.live_ws import router as live_ws_router
 
+root_path = os.getenv("FASTAPI_ROOT_PATH", "/v1/api")
+
 app = FastAPI(
     title="Learning FastAPI",
     version="0.1.0",
     description="A small FastAPI starter for learning how to build APIs.",
-    docs_url="/v1/api/docs",
-    redoc_url="/v1/api/redoc",
-    openapi_url="/v1/api/openapi.json",
+    root_path=root_path,
     servers=[
         {
             "url": "https://mytravel.taxi/v1/api",
@@ -89,18 +89,6 @@ class NoCacheStaticFiles(StaticFiles):
         return response
 
 
-# Prefixed router for /v1/api
-v1_router = APIRouter(prefix="/v1/api")
-v1_router.include_router(meta_router)
-v1_router.include_router(travel_router)
-v1_router.include_router(passenger_router)
-v1_router.include_router(addresses_router)
-v1_router.include_router(driver_fee_router)
-v1_router.include_router(admin_router)
-v1_router.include_router(live_ws_router)
-app.include_router(v1_router)
-
-# Direct root routes for fallback
 app.include_router(meta_router)
 app.include_router(travel_router)
 app.include_router(passenger_router)
@@ -109,5 +97,4 @@ app.include_router(driver_fee_router)
 app.include_router(admin_router)
 app.include_router(live_ws_router)
 
-app.mount("/v1/api/admin", NoCacheStaticFiles(directory="app/static", html=True), name="v1_admin")
-app.mount("/admin", NoCacheStaticFiles(directory="app/static", html=True), name="root_admin")
+app.mount("/admin", NoCacheStaticFiles(directory="app/static", html=True), name="admin")
