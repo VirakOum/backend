@@ -16,11 +16,10 @@ from .routes.live_ws import router as live_ws_router
 
 root_path = os.getenv("FASTAPI_ROOT_PATH", "")
 
-app = FastAPI(
+api_app = FastAPI(
     title="Learning FastAPI",
     version="0.1.0",
     description="A small FastAPI starter for learning how to build APIs.",
-    root_path=root_path,
     servers=[
         {
             "url": "https://mytravel.taxi/v1/api",
@@ -33,7 +32,7 @@ app = FastAPI(
     ],
 )
 
-app.add_middleware(
+api_app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
@@ -72,18 +71,13 @@ def _ensure_trip_live_location_columns() -> None:
         )
 
 
-@app.on_event("startup")
-def _apply_runtime_trip_schema_repairs() -> None:
-    _ensure_trip_live_location_columns()
-
-
-app.include_router(meta_router)
-app.include_router(travel_router)
-app.include_router(passenger_router)
-app.include_router(addresses_router)
-app.include_router(driver_fee_router)
-app.include_router(admin_router)
-app.include_router(live_ws_router)
+api_app.include_router(meta_router)
+api_app.include_router(travel_router)
+api_app.include_router(passenger_router)
+api_app.include_router(addresses_router)
+api_app.include_router(driver_fee_router)
+api_app.include_router(admin_router)
+api_app.include_router(live_ws_router)
 
 
 class NoCacheStaticFiles(StaticFiles):
@@ -98,4 +92,35 @@ class NoCacheStaticFiles(StaticFiles):
         return response
 
 
-app.mount("/admin", NoCacheStaticFiles(directory="app/static", html=True), name="admin")
+api_app.mount("/admin", NoCacheStaticFiles(directory="app/static", html=True), name="admin")
+
+app = FastAPI(
+    title="Learning FastAPI",
+    version="0.1.0",
+    description="A small FastAPI starter for learning how to build APIs.",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.on_event("startup")
+def _apply_runtime_trip_schema_repairs() -> None:
+    _ensure_trip_live_location_columns()
+
+
+app.mount("/v1/api", api_app)
+
+app.include_router(meta_router)
+app.include_router(travel_router)
+app.include_router(passenger_router)
+app.include_router(addresses_router)
+app.include_router(driver_fee_router)
+app.include_router(admin_router)
+app.include_router(live_ws_router)
+app.mount("/admin", NoCacheStaticFiles(directory="app/static", html=True), name="admin_root")

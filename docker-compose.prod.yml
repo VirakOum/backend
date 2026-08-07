@@ -45,11 +45,9 @@ services:
       - "traefik.http.routers.mytravel-backend.tls=true"
       - "traefik.http.routers.mytravel-backend.tls.certresolver=letsencrypt"
       - "traefik.http.routers.mytravel-backend.priority=10000"
-      - "traefik.http.middlewares.mytravel-stripprefix.stripprefix.prefixes=/v1/api"
-      - "traefik.http.routers.mytravel-backend.middlewares=mytravel-stripprefix"
       - "traefik.http.services.mytravel-backend.loadbalancer.server.port=8000"
     command: >
-      sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --root-path /v1/api"
+      sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
 volumes:
   fastapi_learning_postgres_data:
