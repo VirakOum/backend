@@ -98,17 +98,35 @@ docker compose -f docker-compose.prod.yml up -d --build
 ```
 
 
+## Web Interfaces & System Endpoints
+
+- **Public Landing Website**: `https://mytravel.taxi` (`GET /`)
+  - Modern bilingual (English & Khmer) showcase for MyTravel inter-city taxi & ride-hailing services.
+  - Interactive Cambodia province route fare estimator, passenger & driver app feature showcases, national emergency numbers (117, 118, 119), live stats counter, and FAQ accordion.
+  - Frontend structure in `app/static/site/` (MVC: `js/models/data.js`, `css/style.css`, `js/controllers/main.js`).
+
+- **Admin Command Portal**: `https://mytravel.taxi/admin/mytravel` (`GET /admin/mytravel/`)
+  - Fleet management, driver verification, debt limits, revenue analytics, system announcements, and banner ad management.
+  - Accessing `GET /admin` or `GET /admin/` automatically redirects to `/admin/mytravel/`.
+  - Static dashboard files located in `app/static/admin/`.
+
+- **API Base Path**: `https://mytravel.taxi/v1/api` (`GET /v1/api`)
+  - All backend endpoints are reachable under the `/v1/api` prefix as well as un-prefixed.
+  - Interactive Swagger Docs: `https://mytravel.taxi/v1/api/docs` or `http://localhost:8000/docs`.
+
 ## Try these routes
 
-- `GET /`
-- `GET /health`
+- `GET /` - Public Showcase Landing Website
+- `GET /admin/mytravel` - Admin Control Dashboard
+- `GET /v1/api` - API Base Information
+- `GET /v1/api/health` or `GET /health` - Service Health Check
 - `GET /items`
 - `POST /items`
 - `GET /items/{item_id}`
 - `PUT /items/{item_id}`
 - `DELETE /items/{item_id}`
-- `POST /travel/auth/signup`
-- `POST /travel/auth/login`
+- `POST /travel/auth/signup` (or `/v1/api/travel/auth/signup`)
+- `POST /travel/auth/login` (or `/v1/api/travel/auth/login`)
 - `GET /travel/auth/me`
 - `GET /travel/users/{user_id}`
 - `POST /travel/vehicles`

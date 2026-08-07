@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyTravel Taxi & Inter-City Travel | Cambodia</title>
+    <meta name="description" content="Cambodia's premier inter-city ride-hailing and taxi network across 25 provinces. Real-time GPS tracking, seat selection, bilingual support, and cash/digital payments.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kantumruy+Pro:ital,wght@0,400;0,600;0,700;1,400&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- Header & Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="#" class="brand">
+                <div class="brand-icon">
+                    <i class="fa-solid fa-taxi"></i>
+                </div>
+                <div>
+                    <div class="brand-title" data-i18n="brand_name">MYTRAVEL.TAXI</div>
+                    <div class="brand-tagline" data-i18n="tagline">Cambodia's Modern Inter-City Ride & Taxi Network</div>
+                </div>
+            </a>
+
+            <ul class="nav-links">
+                <li><a href="#about" class="nav-link" data-i18n="nav_about">About</a></li>
+                <li><a href="#estimator" class="nav-link" data-i18n="nav_estimator">Fare Estimator</a></li>
+                <li><a href="#features" class="nav-link" data-i18n="nav_features">Features</a></li>
+                <li><a href="#safety" class="nav-link" data-i18n="nav_safety">Safety</a></li>
+                <li><a href="#faq" class="nav-link" data-i18n="nav_faq">FAQ</a></li>
+            </ul>
+
+            <div class="nav-actions">
+                <button id="lang-toggle-btn" class="lang-btn" aria-label="Toggle Language">
+                    <i class="fa-solid fa-globe"></i>
+                    <span>ភាសាខ្មែរ</span>
+                </button>
+                <a href="/admin/mytravel" class="btn-admin">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span data-i18n="nav_admin_btn">Admin Portal</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero" id="about">
+        <div class="hero-grid">
+            <div class="hero-content">
+                <div class="hero-badge">
+                    <i class="fa-solid fa-clock"></i>
+                    <span data-i18n="badge_phnom_penh">Phnom Penh Time (GMT+7)</span>
+                </div>
+                <h1 class="hero-title" data-i18n="hero_title">
+                    Kinetic Precision Transport across 25 Cambodian Provinces
+                </h1>
+                <p class="hero-subtitle" data-i18n="hero_subtitle">
+                    Experience seamless inter-city rides, real-time live location tracking, seat selection, and bilingual support. Travel with confidence everywhere in Cambodia.
+                </p>
+                <div class="hero-buttons">
+                    <a href="#estimator" class="btn-primary">
+                        <i class="fa-solid fa-calculator"></i>
+                        <span data-i18n="btn_passenger_app">Get Passenger App</span>
+                    </a>
+                    <a href="/admin/mytravel" class="btn-secondary">
+                        <i class="fa-solid fa-user-gear"></i>
+                        <span data-i18n="btn_driver_app">Become a Driver Partner</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="hero-visual">
+                <div class="app-card-stack">
+                    <div class="app-card-header">
+                        <div style="font-weight: 800; font-size: 1.1rem; color: var(--accent-dark);">
+                            <i class="fa-solid fa-map-pin" style="color: var(--accent-taxi); margin-right: 0.5rem;"></i>
+                            Phnom Penh ➔ Siem Reap
+                        </div>
+                        <div class="status-pill">
+                            <span class="status-dot"></span>
+                            Live Driver Active
+                        </div>
+                    </div>
+                    <div style="background: var(--bg-main); border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1rem;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <span style="font-size: 0.85rem; color: var(--text-muted);">Vehicle Type</span>
+                            <span style="font-weight: 700; color: var(--accent-dark);">Comfort SUV (6 Seats)</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <span style="font-size: 0.85rem; color: var(--text-muted);">Distance</span>
+                            <span style="font-weight: 700; color: var(--accent-dark);">314 km (NR6)</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="font-size: 0.85rem; color: var(--text-muted);">Passenger Seat</span>
+                            <span style="font-weight: 700; color: var(--success-color);">Seat A1 Confirmed</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">Total Estimated Fare</div>
+                            <div style="font-size: 1.5rem; font-weight: 800; color: var(--accent-dark);">$25.00 <span style="font-size: 0.9rem; color: var(--text-muted); font-weight: 500;">(៛100,000)</span></div>
+                        </div>
+                        <div style="background: var(--accent-taxi); color: var(--accent-dark); padding: 0.5rem 1rem; border-radius: var(--radius-full); font-weight: 800; font-size: 0.85rem;">
+                            Ready to Book
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Fare Estimator Section -->
+    <section class="section" id="estimator">
+        <div class="section-header">
+            <h2 class="section-title" data-i18n="estimator_title">Instant Fare & Route Estimator</h2>
+            <p class="section-subtitle" data-i18n="estimator_subtitle">Calculate estimated trip costs across major province routes in Cambodia.</p>
+        </div>
+
+        <div class="estimator-card">
+            <div class="estimator-form">
+                <div class="form-group">
+                    <label for="select-origin" data-i18n="label_origin">Pickup Province</label>
+                    <select id="select-origin" class="form-control"></select>
+                </div>
+                <div class="form-group">
+                    <label for="select-dest" data-i18n="label_destination">Destination Province</label>
+                    <select id="select-dest" class="form-control"></select>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="label_vehicle">Vehicle Class</label>
+                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;">Select your preferred ride option below</div>
+                </div>
+            </div>
+
+            <div class="vehicle-selector" id="vehicle-grid"></div>
+
+            <div class="estimate-results">
+                <div class="result-item">
+                    <span class="result-label" data-i18n="est_distance">Estimated Distance</span>
+                    <span class="result-val" id="est-distance">314 km</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label" data-i18n="est_usd">Estimated Cost (USD)</span>
+                    <span class="result-val" id="est-usd">$25.00</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label" data-i18n="est_khr">Estimated Cost (KHR)</span>
+                    <span class="result-val" id="est-khr">៛100,000</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Showcase -->
+    <section class="section" id="features">
+        <div class="section-header">
+            <h2 class="section-title" data-i18n="features_p_title">Passenger & Platform Features</h2>
+            <p class="section-subtitle" data-i18n="features_p_desc">Empowering travelers with smart route search, seat selection, and real-time tracking.</p>
+        </div>
+
+        <div class="grid-3">
+            <div class="feature-card">
+                <div class="feature-icon-box">
+                    <i class="fa-solid fa-location-crosshairs"></i>
+                </div>
+                <h3 data-i18n="feat_1_title">Real-Time GPS Tracking</h3>
+                <p data-i18n="feat_1_desc">Watch your driver's live location and receive arrival & boarding status alerts.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon-box">
+                    <i class="fa-solid fa-chair"></i>
+                </div>
+                <h3 data-i18n="feat_2_title">Seat & Vehicle Choice</h3>
+                <p data-i18n="feat_2_desc">Choose individual seats for shared inter-city trips or reserve a full private vehicle.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon-box">
+                    <i class="fa-solid fa-language"></i>
+                </div>
+                <h3 data-i18n="feat_3_title">Bilingual Experience</h3>
+                <p data-i18n="feat_3_desc">Seamless switching between Khmer (ភាសាខ្មែរ) and English across all flows.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon-box">
+                    <i class="fa-solid fa-wallet"></i>
+                </div>
+                <h3 data-i18n="feat_d1_title">Fair Commission & Debt Limit</h3>
+                <p data-i18n="feat_d1_desc">Transparent wallet settlement, automated cash debt tracking, and flexible membership options.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon-box">
+                    <i class="fa-solid fa-desktop"></i>
+                </div>
+                <h3 data-i18n="feat_d2_title">Live Command Dashboard</h3>
+                <p data-i18n="feat_d2_desc">Admin and fleet controllers monitor real-time vehicle positions and trip progression.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon-box">
+                    <i class="fa-solid fa-mobile-screen-button"></i>
+                </div>
+                <h3 data-i18n="feat_d3_title">Trusted Device Security</h3>
+                <p data-i18n="feat_d3_desc">Hardware-backed device token identity prevents unauthorized session hijacking.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Telemetry Stats -->
+    <div class="section">
+        <div class="stats-banner" id="stats-banner"></div>
+    </div>
+
+    <!-- Safety Section -->
+    <section class="section" id="safety">
+        <div class="safety-box">
+            <div>
+                <h2 style="font-size: 2rem; font-weight: 800; margin-bottom: 0.75rem;" data-i18n="safety_title">Safety First Architecture</h2>
+                <p style="color: var(--text-light);" data-i18n="safety_desc">Proximity arrival enforcement & direct national emergency hotlines.</p>
+                <div class="emergency-pills">
+                    <div class="emer-pill"><i class="fa-solid fa-shield-cat"></i> 117 Police (នគរបាល)</div>
+                    <div class="emer-pill"><i class="fa-solid fa-fire-extinguisher"></i> 118 Fire (អគ្គិភ័យ)</div>
+                    <div class="emer-pill"><i class="fa-solid fa-truck-medical"></i> 119 Ambulance (សង្គ្រោះ)</div>
+                </div>
+            </div>
+            <div style="background: rgba(255,255,255,0.05); padding: 2rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.1);">
+                <div style="font-weight: 700; font-size: 1.1rem; margin-bottom: 0.75rem;" data-i18n="safety_card2_title">Proximity Verification</div>
+                <p style="font-size: 0.9rem; color: var(--text-light);" data-i18n="safety_card2_desc">Driver arrival and passenger boarding confirmed by system GPS radius truth, not guesswork.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="section" id="faq">
+        <div class="section-header">
+            <h2 class="section-title" data-i18n="faq_title">Frequently Asked Questions</h2>
+            <p class="section-subtitle" data-i18n="faq_subtitle">Everything you need to know about riding and driving with MyTravel.</p>
+        </div>
+        <div class="faq-container" id="faq-container"></div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-container">
+            <div class="footer-top">
+                <div>
+                    <div style="font-size: 1.5rem; font-weight: 800; color: #FFFFFF;" data-i18n="brand_name">MYTRAVEL.TAXI</div>
+                    <div style="font-size: 0.85rem; color: var(--text-light);" data-i18n="tagline">Cambodia's Modern Inter-City Ride & Taxi Network</div>
+                </div>
+                <a href="/admin/mytravel" class="admin-banner-link">
+                    <i class="fa-solid fa-lock"></i>
+                    <span data-i18n="admin_link_text">System Control & Operations Panel (/admin/mytravel)</span>
+                </a>
+            </div>
+            <div class="footer-bottom" data-i18n="footer_copyright">
+                © 2026 MyTravel Transport Systems. All rights reserved. Kingdom of Cambodia.
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts (MVC: Model then Controller) -->
+    <script src="js/models/data.js"></script>
+    <script src="js/controllers/main.js"></script>
+</body>
+</html>

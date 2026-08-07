@@ -1,7 +1,8 @@
 import os
 
-from fastapi import FastAPI
+from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect, text
 
@@ -14,7 +15,7 @@ from .routes.driver_fee import router as driver_fee_router
 from .routes.admin import router as admin_router
 from .routes.live_ws import router as live_ws_router
 
-root_path = os.getenv("FASTAPI_ROOT_PATH", "/v1/api")
+root_path = os.getenv("FASTAPI_ROOT_PATH", "")
 
 app = FastAPI(
     title="Learning FastAPI",
@@ -89,12 +90,30 @@ class NoCacheStaticFiles(StaticFiles):
         return response
 
 
-app.include_router(meta_router)
-app.include_router(travel_router)
-app.include_router(passenger_router)
-app.include_router(addresses_router)
-app.include_router(driver_fee_router)
-app.include_router(admin_router)
-app.include_router(live_ws_router)
+# Explicit API router under /v1/api
+api_v1_router = APIRouter(prefix="/v1/api")
 
-app.mount("/admin", NoCacheStaticFiles(directory="app/static", html=True), name="admin")
+@api_v1_router.get("", include_in_schema=False)
+@api_v1_router.get("/", include_in_schema=False)
+def api_v1_root():
+    return {"message": "FastAPI project is ready", "docs": "/v1/api/docs", "redoc": "/v1/api/redoc"}
+
+for r in [meta_router, travel_router, passenger_router, addresses_router, driver_fee_router, admin_router, live_ws_router]:
+    app.include_router(r)
+    api_v1_router.include_router(r)
+
+app.include_router(api_v1_router)
+
+@app.get("/", include_in_schema=False)
+def serve_public_site():
+    return FileResponse("app/static/site/index.html")
+
+@app.get("/admin", include_in_schema=False)
+@app.get("/admin/", include_in_schema=False)
+def redirect_admin():
+    return RedirectResponse(url="/admin/mytravel/", status_code=307)
+
+app.mount("/admin/mytravel", NoCacheStaticFiles(directory="app/static/admin", html=True), name="admin")
+app.mount("/css", NoCacheStaticFiles(directory="app/static/site/css"), name="site_css")
+app.mount("/js", NoCacheStaticFiles(directory="app/static/site/js"), name="site_js")
+

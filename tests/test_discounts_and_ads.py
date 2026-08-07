@@ -260,7 +260,7 @@ def test_admin_ad_image_upload_from_device_file() -> None:
     assert image_url.startswith("/admin/assets/uploads/banner-ads/")
     assert image_url.endswith(".png")
 
-    saved_path = Path("app/static") / image_url.removeprefix("/admin/")
+    saved_path = Path("app/static/admin") / image_url.removeprefix("/admin/")
     try:
         assert saved_path.exists()
         assert saved_path.read_bytes() == image_bytes

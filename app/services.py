@@ -104,8 +104,5 @@ class PaymentService:
     def get_payment(self, db: Session, payment_id: UUID) -> Payment | None:
         return db.get(Payment, payment_id)
 
-        db.delete(item)
-        db.commit()
-
 
 item_service = ItemService()

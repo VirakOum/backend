@@ -37,7 +37,7 @@ from .driver_fee import evaluate_driver_wallet_lock, get_runtime_settings, MEMBE
 
 router = APIRouter(prefix="/travel/admin", tags=["admin-dashboard"])
 
-UPLOAD_ROOT = Path(__file__).resolve().parents[1] / "static" / "assets" / "uploads" / "banner-ads"
+UPLOAD_ROOT = Path(__file__).resolve().parents[1] / "static" / "admin" / "assets" / "uploads" / "banner-ads"
 ALLOWED_AD_IMAGE_TYPES = {
     "image/jpeg": ".jpg",
     "image/png": ".png",

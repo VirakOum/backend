@@ -1,0 +1,693 @@
+/* 
+ * MyTravel Public Website Stylesheet (MVC - View Styling)
+ * Taxi Service Theme: Clean, high contrast, modern city aesthetics
+ */
+
+:root {
+    --bg-main: #F3F5F8;
+    --bg-card: #FFFFFF;
+    --bg-card-hover: #FAFCFF;
+    --accent-taxi: #FFC83D;
+    --accent-taxi-hover: #EAB320;
+    --accent-dark: #17223A;
+    --accent-dark-subtle: #243456;
+    --text-dark: #17223A;
+    --text-muted: #64748B;
+    --text-light: #94A3B8;
+    --border-color: #E2E8F0;
+    --border-taxi: #FFC83D;
+    --success-color: #1FA86C;
+    --danger-color: #E4563F;
+    --shadow-sm: 0 2px 8px rgba(23, 34, 58, 0.04);
+    --shadow-md: 0 8px 24px rgba(23, 34, 58, 0.08);
+    --shadow-lg: 0 16px 40px rgba(23, 34, 58, 0.12);
+    --radius-sm: 12px;
+    --radius-md: 20px;
+    --radius-lg: 28px;
+    --radius-full: 9999px;
+    --transition-fast: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Kantumruy Pro', 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: var(--bg-main);
+    color: var(--text-dark);
+    line-height: 1.6;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+button {
+    font-family: inherit;
+    cursor: pointer;
+    border: none;
+    outline: none;
+}
+
+/* Header & Navbar */
+.navbar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background: rgba(243, 245, 248, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border-color);
+    padding: 1rem 2rem;
+    transition: var(--transition-fast);
+}
+
+.nav-container {
+    max-width: 1280px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.brand-icon {
+    width: 44px;
+    height: 44px;
+    background: var(--accent-taxi);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    color: var(--accent-dark);
+    box-shadow: 0 4px 12px rgba(255, 200, 61, 0.3);
+}
+
+.brand-title {
+    font-size: 1.35rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--accent-dark);
+}
+
+.brand-tagline {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    list-style: none;
+}
+
+.nav-link {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-dark);
+    transition: var(--transition-fast);
+}
+
+.nav-link:hover {
+    color: var(--accent-dark-subtle);
+}
+
+.nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.lang-btn {
+    background: var(--bg-card);
+    border: 1.5px solid var(--border-color);
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-full);
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-dark);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: var(--transition-fast);
+}
+
+.lang-btn:hover {
+    border-color: var(--accent-taxi);
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-admin {
+    background: var(--accent-dark);
+    color: #FFFFFF;
+    padding: 0.6rem 1.25rem;
+    border-radius: var(--radius-full);
+    font-weight: 700;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: var(--transition-fast);
+}
+
+.btn-admin:hover {
+    background: var(--accent-dark-subtle);
+    box-shadow: 0 4px 14px rgba(23, 34, 58, 0.25);
+}
+
+/* Mobile Menu Toggle */
+.mobile-toggle {
+    display: none;
+    font-size: 1.4rem;
+    background: none;
+    color: var(--text-dark);
+}
+
+/* Hero Section */
+.hero {
+    position: relative;
+    padding: 4.5rem 2rem 3rem;
+    max-width: 1280px;
+    margin: 0 auto;
+}
+
+.hero-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 3.5rem;
+    align-items: center;
+}
+
+.hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(255, 200, 61, 0.2);
+    border: 1px solid var(--accent-taxi);
+    padding: 0.4rem 1rem;
+    border-radius: var(--radius-full);
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--accent-dark);
+    margin-bottom: 1.25rem;
+}
+
+.hero-title {
+    font-size: 2.85rem;
+    font-weight: 800;
+    line-height: 1.2;
+    color: var(--accent-dark);
+    margin-bottom: 1.25rem;
+    letter-spacing: -1px;
+}
+
+.hero-subtitle {
+    font-size: 1.15rem;
+    color: var(--text-muted);
+    margin-bottom: 2rem;
+    max-width: 600px;
+}
+
+.hero-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.btn-primary {
+    background: var(--accent-taxi);
+    color: var(--accent-dark);
+    border: 2px solid var(--border-taxi);
+    padding: 0.9rem 1.75rem;
+    border-radius: var(--radius-md);
+    font-weight: 800;
+    font-size: 1rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    box-shadow: 0 6px 20px rgba(255, 200, 61, 0.35);
+    transition: var(--transition-fast);
+}
+
+.btn-primary:hover {
+    background: var(--accent-taxi-hover);
+    transform: translateY(-2px);
+}
+
+.btn-secondary {
+    background: var(--bg-card);
+    color: var(--text-dark);
+    border: 1.5px solid var(--border-color);
+    padding: 0.9rem 1.75rem;
+    border-radius: var(--radius-md);
+    font-weight: 700;
+    font-size: 1rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition-fast);
+}
+
+.btn-secondary:hover {
+    border-color: var(--accent-taxi);
+    transform: translateY(-2px);
+}
+
+/* App Hero Visual Mockup */
+.hero-visual {
+    position: relative;
+}
+
+.app-card-stack {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
+    position: relative;
+    overflow: hidden;
+}
+
+.app-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+}
+
+.status-pill {
+    background: rgba(31, 168, 108, 0.12);
+    color: var(--success-color);
+    padding: 0.35rem 0.85rem;
+    border-radius: var(--radius-full);
+    font-weight: 700;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--success-color);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(31, 168, 108, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(31, 168, 108, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(31, 168, 108, 0); }
+}
+
+/* Fare Estimator Section */
+.section {
+    padding: 4.5rem 2rem;
+    max-width: 1280px;
+    margin: 0 auto;
+}
+
+.section-header {
+    text-align: center;
+    max-width: 700px;
+    margin: 0 auto 3rem;
+}
+
+.section-title {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: var(--accent-dark);
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.5px;
+}
+
+.section-subtitle {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+}
+
+.estimator-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    padding: 2.5rem;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-md);
+}
+
+.estimator-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-group label {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--accent-dark);
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.85rem 1.1rem;
+    background: var(--bg-main);
+    border: 1.5px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 0.95rem;
+    font-family: inherit;
+    color: var(--text-dark);
+    font-weight: 600;
+    transition: var(--transition-fast);
+}
+
+.form-control:focus {
+    border-color: var(--accent-taxi);
+    background: #FFFFFF;
+    box-shadow: 0 0 0 3px rgba(255, 200, 61, 0.2);
+}
+
+.vehicle-selector {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+}
+
+.vehicle-card {
+    background: var(--bg-main);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    position: relative;
+}
+
+.vehicle-card.active {
+    background: #FFFFFF;
+    border-color: var(--accent-taxi);
+    box-shadow: 0 4px 16px rgba(255, 200, 61, 0.25);
+}
+
+.vehicle-badge {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    background: var(--accent-taxi);
+    color: var(--accent-dark);
+    font-size: 0.7rem;
+    font-weight: 800;
+    padding: 0.2rem 0.6rem;
+    border-radius: var(--radius-full);
+}
+
+.vehicle-icon {
+    font-size: 1.8rem;
+    color: var(--accent-dark);
+    margin-bottom: 0.5rem;
+}
+
+.vehicle-name {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--accent-dark);
+}
+
+.vehicle-cap {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+/* Estimator Results Bar */
+.estimate-results {
+    background: var(--accent-dark);
+    color: #FFFFFF;
+    border-radius: var(--radius-md);
+    padding: 1.75rem 2.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+}
+
+.result-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.result-label {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    font-weight: 600;
+}
+
+.result-val {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--accent-taxi);
+}
+
+/* Feature Cards Grid */
+.grid-3 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 2rem;
+}
+
+.feature-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 2rem;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition-smooth);
+}
+
+.feature-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-taxi);
+}
+
+.feature-icon-box {
+    width: 56px;
+    height: 56px;
+    background: rgba(255, 200, 61, 0.2);
+    color: var(--accent-dark);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    margin-bottom: 1.25rem;
+}
+
+.feature-card h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--accent-dark);
+    margin-bottom: 0.75rem;
+}
+
+.feature-card p {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+}
+
+/* Stats Counter Section */
+.stats-banner {
+    background: var(--accent-dark);
+    color: #FFFFFF;
+    border-radius: var(--radius-lg);
+    padding: 3.5rem 2rem;
+    margin: 2rem 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 2rem;
+    text-align: center;
+}
+
+.stat-num {
+    font-size: 2.75rem;
+    font-weight: 800;
+    color: var(--accent-taxi);
+    margin-bottom: 0.25rem;
+}
+
+.stat-lbl {
+    font-size: 0.95rem;
+    color: var(--text-light);
+    font-weight: 600;
+}
+
+/* FAQ Accordion */
+.faq-container {
+    max-width: 850px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.faq-item {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    transition: var(--transition-fast);
+}
+
+.faq-header {
+    padding: 1.25rem 1.75rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--accent-dark);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+}
+
+.faq-body {
+    padding: 0 1.75rem 1.25rem;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    display: none;
+    border-top: 1px solid rgba(0,0,0,0.05);
+    padding-top: 1rem;
+}
+
+.faq-item.open .faq-body {
+    display: block;
+}
+
+.faq-item.open .faq-icon {
+    transform: rotate(180deg);
+}
+
+.faq-icon {
+    transition: var(--transition-fast);
+}
+
+/* Safety & Emergency Section */
+.safety-box {
+    background: linear-gradient(135deg, #17223A 0%, #243456 100%);
+    color: #FFFFFF;
+    border-radius: var(--radius-lg);
+    padding: 3rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2.5rem;
+    align-items: center;
+}
+
+.emergency-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.emer-pill {
+    background: rgba(228, 86, 63, 0.2);
+    border: 1.5px solid var(--danger-color);
+    color: #FFFFFF;
+    padding: 0.75rem 1.25rem;
+    border-radius: var(--radius-full);
+    font-weight: 700;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+/* Footer */
+footer {
+    background: var(--accent-dark);
+    color: var(--text-light);
+    padding: 4rem 2rem 2rem;
+    border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+.footer-container {
+    max-width: 1280px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+}
+
+.footer-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.admin-banner-link {
+    background: rgba(255, 200, 61, 0.15);
+    border: 1.5px dashed var(--accent-taxi);
+    padding: 1rem 1.5rem;
+    border-radius: var(--radius-md);
+    color: var(--accent-taxi);
+    font-weight: 700;
+    font-size: 0.95rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    transition: var(--transition-fast);
+}
+
+.admin-banner-link:hover {
+    background: var(--accent-taxi);
+    color: var(--accent-dark);
+}
+
+.footer-bottom {
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--text-light);
+}
+
+/* Responsive Breakpoints */
+@media (max-width: 992px) {
+    .hero-grid, .estimator-form, .safety-box {
+        grid-template-columns: 1fr;
+    }
+    .hero-title {
+        font-size: 2.2rem;
+    }
+    .nav-links {
+        display: none;
+    }
+    .mobile-toggle {
+        display: block;
+    }
+}

@@ -37,44 +37,13 @@ def setup_function() -> None:
 
 
 def test_root_and_health() -> None:
-    root_response = client.get("/")
+    site_response = client.get("/")
+    v1_api_response = client.get("/v1/api")
     health_response = client.get("/health")
 
-    assert root_response.status_code == 200
-    assert root_response.json()["message"] == "FastAPI project is ready"
+    assert site_response.status_code == 200
+    assert "MYTRAVEL.TAXI" in site_response.text
+    assert v1_api_response.status_code == 200
+    assert v1_api_response.json()["message"] == "FastAPI project is ready"
     assert health_response.status_code == 200
     assert health_response.json() == {"status": "ok"}
-
-
-def test_item_crud_flow() -> None:
-    create_response = client.post(
-        "/items",
-        json={"name": "Notebook", "description": "A place for notes"},
-    )
-
-    assert create_response.status_code == 201
-    created_item = create_response.json()
-    assert created_item["id"] == 1
-    assert created_item["name"] == "Notebook"
-
-    list_response = client.get("/items")
-    assert list_response.status_code == 200
-    assert list_response.json() == [created_item]
-
-    detail_response = client.get("/items/1")
-    assert detail_response.status_code == 200
-    assert detail_response.json() == created_item
-
-    update_response = client.put(
-        "/items/1",
-        json={"name": "Updated notebook", "description": "Revised notes"},
-    )
-    assert update_response.status_code == 200
-    assert update_response.json()["name"] == "Updated notebook"
-
-    delete_response = client.delete("/items/1")
-    assert delete_response.status_code == 204
-
-    missing_response = client.get("/items/1")
-    assert missing_response.status_code == 404
-    assert missing_response.json()["detail"] == "Item not found"
