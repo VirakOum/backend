@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -12,15 +14,22 @@ from .routes.driver_fee import router as driver_fee_router
 from .routes.admin import router as admin_router
 from .routes.live_ws import router as live_ws_router
 
+root_path = os.getenv("FASTAPI_ROOT_PATH", "")
+
 app = FastAPI(
     title="Learning FastAPI",
     version="0.1.0",
     description="A small FastAPI starter for learning how to build APIs.",
+    root_path=root_path,
     servers=[
+        {
+            "url": "https://mytravel.taxi/v1/api",
+            "description": "Production server",
+        },
         {
             "url": "http://10.20.30.211:8000",
             "description": "Local development server",
-        }
+        },
     ],
 )
 

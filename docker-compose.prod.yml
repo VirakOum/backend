@@ -9,7 +9,7 @@ services:
     volumes:
       - fastapi_learning_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U fastapi -d fastapi_learning"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fastapi} -d ${POSTGRES_DB:-fastapi_learning}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -22,16 +22,20 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://fastapi:fastapi@db:5432/fastapi_learning}
+      FASTAPI_ROOT_PATH: ${FASTAPI_ROOT_PATH:-/v1/api}
     labels:
       - "coolify.managed=true"
       - "traefik.enable=true"
-      - "traefik.http.routers.app.rule=Host(`api.mytravel.taxi`)"
-      - "traefik.http.routers.app.entrypoints=websecure"
-      - "traefik.http.routers.app.tls=true"
-      - "traefik.http.routers.app.tls.certresolver=letsencrypt"
-      - "traefik.http.services.app.loadbalancer.server.port=8000"
+      - "traefik.http.routers.mytravel-backend.rule=Host(`mytravel.taxi`) && PathPrefix(`/v1/api`)"
+      - "traefik.http.routers.mytravel-backend.entrypoints=websecure"
+      - "traefik.http.routers.mytravel-backend.tls=true"
+      - "traefik.http.routers.mytravel-backend.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.mytravel-backend.priority=10000"
+      - "traefik.http.middlewares.mytravel-stripprefix.stripprefix.prefixes=/v1/api"
+      - "traefik.http.routers.mytravel-backend.middlewares=mytravel-stripprefix"
+      - "traefik.http.services.mytravel-backend.loadbalancer.server.port=8000"
     command: >
-      sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+      sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --root-path /v1/api"
 
 volumes:
   fastapi_learning_postgres_data:
