@@ -77,7 +77,7 @@ def _apply_runtime_trip_schema_repairs() -> None:
     _ensure_trip_live_location_columns()
 
 
-# app.include_router(meta_router)
+app.include_router(meta_router)
 app.include_router(travel_router)
 app.include_router(passenger_router)
 app.include_router(addresses_router)
