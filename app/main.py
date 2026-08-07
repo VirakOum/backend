@@ -113,6 +113,7 @@ def serve_public_site():
 
 @app.get("/admin", include_in_schema=False)
 @app.get("/admin/", include_in_schema=False)
+@app.get("/admin/mytravel", include_in_schema=False)
 def redirect_admin():
     return RedirectResponse(url="/admin/mytravel/", status_code=307)
 
