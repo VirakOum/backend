@@ -186,7 +186,37 @@ button {
     margin: 0 auto;
 }
 
+.hero::before {
+    content: '';
+    position: absolute;
+    top: 5%;
+    left: -5%;
+    width: 450px;
+    height: 450px;
+    background: radial-gradient(circle, rgba(255, 200, 61, 0.18) 0%, rgba(255, 200, 61, 0) 70%);
+    border-radius: 50%;
+    z-index: 0;
+    pointer-events: none;
+    filter: blur(40px);
+}
+
+.hero::after {
+    content: '';
+    position: absolute;
+    bottom: 5%;
+    right: -5%;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(23, 34, 58, 0.08) 0%, rgba(23, 34, 58, 0) 70%);
+    border-radius: 50%;
+    z-index: 0;
+    pointer-events: none;
+    filter: blur(50px);
+}
+
 .hero-grid {
+    position: relative;
+    z-index: 1;
     display: grid;
     grid-template-columns: 1.1fr 0.9fr;
     gap: 3.5rem;
@@ -205,6 +235,7 @@ button {
     font-size: 0.85rem;
     color: var(--accent-dark);
     margin-bottom: 1.25rem;
+    box-shadow: 0 4px 12px rgba(255, 200, 61, 0.2);
 }
 
 .hero-title {
@@ -246,7 +277,8 @@ button {
 
 .btn-primary:hover {
     background: var(--accent-taxi-hover);
-    transform: translateY(-2px);
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(255, 200, 61, 0.5);
 }
 
 .btn-secondary {
@@ -266,7 +298,8 @@ button {
 
 .btn-secondary:hover {
     border-color: var(--accent-taxi);
-    transform: translateY(-2px);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(23, 34, 58, 0.1);
 }
 
 /* App Hero Visual Mockup */
@@ -275,13 +308,21 @@ button {
 }
 
 .app-card-stack {
-    background: var(--bg-card);
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border-radius: var(--radius-lg);
     padding: 2rem;
-    border: 1px solid var(--border-color);
-    box-shadow: var(--shadow-lg);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 20px 50px rgba(23, 34, 58, 0.12), 0 0 0 1px rgba(255, 200, 61, 0.2);
     position: relative;
     overflow: hidden;
+    animation: floatCard 6s ease-in-out infinite;
+}
+
+@keyframes floatCard {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
 }
 
 .app-card-header {
@@ -348,7 +389,12 @@ button {
     border-radius: var(--radius-lg);
     padding: 2.5rem;
     border: 1px solid var(--border-color);
-    box-shadow: var(--shadow-md);
+    box-shadow: 0 12px 35px rgba(23, 34, 58, 0.06);
+    transition: var(--transition-smooth);
+}
+
+.estimator-card:hover {
+    box-shadow: 0 16px 45px rgba(23, 34, 58, 0.1);
 }
 
 .estimator-form {
@@ -386,7 +432,7 @@ button {
 .form-control:focus {
     border-color: var(--accent-taxi);
     background: #FFFFFF;
-    box-shadow: 0 0 0 3px rgba(255, 200, 61, 0.2);
+    box-shadow: 0 0 0 3px rgba(255, 200, 61, 0.25);
 }
 
 .vehicle-selector {
@@ -406,10 +452,16 @@ button {
     position: relative;
 }
 
+.vehicle-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--border-taxi);
+}
+
 .vehicle-card.active {
     background: #FFFFFF;
     border-color: var(--accent-taxi);
-    box-shadow: 0 4px 16px rgba(255, 200, 61, 0.25);
+    box-shadow: 0 8px 24px rgba(255, 200, 61, 0.3);
+    transform: translateY(-3px);
 }
 
 .vehicle-badge {
@@ -443,7 +495,7 @@ button {
 
 /* Estimator Results Bar */
 .estimate-results {
-    background: var(--accent-dark);
+    background: linear-gradient(135deg, #17223A 0%, #1e2d4d 100%);
     color: #FFFFFF;
     border-radius: var(--radius-md);
     padding: 1.75rem 2.25rem;
@@ -452,6 +504,7 @@ button {
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 1.5rem;
+    box-shadow: 0 8px 24px rgba(23, 34, 58, 0.15);
 }
 
 .result-item {
@@ -485,12 +538,30 @@ button {
     border: 1px solid var(--border-color);
     box-shadow: var(--shadow-sm);
     transition: var(--transition-smooth);
+    position: relative;
+    overflow: hidden;
+}
+
+.feature-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--accent-taxi);
+    opacity: 0;
+    transition: var(--transition-fast);
 }
 
 .feature-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-md);
+    transform: translateY(-5px);
+    box-shadow: 0 16px 32px rgba(23, 34, 58, 0.1);
     border-color: var(--border-taxi);
+}
+
+.feature-card:hover::before {
+    opacity: 1;
 }
 
 .feature-icon-box {
