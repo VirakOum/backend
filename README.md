@@ -75,13 +75,28 @@ The previous nested checkout under `python/` was removed after being identified 
    python3 scripts/seed_demo_data.py
    ```
 
-### Run everything in Docker
+### Run with Docker
+
+#### Local Development Mode
+For local development, run Docker Compose with default host port bindings (`http://localhost:8000` for FastAPI and `5433` for PostgreSQL):
 
 ```bash
 docker compose up --build
 ```
 
-The app starts on `http://127.0.0.1:8000` and runs `alembic upgrade head` before launching Uvicorn.
+#### Production / Coolify Deployment Mode
+For production deployment behind Coolify / Traefik reverse proxy (to prevent host port 8000 collisions):
+
+Set **Docker Compose Location** in Coolify settings to:
+```
+/docker-compose.prod.yml
+```
+
+Or run manually with the production compose file:
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
 
 ## Try these routes
 
@@ -170,3 +185,4 @@ python scripts/generate_crud.py Category --fields name:str:100 description:str?:
 alembic revision --autogenerate -m "create categories table"
 alembic upgrade head
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload 
+c:\Users\USer\Documents\Github\Mytravel\backend_repo\.venv\Scripts\Activate.ps1

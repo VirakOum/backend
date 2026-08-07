@@ -6,8 +6,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-fastapi_learning}
       POSTGRES_USER: ${POSTGRES_USER:-fastapi}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fastapi}
-    ports:
-      - "${DB_PORT:-5433}:5432"
     volumes:
       - fastapi_learning_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -24,12 +22,10 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://fastapi:fastapi@db:5432/fastapi_learning}
-    ports:
-      - "${APP_PORT:-8000}:8000"
+    expose:
+      - "8000"
     command: >
       sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
 volumes:
   fastapi_learning_postgres_data:
-
-
