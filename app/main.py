@@ -14,6 +14,7 @@ from .routes.addresses import router as addresses_router
 from .routes.driver_fee import router as driver_fee_router
 from .routes.admin import router as admin_router
 from .routes.live_ws import router as live_ws_router
+from .routes.items import router as items_router
 
 root_path = os.getenv("FASTAPI_ROOT_PATH", "")
 
@@ -101,7 +102,7 @@ api_v1_router = APIRouter(prefix="/v1/api")
 def api_v1_root():
     return {"message": "FastAPI project is ready", "docs": "/v1/api/docs", "redoc": "/v1/api/redoc"}
 
-for r in [meta_router, travel_router, passenger_router, addresses_router, driver_fee_router, admin_router, live_ws_router]:
+for r in [meta_router, travel_router, passenger_router, addresses_router, driver_fee_router, admin_router, live_ws_router, items_router]:
     app.include_router(r)
     api_v1_router.include_router(r)
 
