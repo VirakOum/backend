@@ -1,6 +1,6 @@
 import os
 
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect, text
@@ -14,12 +14,13 @@ from .routes.driver_fee import router as driver_fee_router
 from .routes.admin import router as admin_router
 from .routes.live_ws import router as live_ws_router
 
-root_path = os.getenv("FASTAPI_ROOT_PATH", "")
-
-api_app = FastAPI(
+app = FastAPI(
     title="Learning FastAPI",
     version="0.1.0",
     description="A small FastAPI starter for learning how to build APIs.",
+    docs_url="/v1/api/docs",
+    redoc_url="/v1/api/redoc",
+    openapi_url="/v1/api/openapi.json",
     servers=[
         {
             "url": "https://mytravel.taxi/v1/api",
@@ -32,7 +33,7 @@ api_app = FastAPI(
     ],
 )
 
-api_app.add_middleware(
+app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
@@ -71,13 +72,9 @@ def _ensure_trip_live_location_columns() -> None:
         )
 
 
-api_app.include_router(meta_router)
-api_app.include_router(travel_router)
-api_app.include_router(passenger_router)
-api_app.include_router(addresses_router)
-api_app.include_router(driver_fee_router)
-api_app.include_router(admin_router)
-api_app.include_router(live_ws_router)
+@app.on_event("startup")
+def _apply_runtime_trip_schema_repairs() -> None:
+    _ensure_trip_live_location_columns()
 
 
 class NoCacheStaticFiles(StaticFiles):
@@ -92,30 +89,18 @@ class NoCacheStaticFiles(StaticFiles):
         return response
 
 
-api_app.mount("/admin", NoCacheStaticFiles(directory="app/static", html=True), name="admin")
+# Prefixed router for /v1/api
+v1_router = APIRouter(prefix="/v1/api")
+v1_router.include_router(meta_router)
+v1_router.include_router(travel_router)
+v1_router.include_router(passenger_router)
+v1_router.include_router(addresses_router)
+v1_router.include_router(driver_fee_router)
+v1_router.include_router(admin_router)
+v1_router.include_router(live_ws_router)
+app.include_router(v1_router)
 
-app = FastAPI(
-    title="Learning FastAPI",
-    version="0.1.0",
-    description="A small FastAPI starter for learning how to build APIs.",
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-@app.on_event("startup")
-def _apply_runtime_trip_schema_repairs() -> None:
-    _ensure_trip_live_location_columns()
-
-
-app.mount("/v1/api", api_app)
-
+# Direct root routes for fallback
 app.include_router(meta_router)
 app.include_router(travel_router)
 app.include_router(passenger_router)
@@ -123,4 +108,6 @@ app.include_router(addresses_router)
 app.include_router(driver_fee_router)
 app.include_router(admin_router)
 app.include_router(live_ws_router)
-app.mount("/admin", NoCacheStaticFiles(directory="app/static", html=True), name="admin_root")
+
+app.mount("/v1/api/admin", NoCacheStaticFiles(directory="app/static", html=True), name="v1_admin")
+app.mount("/admin", NoCacheStaticFiles(directory="app/static", html=True), name="root_admin")
