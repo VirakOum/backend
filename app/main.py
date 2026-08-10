@@ -139,17 +139,42 @@ def custom_redoc_ui():
         redoc_js_url="https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js",
     )
 
+# Static files and Admin Dashboard explicit route handlers
+@app.get("/css/{filename:path}", include_in_schema=False)
+@api_v1_router.get("/css/{filename:path}", include_in_schema=False)
+def serve_css(filename: str):
+    file_path = STATIC_SITE_DIR / "css" / filename
+    if file_path.is_file():
+        return FileResponse(file_path, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+    raise HTTPException(status_code=404, detail="CSS file not found")
+
+@app.get("/js/{filename:path}", include_in_schema=False)
+@api_v1_router.get("/js/{filename:path}", include_in_schema=False)
+def serve_js(filename: str):
+    file_path = STATIC_SITE_DIR / "js" / filename
+    if file_path.is_file():
+        return FileResponse(file_path, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+    raise HTTPException(status_code=404, detail="JS file not found")
+
 @app.get("/", include_in_schema=False)
 def serve_public_site():
-    return FileResponse(STATIC_SITE_DIR / "index.html")
+    return FileResponse(STATIC_SITE_DIR / "index.html", headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
 @app.get("/admin", include_in_schema=False)
 @app.get("/admin/", include_in_schema=False)
 @app.get("/admin/mytravel", include_in_schema=False)
-def redirect_admin():
-    return RedirectResponse(url="/admin/mytravel/", status_code=307)
-
-app.mount("/admin/mytravel", NoCacheStaticFiles(directory=str(STATIC_ADMIN_DIR), html=True), name="admin")
-app.mount("/css", NoCacheStaticFiles(directory=str(STATIC_SITE_DIR / "css")), name="site_css")
-app.mount("/js", NoCacheStaticFiles(directory=str(STATIC_SITE_DIR / "js")), name="site_js")
+@app.get("/admin/mytravel/", include_in_schema=False)
+@app.get("/admin/mytravel/{filepath:path}", include_in_schema=False)
+@api_v1_router.get("/admin", include_in_schema=False)
+@api_v1_router.get("/admin/", include_in_schema=False)
+@api_v1_router.get("/admin/mytravel", include_in_schema=False)
+@api_v1_router.get("/admin/mytravel/", include_in_schema=False)
+@api_v1_router.get("/admin/mytravel/{filepath:path}", include_in_schema=False)
+def serve_admin_dashboard(filepath: str = ""):
+    if not filepath or filepath == "index.html":
+        return FileResponse(STATIC_ADMIN_DIR / "index.html", headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+    target = STATIC_ADMIN_DIR / filepath
+    if target.is_file():
+        return FileResponse(target, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+    return FileResponse(STATIC_ADMIN_DIR / "index.html", headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
