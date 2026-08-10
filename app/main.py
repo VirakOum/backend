@@ -1,8 +1,11 @@
 import os
+from pathlib import Path
 
 from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse, FileResponse
+from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
+from fastapi.openapi.utils import get_openapi
+from fastapi.responses import RedirectResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect, text
 
@@ -17,15 +20,18 @@ from .routes.live_ws import router as live_ws_router
 from .routes.items import router as items_router
 
 root_path = os.getenv("FASTAPI_ROOT_PATH", "")
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_SITE_DIR = BASE_DIR / "static" / "site"
+STATIC_ADMIN_DIR = BASE_DIR / "static" / "admin"
 
 app = FastAPI(
     title="Learning FastAPI",
     version="0.1.0",
     description="A small FastAPI starter for learning how to build APIs.",
     root_path=root_path,
-    docs_url="/v1/api/docs",
-    redoc_url="/v1/api/redoc",
-    openapi_url="/v1/api/openapi.json",
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
     servers=[
         {
             "url": "https://mytravel.taxi/v1/api",
@@ -108,9 +114,34 @@ for r in [meta_router, travel_router, passenger_router, addresses_router, driver
 
 app.include_router(api_v1_router)
 
+# Custom Swagger UI & OpenAPI Endpoints (supporting both /v1/api/docs and /docs)
+@app.get("/v1/api/openapi.json", include_in_schema=False)
+@app.get("/openapi.json", include_in_schema=False)
+def custom_openapi_json():
+    return JSONResponse(get_openapi(title=app.title, version=app.version, description=app.description, routes=app.routes))
+
+@app.get("/v1/api/docs", include_in_schema=False)
+@app.get("/docs", include_in_schema=False)
+def custom_swagger_ui():
+    return get_swagger_ui_html(
+        openapi_url="/v1/api/openapi.json",
+        title=app.title + " - API Docs",
+        swagger_js_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js",
+        swagger_css_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css",
+    )
+
+@app.get("/v1/api/redoc", include_in_schema=False)
+@app.get("/redoc", include_in_schema=False)
+def custom_redoc_ui():
+    return get_redoc_html(
+        openapi_url="/v1/api/openapi.json",
+        title=app.title + " - ReDoc",
+        redoc_js_url="https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js",
+    )
+
 @app.get("/", include_in_schema=False)
 def serve_public_site():
-    return FileResponse("app/static/site/index.html")
+    return FileResponse(STATIC_SITE_DIR / "index.html")
 
 @app.get("/admin", include_in_schema=False)
 @app.get("/admin/", include_in_schema=False)
@@ -118,7 +149,7 @@ def serve_public_site():
 def redirect_admin():
     return RedirectResponse(url="/admin/mytravel/", status_code=307)
 
-app.mount("/admin/mytravel", NoCacheStaticFiles(directory="app/static/admin", html=True), name="admin")
-app.mount("/css", NoCacheStaticFiles(directory="app/static/site/css"), name="site_css")
-app.mount("/js", NoCacheStaticFiles(directory="app/static/site/js"), name="site_js")
+app.mount("/admin/mytravel", NoCacheStaticFiles(directory=str(STATIC_ADMIN_DIR), html=True), name="admin")
+app.mount("/css", NoCacheStaticFiles(directory=str(STATIC_SITE_DIR / "css")), name="site_css")
+app.mount("/js", NoCacheStaticFiles(directory=str(STATIC_SITE_DIR / "js")), name="site_js")
 
