@@ -258,7 +258,50 @@ document.addEventListener('DOMContentLoaded', () => {
                 passengerPanel.style.display = 'none';
             });
         }
+
+        // Mobile Menu Toggle
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const navLinks = document.getElementById('nav-links');
+
+        if (mobileMenuBtn && navLinks) {
+            mobileMenuBtn.addEventListener('click', () => {
+                navLinks.classList.toggle('active');
+                const isOpen = navLinks.classList.contains('active');
+                mobileMenuBtn.innerHTML = isOpen 
+                    ? '<i class="fa-solid fa-xmark"></i>' 
+                    : '<i class="fa-solid fa-bars"></i>';
+            });
+        }
+
+        // Smooth Scrolling for Header & Navigation Links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                const targetId = this.getAttribute('href');
+                if (targetId === '#' || !targetId) return;
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    e.preventDefault();
+                    const navHeight = document.querySelector('.navbar')?.offsetHeight || 70;
+                    const elementPosition = targetElement.getBoundingClientRect().top;
+                    const offsetPosition = elementPosition + window.pageYOffset - navHeight - 12;
+
+                    window.scrollTo({
+                        top: offsetPosition,
+                        behavior: 'smooth'
+                    });
+
+                    // Auto-close mobile menu on selection
+                    if (navLinks && navLinks.classList.contains('active')) {
+                        navLinks.classList.remove('active');
+                        if (mobileMenuBtn) {
+                            mobileMenuBtn.innerHTML = '<i class="fa-solid fa-bars"></i>';
+                        }
+                    }
+                }
+            });
+        });
     }
 
     init();
 });
+
