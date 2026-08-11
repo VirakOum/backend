@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
 from fastapi.openapi.utils import get_openapi
@@ -38,7 +38,7 @@ app = FastAPI(
             "description": "Production server",
         },
         {
-            "url": "http://10.20.30.211:8000",
+            "url": "http://10.20.30.180:8000",
             "description": "Local development server",
         },
     ],
@@ -163,11 +163,15 @@ def serve_public_site():
 @app.get("/admin", include_in_schema=False)
 @app.get("/admin/", include_in_schema=False)
 @app.get("/admin/mytravel", include_in_schema=False)
-@app.get("/admin/mytravel/", include_in_schema=False)
-@app.get("/admin/mytravel/{filepath:path}", include_in_schema=False)
 @api_v1_router.get("/admin", include_in_schema=False)
 @api_v1_router.get("/admin/", include_in_schema=False)
 @api_v1_router.get("/admin/mytravel", include_in_schema=False)
+def redirect_admin_root():
+    return RedirectResponse(url="/admin/mytravel/", status_code=307)
+
+
+@app.get("/admin/mytravel/", include_in_schema=False)
+@app.get("/admin/mytravel/{filepath:path}", include_in_schema=False)
 @api_v1_router.get("/admin/mytravel/", include_in_schema=False)
 @api_v1_router.get("/admin/mytravel/{filepath:path}", include_in_schema=False)
 def serve_admin_dashboard(filepath: str = ""):
@@ -177,4 +181,14 @@ def serve_admin_dashboard(filepath: str = ""):
     if target.is_file():
         return FileResponse(target, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
     return FileResponse(STATIC_ADMIN_DIR / "index.html", headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+
+
+@app.get("/admin/{filepath:path}", include_in_schema=False)
+@api_v1_router.get("/admin/{filepath:path}", include_in_schema=False)
+def serve_admin_fallback(filepath: str):
+    target = STATIC_ADMIN_DIR / filepath
+    if target.is_file():
+        return FileResponse(target, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+    return RedirectResponse(url="/admin/mytravel/", status_code=307)
+
 
