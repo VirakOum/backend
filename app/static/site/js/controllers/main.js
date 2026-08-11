@@ -8,13 +8,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const data = window.MyTravelData;
     let currentLang = 'en';
     let selectedVehicleId = 'sedan';
+    let tripBookingMode = 'shared'; // 'shared' or 'charter'
 
     // UI DOM Elements
     const langBtn = document.getElementById('lang-toggle-btn');
     const originSelect = document.getElementById('select-origin');
     const destSelect = document.getElementById('select-dest');
     const vehicleGrid = document.getElementById('vehicle-grid');
+    const btnModeShared = document.getElementById('btn-mode-shared');
+    const btnModeCharter = document.getElementById('btn-mode-charter');
+    const btnSwapRoute = document.getElementById('btn-swap-route');
+    const estRouteText = document.getElementById('route-text');
+    const estHighwayTag = document.getElementById('est-highway-tag');
     const estDistanceEl = document.getElementById('est-distance');
+    const estDurationEl = document.getElementById('est-duration');
+    const estPriceModeLabel = document.getElementById('est-price-mode-label');
     const estUsdEl = document.getElementById('est-usd');
     const estKhrEl = document.getElementById('est-khr');
     const faqContainer = document.getElementById('faq-container');
@@ -33,6 +41,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Populate Province Select Dropdowns
     function populateProvinceDropdowns() {
+        const currentOrig = originSelect ? originSelect.value : 'PP';
+        const currentDest = destSelect ? destSelect.value : 'SR';
+
         originSelect.innerHTML = '';
         destSelect.innerHTML = '';
 
@@ -40,13 +51,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const optOrigin = document.createElement('option');
             optOrigin.value = p.id;
             optOrigin.textContent = currentLang === 'km' ? p.name_km : p.name_en;
-            if (idx === 0) optOrigin.selected = true; // Phnom Penh
+            if (p.id === currentOrig || (!currentOrig && idx === 0)) optOrigin.selected = true;
             originSelect.appendChild(optOrigin);
 
             const optDest = document.createElement('option');
             optDest.value = p.id;
             optDest.textContent = currentLang === 'km' ? p.name_km : p.name_en;
-            if (idx === 1) optDest.selected = true; // Siem Reap
+            if (p.id === currentDest || (!currentDest && idx === 1)) optDest.selected = true;
             destSelect.appendChild(optDest);
         });
     }
@@ -82,31 +93,51 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Calculate Route Distance & Fare Estimate
     function calculateEstimate() {
-        const orig = originSelect.value;
-        const dest = destSelect.value;
+        const origId = originSelect.value;
+        const destId = destSelect.value;
 
-        let distanceKm = 150; // Default distance fallback
-        if (orig === dest) {
-            distanceKm = 15; // Intra-city route estimate
+        const origP = data.PROVINCES.find(p => p.id === origId) || data.PROVINCES[0];
+        const destP = data.PROVINCES.find(p => p.id === destId) || data.PROVINCES[1];
+
+        const origName = currentLang === 'km' ? origP.name_km : origP.name_en;
+        const destName = currentLang === 'km' ? destP.name_km : destP.name_en;
+
+        if (estRouteText) {
+            estRouteText.textContent = `${origName} ➔ ${destName}`;
+        }
+        if (estHighwayTag) {
+            estHighwayTag.textContent = origP.hwy || "NR Highway";
+        }
+
+        const distanceKm = data.calculateRouteDistance(origId, destId);
+        const durationText = data.calculateRouteDuration(distanceKm);
+
+        if (estDistanceEl) estDistanceEl.textContent = `${distanceKm} km`;
+        if (estDurationEl) estDurationEl.textContent = durationText;
+
+        const vehicle = data.VEHICLES.find(v => v.id === selectedVehicleId) || data.VEHICLES[0];
+
+        let costUsd = 0;
+        if (tripBookingMode === 'shared') {
+            costUsd = vehicle.seat_base_usd + (distanceKm * vehicle.seat_per_km_usd);
+            if (estPriceModeLabel) {
+                estPriceModeLabel.textContent = currentLang === 'km' 
+                    ? `តម្លៃសំបុត្រ (${vehicle.name_km})` 
+                    : `Per Seat Price (${vehicle.name_en})`;
+            }
         } else {
-            const key1 = `${orig}-${dest}`;
-            const key2 = `${dest}-${orig}`;
-            if (data.DISTANCE_MATRIX[key1]) {
-                distanceKm = data.DISTANCE_MATRIX[key1];
-            } else if (data.DISTANCE_MATRIX[key2]) {
-                distanceKm = data.DISTANCE_MATRIX[key2];
-            } else {
-                distanceKm = 220; // Default inter-city distance
+            costUsd = vehicle.charter_base_usd + (distanceKm * vehicle.charter_per_km_usd);
+            if (estPriceModeLabel) {
+                estPriceModeLabel.textContent = currentLang === 'km' 
+                    ? `តម្លៃកក់មួយឡាន (${vehicle.name_km})` 
+                    : `Full Private Charter (${vehicle.name_en})`;
             }
         }
 
-        const vehicle = data.VEHICLES.find(v => v.id === selectedVehicleId) || data.VEHICLES[0];
-        const costUsd = vehicle.base_usd + (distanceKm * vehicle.per_km_usd);
         const costKhr = Math.round(costUsd * data.KHR_RATE / 100) * 100;
 
-        estDistanceEl.textContent = `${distanceKm} km`;
-        estUsdEl.textContent = `$${costUsd.toFixed(2)}`;
-        estKhrEl.textContent = `៛${costKhr.toLocaleString('en-US')}`;
+        if (estUsdEl) estUsdEl.textContent = `$${costUsd.toFixed(2)}`;
+        if (estKhrEl) estKhrEl.textContent = `(៛${costKhr.toLocaleString('en-US')})`;
     }
 
     // Render Telemetry Stats Banner
@@ -182,6 +213,31 @@ document.addEventListener('DOMContentLoaded', () => {
         originSelect.addEventListener('change', calculateEstimate);
         destSelect.addEventListener('change', calculateEstimate);
 
+        if (btnModeShared && btnModeCharter) {
+            btnModeShared.addEventListener('click', () => {
+                tripBookingMode = 'shared';
+                btnModeShared.classList.add('active');
+                btnModeCharter.classList.remove('active');
+                calculateEstimate();
+            });
+
+            btnModeCharter.addEventListener('click', () => {
+                tripBookingMode = 'charter';
+                btnModeCharter.classList.add('active');
+                btnModeShared.classList.remove('active');
+                calculateEstimate();
+            });
+        }
+
+        if (btnSwapRoute) {
+            btnSwapRoute.addEventListener('click', () => {
+                const temp = originSelect.value;
+                originSelect.value = destSelect.value;
+                destSelect.value = temp;
+                calculateEstimate();
+            });
+        }
+
         const tabPassenger = document.getElementById('tab-btn-passenger');
         const tabDriver = document.getElementById('tab-btn-driver');
         const passengerPanel = document.getElementById('passenger-steps-panel');
@@ -206,4 +262,3 @@ document.addEventListener('DOMContentLoaded', () => {
 
     init();
 });
-

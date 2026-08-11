@@ -852,3 +852,168 @@ footer {
     }
 }
 
+/* Estimator Section Enhancement */
+.estimator-route-selector {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: var(--bg-main);
+    padding: 1.25rem 1.5rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+}
+
+.flex-1 {
+    flex: 1;
+}
+
+.btn-swap-route {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--accent-taxi);
+    color: var(--accent-dark);
+    border: 2px solid var(--border-taxi);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+    margin-top: 1.2rem;
+    flex-shrink: 0;
+}
+
+.btn-swap-route:hover {
+    transform: rotate(180deg) scale(1.1);
+    box-shadow: 0 4px 12px rgba(255, 200, 61, 0.4);
+}
+
+.estimator-summary-panel {
+    background: linear-gradient(135deg, #0b1329 0%, #17223a 100%);
+    border-radius: var(--radius-md);
+    padding: 1.75rem 1.5rem;
+    margin-top: 1.5rem;
+    color: #ffffff;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+}
+
+.route-header-badge {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    margin-bottom: 1.25rem;
+}
+
+.route-title-text {
+    font-family: var(--font-main);
+    font-weight: 800;
+    font-size: 1.15rem;
+    color: #ffffff;
+}
+
+.route-highway-tag {
+    background: var(--accent-taxi);
+    color: var(--accent-dark);
+    font-weight: 800;
+    font-size: 0.75rem;
+    padding: 0.35rem 0.85rem;
+    border-radius: var(--radius-full);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.estimate-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+.est-stat-box {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-sm);
+    padding: 1rem;
+    text-align: center;
+}
+
+.est-stat-box.highlight-box {
+    background: rgba(255, 200, 61, 0.12);
+    border-color: rgba(255, 200, 61, 0.4);
+}
+
+.est-stat-label {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.35rem;
+}
+
+.est-stat-value {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #ffffff;
+}
+
+.est-price-container {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.35rem;
+}
+
+.price-usd {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--accent-taxi);
+}
+
+.price-khr {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 600;
+}
+
+.estimator-cta-row {
+    margin-top: 1.5rem;
+    text-align: center;
+}
+
+#btn-book-route-cta {
+    padding: 0.75rem 2.25rem;
+    font-weight: 800;
+    border-radius: var(--radius-full);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent-taxi);
+    color: var(--accent-dark);
+    border: 2px solid var(--border-taxi);
+    transition: var(--transition-smooth);
+}
+
+#btn-book-route-cta:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(255, 200, 61, 0.35);
+}
+
+@media (max-width: 768px) {
+    .estimator-route-selector {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .btn-swap-route {
+        align-self: center;
+        margin-top: 0;
+        margin-bottom: 0;
+    }
+    .estimate-stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+

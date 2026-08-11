@@ -186,43 +186,80 @@
     <section class="section" id="estimator">
         <div class="section-header">
             <h2 class="section-title" data-i18n="estimator_title">Instant Fare & Route Estimator</h2>
-            <p class="section-subtitle" data-i18n="estimator_subtitle">Calculate estimated trip costs across major province routes in Cambodia.</p>
+            <p class="section-subtitle" data-i18n="estimator_subtitle">Calculate estimated trip costs across all 25 provinces in Cambodia.</p>
+            
+            <div class="estimator-mode-toggle" style="display: flex; justify-content: center; gap: 1rem; margin-top: 1.5rem;">
+                <button class="role-tab-btn active" id="btn-mode-shared" data-i18n="mode_shared">
+                    <i class="fa-solid fa-user-group"></i> Shared Seat (Per Seat)
+                </button>
+                <button class="role-tab-btn" id="btn-mode-charter" data-i18n="mode_charter">
+                    <i class="fa-solid fa-taxi"></i> Full Private Charter
+                </button>
+            </div>
         </div>
 
         <div class="estimator-card">
-            <div class="estimator-form">
-                <div class="form-group">
-                    <label for="select-origin" data-i18n="label_origin">Pickup Province</label>
+            <div class="estimator-route-selector">
+                <div class="form-group flex-1">
+                    <label for="select-origin"><i class="fa-solid fa-circle-dot" style="color: #10b981; margin-right: 0.35rem;"></i> <span data-i18n="label_origin">Pickup Province</span></label>
                     <select id="select-origin" class="form-control"></select>
                 </div>
-                <div class="form-group">
-                    <label for="select-dest" data-i18n="label_destination">Destination Province</label>
+
+                <button id="btn-swap-route" class="btn-swap-route" title="Swap Route" aria-label="Swap Route">
+                    <i class="fa-solid fa-right-left"></i>
+                </button>
+
+                <div class="form-group flex-1">
+                    <label for="select-dest"><i class="fa-solid fa-location-dot" style="color: #ef4444; margin-right: 0.35rem;"></i> <span data-i18n="label_destination">Destination Province</span></label>
                     <select id="select-dest" class="form-control"></select>
-                </div>
-                <div class="form-group">
-                    <label data-i18n="label_vehicle">Vehicle Class</label>
-                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;">Select your preferred ride option below</div>
                 </div>
             </div>
 
-            <div class="vehicle-selector" id="vehicle-grid"></div>
+            <div class="vehicle-selection-wrapper" style="margin-top: 1.5rem;">
+                <div style="font-weight: 700; font-size: 0.9rem; color: var(--accent-dark); margin-bottom: 0.75rem;" data-i18n="label_vehicle">Vehicle Class</div>
+                <div class="vehicle-selector" id="vehicle-grid"></div>
+            </div>
 
-            <div class="estimate-results">
-                <div class="result-item">
-                    <span class="result-label" data-i18n="est_distance">Estimated Distance</span>
-                    <span class="result-val" id="est-distance">314 km</span>
+            <!-- Route & Fare Summary Breakdown -->
+            <div class="estimator-summary-panel">
+                <div class="route-header-badge">
+                    <div class="route-title-text" id="est-route-title">
+                        <i class="fa-solid fa-route" style="color: var(--accent-taxi); margin-right: 0.5rem;"></i>
+                        <span id="route-text">Phnom Penh ➔ Siem Reap</span>
+                    </div>
+                    <div class="route-highway-tag" id="est-highway-tag">NR6</div>
                 </div>
-                <div class="result-item">
-                    <span class="result-label" data-i18n="est_usd">Estimated Cost (USD)</span>
-                    <span class="result-val" id="est-usd">$25.00</span>
+
+                <div class="estimate-stats-grid">
+                    <div class="est-stat-box">
+                        <div class="est-stat-label" data-i18n="est_distance">Road Distance</div>
+                        <div class="est-stat-value" id="est-distance">314 km</div>
+                    </div>
+
+                    <div class="est-stat-box">
+                        <div class="est-stat-label" data-i18n="label_est_duration">Est. Travel Time</div>
+                        <div class="est-stat-value" id="est-duration">4 hrs 37 mins</div>
+                    </div>
+
+                    <div class="est-stat-box highlight-box">
+                        <div class="est-stat-label" id="est-price-mode-label" data-i18n="label_est_seat_price">Seat Price (Per Seat)</div>
+                        <div class="est-price-container">
+                            <span class="price-usd" id="est-usd">$13.50</span>
+                            <span class="price-khr" id="est-khr">(៛55,450)</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="result-item">
-                    <span class="result-label" data-i18n="est_khr">Estimated Cost (KHR)</span>
-                    <span class="result-val" id="est-khr">៛100,000</span>
+
+                <div class="estimator-cta-row">
+                    <a href="#account-creation" class="btn btn-primary" id="btn-book-route-cta">
+                        <i class="fa-solid fa-calendar-check" style="margin-right: 0.5rem;"></i>
+                        <span data-i18n="btn_book_route">Book This Route Now</span>
+                    </a>
                 </div>
             </div>
         </div>
     </section>
+
 
     <!-- Features Showcase -->
     <section class="section" id="features">

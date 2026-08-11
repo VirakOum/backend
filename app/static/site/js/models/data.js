@@ -5,43 +5,93 @@
  */
 
 window.MyTravelData = {
-    // Current Exchange Rate: 1 USD = 4,000 KHR
-    KHR_RATE: 4000,
+    // Current Exchange Rate: 1 USD = 4,100 KHR
+    KHR_RATE: 4100,
 
-    // Major Cambodian Destination Hubs & Distance Matrix (in km)
+    // Complete 25 Cambodian Destination Hubs with Geographic Coordinates & Highways
     PROVINCES: [
-        { id: "PP", name_en: "Phnom Penh", name_km: "ភ្នំពេញ" },
-        { id: "SR", name_en: "Siem Reap", name_km: "សៀមរាប" },
-        { id: "SHV", name_en: "Preah Sihanouk (Sihanoukville)", name_km: "ព្រះសីហនុ" },
-        { id: "KP", name_en: "Kampot", name_km: "កំពត" },
-        { id: "BTB", name_en: "Battambang", name_km: "បាត់ដំបង" },
-        { id: "KPC", name_en: "Kampong Cham", name_km: "កំពង់ចាម" },
-        { id: "KPS", name_en: "Kampong Speu", name_km: "កំពង់ស្ពឺ" },
-        { id: "KPT", name_en: "Kep", name_km: "កែប" },
-        { id: "KK", name_en: "Koh Kong", name_km: "កោះកុង" },
-        { id: "PST", name_en: "Pursat", name_km: "ពោធិ៍សាត់" },
-        { id: "STR", name_en: "Stung Treng", name_km: "ស្ទឹងត្រែង" },
-        { id: "KTE", name_en: "Kratie", name_km: "ក្រចេះ" }
+        { id: "PP", name_en: "Phnom Penh", name_km: "ភ្នំពេញ", lat: 11.5564, lng: 104.9282, hwy: "NR6 / E4" },
+        { id: "SR", name_en: "Siem Reap", name_km: "សៀមរាប", lat: 13.3671, lng: 103.8448, hwy: "NR6" },
+        { id: "SHV", name_en: "Preah Sihanouk (Sihanoukville)", name_km: "ព្រះសីហនុ", lat: 10.6256, lng: 103.5234, hwy: "Expressway E4 / NR4" },
+        { id: "KP", name_en: "Kampot", name_km: "កំពត", lat: 10.6104, lng: 104.1815, hwy: "NR3" },
+        { id: "BTB", name_en: "Battambang", name_km: "បាត់ដំបង", lat: 13.0957, lng: 103.2022, hwy: "NR5" },
+        { id: "KPC", name_en: "Kampong Cham", name_km: "កំពង់ចាម", lat: 11.9924, lng: 105.4645, hwy: "NR7" },
+        { id: "KCH", name_en: "Kampong Chhnang", name_km: "កំពង់ឆ្នាំង", lat: 12.2500, lng: 104.6667, hwy: "NR5" },
+        { id: "KSP", name_en: "Kampong Speu", name_km: "កំពង់ស្ពឺ", lat: 11.4533, lng: 104.5209, hwy: "NR4" },
+        { id: "KTH", name_en: "Kampong Thom", name_km: "កំពង់ធំ", lat: 12.7111, lng: 104.8887, hwy: "NR6" },
+        { id: "KEP", name_en: "Kep", name_km: "កែប", lat: 10.4828, lng: 104.3167, hwy: "NR33" },
+        { id: "KDL", name_en: "Kandal", name_km: "កណ្ដាល", lat: 11.4500, lng: 104.9500, hwy: "NR21 / NR2" },
+        { id: "KK", name_en: "Koh Kong", name_km: "កោះកុង", lat: 11.6153, lng: 103.1143, hwy: "NR48" },
+        { id: "KTE", name_en: "Kratie", name_km: "ក្រចេះ", lat: 12.4881, lng: 106.0188, hwy: "NR7" },
+        { id: "MDK", name_en: "Mondulkiri", name_km: "មណ្ឌលគិរី", lat: 12.4558, lng: 107.1881, hwy: "NR76" },
+        { id: "BMC", name_en: "Banteay Meanchey", name_km: "បន្ទាយមានជ័យ", lat: 13.5859, lng: 102.9737, hwy: "NR5 / NR6" },
+        { id: "OMC", name_en: "Oddar Meanchey", name_km: "ឧត្តរមានជ័យ", lat: 14.1812, lng: 103.5176, hwy: "NR68" },
+        { id: "PLN", name_en: "Pailin", name_km: "ប៉ៃលិន", lat: 12.8489, lng: 102.6093, hwy: "NR57" },
+        { id: "PVH", name_en: "Preah Vihear", name_km: "ព្រះវិហារ", lat: 13.8073, lng: 104.9805, hwy: "NR62" },
+        { id: "PST", name_en: "Pursat", name_km: "ពោធិ៍សាត់", lat: 12.5388, lng: 103.9192, hwy: "NR5" },
+        { id: "PVG", name_en: "Prey Veng", name_km: "ព្រៃវែង", lat: 11.4868, lng: 105.3253, hwy: "NR11" },
+        { id: "RTK", name_en: "Ratanakiri", name_km: "រតនគិរី", lat: 13.7394, lng: 106.9872, hwy: "NR78" },
+        { id: "STR", name_en: "Stung Treng", name_km: "ស្ទឹងត្រែង", lat: 13.5259, lng: 105.9683, hwy: "NR7" },
+        { id: "SVR", name_en: "Svay Rieng", name_km: "ស្វាយរៀង", lat: 11.0879, lng: 105.7994, hwy: "NR1" },
+        { id: "TKO", name_en: "Takeo", name_km: "តាកែវ", lat: 10.9908, lng: 104.7848, hwy: "NR2" },
+        { id: "TBK", name_en: "Tboung Khmum", name_km: "ត្បូងឃ្មុំ", lat: 11.8891, lng: 105.8760, hwy: "NR7" }
     ],
 
-    // Approximate Distance Matrix between major hubs (km)
+    // Known Highway Distance Lookup Table (km)
     DISTANCE_MATRIX: {
-        "PP-SR": 314, "PP-SHV": 230, "PP-KP": 148, "PP-BTB": 291,
-        "PP-KPC": 124, "PP-KPS": 48, "PP-KPT": 164, "PP-KK": 271,
-        "PP-PST": 186, "PP-STR": 435, "PP-KTE": 340,
-        "SR-BTB": 172, "SR-SHV": 530, "SR-KPC": 250, "SR-PST": 240,
-        "KP-KPT": 25, "KP-SHV": 105, "SHV-KK": 235
+        "PP-SR": 314, "PP-SHV": 190, "PP-KP": 148, "PP-BTB": 291,
+        "PP-KPC": 124, "PP-KPS": 48, "PP-KEP": 164, "PP-KK": 271,
+        "PP-PST": 186, "PP-STR": 435, "PP-KTE": 340, "PP-MDK": 520,
+        "PP-RTK": 588, "PP-PVH": 405, "PP-BMC": 358, "PP-SVR": 122,
+        "PP-TKO": 78, "PP-PVG": 90, "PP-TBK": 155, "PP-KDL": 25,
+        "SR-BTB": 152, "SR-BMC": 105, "SR-SHV": 504, "SR-KPC": 250,
+        "SR-PVH": 145, "KP-KEP": 25, "KP-SHV": 105, "SHV-KK": 235,
+        "BTB-PLN": 82, "STR-RTK": 142, "KTE-STR": 148
     },
 
-    // Vehicle Tiers & Pricing Formulas
+    // Calculate Road Distance in KM between any two provinces
+    calculateRouteDistance: function(origId, destId) {
+        if (origId === destId) return 15; // Intra-city local ride fallback
+        const key1 = `${origId}-${destId}`;
+        const key2 = `${destId}-${origId}`;
+        if (this.DISTANCE_MATRIX[key1]) return this.DISTANCE_MATRIX[key1];
+        if (this.DISTANCE_MATRIX[key2]) return this.DISTANCE_MATRIX[key2];
+
+        const p1 = this.PROVINCES.find(p => p.id === origId);
+        const p2 = this.PROVINCES.find(p => p.id === destId);
+        if (!p1 || !p2) return 180;
+
+        const R = 6371;
+        const dLat = (p2.lat - p1.lat) * Math.PI / 180;
+        const dLon = (p2.lng - p1.lng) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(p1.lat * Math.PI / 180) * Math.cos(p2.lat * Math.PI / 180) *
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return Math.max(20, Math.round(R * c * 1.28));
+    },
+
+    // Calculate Travel Duration in hours/mins based on highway speeds
+    calculateRouteDuration: function(distanceKm) {
+        // Average speed: ~65-75 km/h on national roads
+        const hours = distanceKm / 68;
+        const h = Math.floor(hours);
+        const m = Math.round((hours - h) * 60);
+        if (h === 0) return `${m} mins`;
+        return `${h} hrs ${m} mins`;
+    },
+
+    // Vehicle Tiers & Realistic Cambodian Pricing Formulas
     VEHICLES: [
         {
             id: "sedan",
             name_en: "Standard Sedan",
             name_km: "រថយន្តសេដាន (4 កៅអី)",
             capacity: "4 Passengers",
-            base_usd: 2.0,
-            per_km_usd: 0.45,
+            charter_base_usd: 10.0,
+            charter_per_km_usd: 0.20,
+            seat_base_usd: 2.50,
+            seat_per_km_usd: 0.035,
             icon: "fa-car",
             badge_en: "Most Popular",
             badge_km: "ពេញនិយមបំផុត"
@@ -51,8 +101,10 @@ window.MyTravelData = {
             name_en: "Comfort SUV",
             name_km: "រថយន្ត SUV (6 កៅអី)",
             capacity: "6 Passengers",
-            base_usd: 3.5,
-            per_km_usd: 0.65,
+            charter_base_usd: 15.0,
+            charter_per_km_usd: 0.28,
+            seat_base_usd: 3.50,
+            seat_per_km_usd: 0.045,
             icon: "fa-car-side",
             badge_en: "Extra Space",
             badge_km: "ធំទូលាយ"
@@ -62,8 +114,10 @@ window.MyTravelData = {
             name_en: "VIP Executive Van",
             name_km: "វ៉ែន VIP (12 កៅអី)",
             capacity: "12 Passengers",
-            base_usd: 6.0,
-            per_km_usd: 0.95,
+            charter_base_usd: 25.0,
+            charter_per_km_usd: 0.40,
+            seat_base_usd: 4.50,
+            seat_per_km_usd: 0.055,
             icon: "fa-van-shuttle",
             badge_en: "Group Travel",
             badge_km: "សម្រាប់ក្រុម"
@@ -73,13 +127,16 @@ window.MyTravelData = {
             name_en: "City Taxi & Express",
             name_km: "តាក់ស៊ីក្រុង & ប្រញាប់",
             capacity: "4 Passengers",
-            base_usd: 1.5,
-            per_km_usd: 0.40,
+            charter_base_usd: 4.0,
+            charter_per_km_usd: 0.18,
+            seat_base_usd: 1.50,
+            seat_per_km_usd: 0.030,
             icon: "fa-taxi",
             badge_en: "Fast Service",
             badge_km: "សេវាកម្មរហ័ស"
         }
     ],
+
 
     // Real-Time System Telemetry Metrics
     STATS: [
@@ -154,10 +211,18 @@ window.MyTravelData = {
             step4_d_title: "4. Publish Trips & Earn",
             step4_d_desc: "Create inter-city routes, accept passenger bookings, track live GPS progress, and manage earnings.",
             estimator_title: "Instant Fare & Route Estimator",
-            estimator_subtitle: "Calculate estimated trip costs across major province routes in Cambodia.",
+            estimator_subtitle: "Calculate estimated trip costs across all 25 provinces in Cambodia.",
             label_origin: "Pickup Province",
             label_destination: "Destination Province",
             label_vehicle: "Vehicle Class",
+            mode_shared: "Shared Seat (Per Seat)",
+            mode_charter: "Full Private Charter",
+            btn_swap_route: "Swap Route",
+            label_est_route: "Route & Highway",
+            label_est_duration: "Est. Travel Time",
+            label_est_seat_price: "Seat Price (Per Seat)",
+            label_est_charter_price: "Full Vehicle Charter",
+            btn_book_route: "Book This Route Now",
             est_distance: "Estimated Distance",
             est_usd: "Estimated Cost (USD)",
             est_khr: "Estimated Cost (KHR)",
@@ -221,14 +286,23 @@ window.MyTravelData = {
             step3_d_desc: "ជ្រើសរើសកញ្ចប់ Standard, Pro, ឬ VIP ជាមួយអត្រាកាត់សេវាទាបសមរម្យ។",
             step4_d_title: "៤. បង្កើតជើងដំណើរ & រកចំណូល",
             step4_d_desc: "បង្កើតតារាងធ្វើដំណើរអន្តរខេត្ត ទទួលការកក់ តាមដាន GPS ផ្ទាល់ និងគ្រប់គ្រងចំណូល។",
-            estimator_title: "ប្រព័ន្ធគណនាចម្ងាយ និងតម្លៃសេវាភ្លាមៗ",
-            estimator_subtitle: "គណនាតម្លៃប៉ាន់ស្មានតាមផ្លូវខេត្តសំខាន់ៗក្នុងប្រទេសកម្ពុជា។",
-            label_origin: "ខេត្តដើម (ទទួល)",
-            label_destination: "ខេត្តគោលដៅ",
+            estimator_title: "គណនាតម្លៃសំបុត្រ & ជើងធ្វើដំណើរអន្តរខេត្ត",
+            estimator_subtitle: "គណនាតម្លៃសំបុត្រតាមកៅអី តម្លៃកក់មួយឡាន និងចម្ងាយផ្លូវទូទាំង ២៥ ខេត្តក្រុងក្នុងប្រទេសកម្ពុជា។",
+            label_origin: "ខេត្តដើម (Pickup Province)",
+            label_destination: "ខេត្តគោលដៅ (Destination)",
             label_vehicle: "ប្រភេទយានយន្ត",
-            est_distance: "ចម្ងាយប៉ាន់ស្មាន",
+            mode_shared: "សំបុត្រតាមកៅអី (Shared Seat)",
+            mode_charter: "កក់មួយឡានពេញ (Full Charter)",
+            btn_swap_route: "ផ្លាស់ប្តូរទិសដៅ",
+            label_est_route: "ផ្លូវជាតិ / ផ្លូវល្បឿនលឿន",
+            label_est_duration: "រយៈពេលធ្វើដំណើរប្រហែល",
+            label_est_seat_price: "តម្លៃសំបុត្រ (ក្នុង ១កៅអី)",
+            label_est_charter_price: "តម្លៃកក់មួយឡានពេញ",
+            btn_book_route: "កក់ជើងធ្វើដំណើរនេះ",
+            est_distance: "ចម្ងាយផ្លូវប្រហែល",
             est_usd: "តម្លៃប៉ាន់ស្មាន ($ ដុល្លារ)",
             est_khr: "តម្លៃប៉ាន់ស្មាន (៛ រៀល)",
+
             features_p_title: "មុខងារសំខាន់ៗ កម្មវិធីអ្នកជិះ",
             features_p_desc: "ផ្តល់ភាពងាយស្រួលដល់អ្នកធ្វើដំណើរ ជាមួយការស្វែងរកផ្លូវ ជ្រើសរើសកៅអី និងតាមដានទីតាំងផ្ទាល់។",
             feat_1_title: "តាមដានទីតាំង GPS ផ្ទាល់",
