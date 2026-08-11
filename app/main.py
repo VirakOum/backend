@@ -154,9 +154,32 @@ def serve_js(filename: str):
         return FileResponse(file_path, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
     raise HTTPException(status_code=404, detail="JS file not found")
 
+@app.get("/favicon.ico", include_in_schema=False)
+@api_v1_router.get("/favicon.ico", include_in_schema=False)
+def serve_favicon():
+    file_path = STATIC_SITE_DIR / "assets" / "logo.png"
+    if file_path.is_file():
+        return FileResponse(file_path, media_type="image/png")
+    admin_logo = STATIC_ADMIN_DIR / "assets" / "logo.png"
+    if admin_logo.is_file():
+        return FileResponse(admin_logo, media_type="image/png")
+    raise HTTPException(status_code=404, detail="Favicon not found")
+
+@app.get("/assets/{filename:path}", include_in_schema=False)
+@api_v1_router.get("/assets/{filename:path}", include_in_schema=False)
+def serve_assets(filename: str):
+    file_path = STATIC_SITE_DIR / "assets" / filename
+    if file_path.is_file():
+        return FileResponse(file_path)
+    admin_asset = STATIC_ADMIN_DIR / "assets" / filename
+    if admin_asset.is_file():
+        return FileResponse(admin_asset)
+    raise HTTPException(status_code=404, detail="Asset file not found")
+
 @app.get("/", include_in_schema=False)
 def serve_public_site():
     return FileResponse(STATIC_SITE_DIR / "index.html", headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+
 
 @app.get("/admin", include_in_schema=False)
 @app.get("/admin/", include_in_schema=False)

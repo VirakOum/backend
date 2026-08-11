@@ -43,3 +43,12 @@ def test_v1_api_and_direct_api_endpoints():
     assert response_direct.status_code == 200
     assert response_direct.json() == {"status": "ok"}
 
+def test_favicon_and_assets_resolution():
+    favicon_res = client.get("/favicon.ico")
+    assert favicon_res.status_code == 200
+    assert favicon_res.headers["content-type"] in ("image/png", "image/x-icon")
+
+    asset_res = client.get("/assets/logo.png")
+    assert asset_res.status_code == 200
+
+
