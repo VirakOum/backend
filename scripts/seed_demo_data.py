@@ -588,11 +588,16 @@ def seed() -> None:
 
         get_or_create_runtime_settings(db)
 
+        # Store Release Reviewer Accounts (App Store & Play Store review)
+        store_driver = get_or_create_user(db, phone="012000000", full_name="Store Review Driver", role="driver", password="Password123!", rating_avg=Decimal("4.90"), rating_count=150, completed_trips=300)
+        store_passenger = get_or_create_user(db, phone="011000000", full_name="Store Review Passenger", role="passenger", password="Password123!")
+
         driver_1 = get_or_create_user(db, phone="012345678", full_name="Sok Dara", role="driver", password="strongpass123", rating_avg=Decimal("4.80"), rating_count=128, completed_trips=240)
         driver_2 = get_or_create_user(db, phone="011223344", full_name="Chan Vireak", role="driver", password="strongpass123", rating_avg=Decimal("4.70"), rating_count=96, completed_trips=188)
         passenger_1 = get_or_create_user(db, phone="099887766", full_name="Nary Srey", role="passenger", password="strongpass123")
         passenger_2 = get_or_create_user(db, phone="088776655", full_name="Pich Makara", role="passenger", password="strongpass123")
 
+        store_prius = get_or_create_vehicle(db, owner=store_driver, plate_number="2ST-8888", seat_type=4, model="Toyota Prius", company_name="Store Express", vehicle_type="Sedan", color="White")
         prius = get_or_create_vehicle(db, owner=driver_1, plate_number="2AB-1234", seat_type=4, model="Toyota Prius", company_name="Dara Taxi", vehicle_type="Sedan", color="White")
         hiace = get_or_create_vehicle(db, owner=driver_2, plate_number="2CD-5678", seat_type=15, model="Toyota Hiace", company_name="Vireak Van", vehicle_type="Van", color="Silver")
 
@@ -787,6 +792,9 @@ def seed() -> None:
 
         get_or_create_passenger_place(db, user=passenger_1, key="home", label="Home", address_line="Street 2004, Toul Kork, Phnom Penh", lat=Decimal("11.573700"), lng=Decimal("104.892900"), note="Near TK Avenue")
         get_or_create_passenger_place(db, user=passenger_1, key="work", label="Work", address_line="Monivong Blvd, Daun Penh, Phnom Penh", lat=Decimal("11.562900"), lng=Decimal("104.918800"), note="Office area")
+
+        get_or_create_passenger_place(db, user=store_passenger, key="home", label="Home", address_line="Street 2004, Toul Kork, Phnom Penh", lat=Decimal("11.573700"), lng=Decimal("104.892900"), note="Near TK Avenue")
+        get_or_create_passenger_place(db, user=store_passenger, key="work", label="Work", address_line="Monivong Blvd, Daun Penh, Phnom Penh", lat=Decimal("11.562900"), lng=Decimal("104.918800"), note="Office area")
 
         tomorrow_driver = get_or_create_user(
             db,
@@ -1210,7 +1218,9 @@ def seed() -> None:
         )
 
         db.commit()
-        print("Demo data ready.")
+        print("Demo & Store Release data ready.")
+        print("Store Review Driver login: 012000000 / Password123!")
+        print("Store Review Passenger login: 011000000 / Password123!")
         print("Driver login: 012345678 / strongpass123")
         print("Driver wallet demo login: 011223344 / strongpass123")
         print("Passenger login: 099887766 / strongpass123")

@@ -20,6 +20,16 @@ def test_admin_mytravel_dashboard():
     assert response.status_code == 200
     assert "My Travel - Command Dashboard" in response.text
 
+def test_admin_static_assets_resolution():
+    css_res = client.get("/admin/css/styles.css?v=1.4")
+    assert css_res.status_code == 200
+
+    logo_res = client.get("/admin/assets/logo.png")
+    assert logo_res.status_code == 200
+
+    js_res = client.get("/admin/js/app.js?v=1.4")
+    assert js_res.status_code == 200
+
 def test_v1_api_and_direct_api_endpoints():
     response_v1_root = client.get("/v1/api")
     assert response_v1_root.status_code == 200
@@ -32,3 +42,4 @@ def test_v1_api_and_direct_api_endpoints():
     response_direct = client.get("/health")
     assert response_direct.status_code == 200
     assert response_direct.json() == {"status": "ok"}
+

@@ -112,8 +112,6 @@ for r in [meta_router, travel_router, passenger_router, addresses_router, driver
     app.include_router(r)
     api_v1_router.include_router(r)
 
-app.include_router(api_v1_router)
-
 # Custom Swagger UI & OpenAPI Endpoints (supporting both /v1/api/docs and /docs)
 @app.get("/v1/api/openapi.json", include_in_schema=False)
 @app.get("/openapi.json", include_in_schema=False)
@@ -190,5 +188,9 @@ def serve_admin_fallback(filepath: str):
     if target.is_file():
         return FileResponse(target, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
     return RedirectResponse(url="/admin/mytravel/", status_code=307)
+
+
+app.include_router(api_v1_router)
+
 
 
