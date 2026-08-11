@@ -60,6 +60,12 @@ document.addEventListener('DOMContentLoaded', () => {
             nav_promotions: "Promotions & Ads",
             title_promotions: "Promotions & Ads Management",
             subtitle_promotions: "Manage system discount coupons and homepage banner ads",
+            nav_discounts: "Discount Coupons",
+            title_discounts: "Discount Coupons & Tickets",
+            subtitle_discounts: "Create, edit, and manage discount tickets and promo codes",
+            nav_ads: "Homepage Banner Ads",
+            title_ads: "Homepage Banner Ads",
+            subtitle_ads: "Manage featured banner advertisements on passenger mobile homepage",
             nav_messages: "System Messages",
             title_messages: "System Messages & Announcements",
             subtitle_messages: "Broadcast informational messages and alerts to app users",
@@ -199,6 +205,12 @@ document.addEventListener('DOMContentLoaded', () => {
             nav_promotions: "ប្រូម៉ូសិន និងការផ្សព្វផ្សាយ",
             title_promotions: "ការគ្រប់គ្រងប្រូម៉ូសិន និងការផ្សព្វផ្សាយ",
             subtitle_promotions: "គ្រប់គ្រងប័ណ្ណបញ្ចុះតម្លៃប្រព័ន្ធ និងផ្ទាំងផ្សព្វផ្សាយស្លាយនៅទំព័រដើម",
+            nav_discounts: "ប័ណ្ណបញ្ចុះតម្លៃ",
+            title_discounts: "ការគ្រប់គ្រងប័ណ្ណបញ្ចុះតម្លៃ",
+            subtitle_discounts: "បង្កើត កែប្រែ និងគ្រប់គ្រងសំបុត្របញ្ចុះតម្លៃ និងកូដប្រូម៉ូសិន",
+            nav_ads: "បដាផ្សាយពាណិជ្ជកម្ម",
+            title_ads: "បដាផ្សាយពាណិជ្ជកម្មទំព័រដើម",
+            subtitle_ads: "គ្រប់គ្រងរូបភាព និងព័ត៌មានបដាផ្សាយពាណិជ្ជកម្មលើទំព័រដើម",
             nav_messages: "សារប្រព័ន្ធ",
             title_messages: "សារប្រព័ន្ធ និងការប្រកាសដំណឹង",
             subtitle_messages: "ផ្សព្វផ្សាយសារព័ត៌មាន និងការព្រមានដល់អ្នកប្រើប្រាស់កម្មវិធី",
@@ -631,7 +643,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 loadRevenue();
             }
 
-            // Trigger promotions load
+            // Trigger discounts load
+            if (activeTabId === 'discounts') {
+                loadDiscountsData();
+            }
+
+            // Trigger ads load
+            if (activeTabId === 'ads') {
+                loadAdsData();
+            }
+
+            // Trigger promotions load (fallback)
             if (activeTabId === 'promotions') {
                 loadPromotionsData();
             }
@@ -1958,6 +1980,8 @@ document.addEventListener('DOMContentLoaded', () => {
         loadPassengers();
         if (activeTabId === 'trips') loadTrips();
         if (activeTabId === 'revenue') loadRevenue();
+        if (activeTabId === 'discounts') loadDiscountsData();
+        if (activeTabId === 'ads') loadAdsData();
         if (activeTabId === 'promotions') loadPromotionsData();
         showToast(TRANSLATIONS[currentLanguage].toast_refresh);
     });
@@ -2099,7 +2123,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     showToast(msg);
                     formModalDiscount.reset();
                     discountModal.classList.remove('active');
-                    loadPromotionsData();
+                    loadDiscountsData();
                 } else {
                     showToast(dict.toast_network_error, true);
                 }
@@ -2141,7 +2165,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     showToast(msg);
                     formModalAd.reset();
                     adModal.classList.remove('active');
-                    loadPromotionsData();
+                    loadAdsData();
                 } else {
                     showToast(dict.toast_network_error, true);
                 }
@@ -2160,8 +2184,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    async function loadPromotionsData() {
-        if (!discountsTableBody || !adsTableBody) return;
+    async function loadDiscountsData() {
+        if (!discountsTableBody) return;
         try {
             const discResp = await fetch(`${API_BASE}/discounts`);
             const discounts = await discResp.json();
@@ -2206,7 +2230,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     discountsTableBody.appendChild(tr);
                 });
             }
+        } catch (error) {
+            console.error('Error loading discounts data:', error);
+        }
+    }
 
+    async function loadAdsData() {
+        if (!adsTableBody) return;
+        try {
             const adsResp = await fetch(`${API_BASE}/ads`);
             const ads = await adsResp.json();
             adsTableBody.innerHTML = '';
@@ -2251,8 +2282,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         } catch (error) {
-            console.error('Error loading promotions data:', error);
+            console.error('Error loading ads data:', error);
         }
+    }
+
+    async function loadPromotionsData() {
+        await loadDiscountsData();
+        await loadAdsData();
     }
 
     window.openEditDiscountModal = async (discountId) => {
@@ -2321,7 +2357,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(`${API_BASE}/discounts/${ticketId}`, { method: 'DELETE' });
             if (response.ok) {
                 showToast(currentLanguage === 'en' ? 'Discount ticket deleted.' : 'បានលុបប័ណ្ណបញ្ចុះតម្លៃ។');
-                loadPromotionsData();
+                loadDiscountsData();
             }
         } catch (error) {
             console.error('Error deleting discount:', error);
@@ -2334,7 +2370,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(`${API_BASE}/ads/${adId}`, { method: 'DELETE' });
             if (response.ok) {
                 showToast(currentLanguage === 'en' ? 'Ad deleted.' : 'បានលុបការផ្សព្វផ្សាយ។');
-                loadPromotionsData();
+                loadAdsData();
             }
         } catch (error) {
             console.error('Error deleting ad:', error);

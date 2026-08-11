@@ -90,9 +90,13 @@
                     <i class="fa-solid fa-chart-line nav-icon"></i>
                     <span data-i18n="nav_revenue">Revenue Analytics</span>
                 </a>
-                <a href="#promotions" class="nav-item" data-tab="promotions">
+                <a href="#discounts" class="nav-item" data-tab="discounts">
+                    <i class="fa-solid fa-ticket nav-icon"></i>
+                    <span data-i18n="nav_discounts">Discount Coupons</span>
+                </a>
+                <a href="#ads" class="nav-item" data-tab="ads">
                     <i class="fa-solid fa-rectangle-ad nav-icon"></i>
-                    <span data-i18n="nav_promotions">Promotions & Ads</span>
+                    <span data-i18n="nav_ads">Homepage Banner Ads</span>
                 </a>
                 <a href="#messages" class="nav-item" data-tab="messages">
                     <i class="fa-solid fa-bullhorn nav-icon"></i>
@@ -637,69 +641,72 @@
                 </div>
             </section>
 
-            <!-- Promotions and Ads Tab -->
-            <section id="tab-promotions" class="tab-pane">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg); align-items: start;">
-                    
-                    <!-- Left Column: Discount Tickets -->
-                    <div class="content-card" style="padding: var(--spacing-lg);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md);">
+            <!-- Tab: Discount Coupons -->
+            <section id="tab-discounts" class="tab-pane">
+                <div class="content-card" style="padding: var(--spacing-lg);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md); flex-wrap: wrap; gap: var(--spacing-md);">
+                        <div>
                             <h3 style="font-family: var(--font-display); font-weight:800; color: var(--color-primary); margin:0;">
-                                <i class="fa-solid fa-ticket" style="margin-right: 6px;"></i> System Discount Tickets
+                                <i class="fa-solid fa-ticket" style="margin-right: 6px;"></i> System Discount Tickets & Coupons
                             </h3>
-                            <button class="btn btn-primary" id="btn-add-discount" style="padding: 0.5rem 1rem;">
-                                <i class="fa-solid fa-plus"></i> Add Ticket
-                            </button>
+                            <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--color-text-secondary);">Manage promotional codes, percentage discounts, and ticket expiry dates.</p>
                         </div>
-                        
-                        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Code</th>
-                                        <th>Title</th>
-                                        <th>Discount</th>
-                                        <th>Status</th>
-                                        <th>Expiry</th>
-                                        <th class="text-right">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="discounts-table-body">
-                                    <!-- Populated by JS -->
-                                </tbody>
-                            </table>
-                        </div>
+                        <button class="btn btn-primary" id="btn-add-discount" style="padding: 0.5rem 1rem;">
+                            <i class="fa-solid fa-plus"></i> Add Discount Ticket
+                        </button>
                     </div>
                     
-                    <!-- Right Column: Banner Ads slider list -->
-                    <div class="content-card" style="padding: var(--spacing-lg);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md);">
+                    <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Promo Code</th>
+                                    <th>Title & Details</th>
+                                    <th>Discount</th>
+                                    <th>Status</th>
+                                    <th>Expiry Date</th>
+                                    <th class="text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="discounts-table-body">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Homepage Banner Ads -->
+            <section id="tab-ads" class="tab-pane">
+                <div class="content-card" style="padding: var(--spacing-lg);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md); flex-wrap: wrap; gap: var(--spacing-md);">
+                        <div>
                             <h3 style="font-family: var(--font-display); font-weight:800; color: var(--color-primary); margin:0;">
-                                <i class="fa-solid fa-rectangle-ad" style="margin-right: 6px;"></i> Home Banner Ads
+                                <i class="fa-solid fa-rectangle-ad" style="margin-right: 6px;"></i> Home Banner Ads & Promotions
                             </h3>
-                            <button class="btn btn-primary" id="btn-add-ad" style="padding: 0.5rem 1rem;">
-                                <i class="fa-solid fa-plus"></i> Add Banner Ad
-                            </button>
+                            <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--color-text-secondary);">Upload, manage, and toggle featured banner ads displayed on passenger mobile homepage.</p>
                         </div>
-                        
-                        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Banner</th>
-                                        <th>Title</th>
-                                        <th>Action Link</th>
-                                        <th>Status</th>
-                                        <th class="text-right">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="ads-table-body">
-                                    <!-- Populated by JS -->
-                                </tbody>
-                            </table>
-                        </div>
+                        <button class="btn btn-primary" id="btn-add-ad" style="padding: 0.5rem 1rem;">
+                            <i class="fa-solid fa-plus"></i> Add Banner Ad
+                        </button>
                     </div>
                     
+                    <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Banner Image</th>
+                                    <th>Ad Title</th>
+                                    <th>Action Link</th>
+                                    <th>Status</th>
+                                    <th class="text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ads-table-body">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
 
