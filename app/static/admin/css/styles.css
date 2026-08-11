@@ -1722,3 +1722,83 @@ input:checked + .slider:before {
 .dropdown-item:hover {
     background-color: var(--color-surface-container-low);
 }
+
+/* Admin Login Screen Overlay */
+.admin-login-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(135deg, #0b1329 0%, #17223a 100%);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+
+.admin-login-card {
+    background: #ffffff;
+    width: min(440px, 100%);
+    border-radius: var(--radius-3xl, 24px);
+    padding: 2.5rem 2rem;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.admin-login-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.admin-login-logo {
+    width: 64px;
+    height: 64px;
+    margin-bottom: 1rem;
+    object-fit: contain;
+}
+
+.admin-login-header h2 {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.2rem;
+    color: var(--color-primary, #001b44);
+    margin-bottom: 0.35rem;
+    letter-spacing: -0.3px;
+}
+
+.admin-login-header p {
+    font-size: 0.8rem;
+    color: var(--color-on-surface-variant, #43474e);
+    font-weight: 600;
+}
+
+.admin-login-error {
+    background: #fce8e6;
+    color: #c5221f;
+    border: 1px solid #f5c2c7;
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 1.25rem;
+    text-align: center;
+}
+
+.sidebar-logout-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 0.4rem 0.6rem;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+}
+
+.sidebar-logout-btn:hover {
+    background: rgba(228, 86, 63, 0.25);
+    color: #ff6b6b;
+}
+

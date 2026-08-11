@@ -2312,9 +2312,70 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Sequential Promise Chaining to guarantee appSettings are loaded before drivers/passengers rendering
-    loadSummary().then(() => {
-        loadDrivers();
-        loadPassengers();
-    });
+    // Admin Auth State & Token Manager
+    const adminLoginScreen = document.getElementById('admin-login-screen');
+    const adminLoginForm = document.getElementById('admin-login-form');
+    const adminLoginError = document.getElementById('admin-login-error');
+    const btnAdminLogout = document.getElementById('btn-admin-logout');
+
+    function checkAdminAuth() {
+        const token = localStorage.getItem('admin_token');
+        if (!token) {
+            if (adminLoginScreen) adminLoginScreen.style.display = 'flex';
+            return false;
+        }
+        if (adminLoginScreen) adminLoginScreen.style.display = 'none';
+        return true;
+    }
+
+    if (adminLoginForm) {
+        adminLoginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const phone_or_username = document.getElementById('admin-user-input').value.trim();
+            const password = document.getElementById('admin-pass-input').value;
+            adminLoginError.style.display = 'none';
+
+            try {
+                const response = await fetch(`${API_BASE}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone_or_username, password })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    localStorage.setItem('admin_token', data.access_token);
+                    if (adminLoginScreen) adminLoginScreen.style.display = 'none';
+                    loadSummary().then(() => {
+                        loadDrivers();
+                        loadPassengers();
+                    });
+                } else {
+                    const err = await response.json();
+                    adminLoginError.textContent = err.detail || 'Invalid admin credentials.';
+                    adminLoginError.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Admin login error:', error);
+                adminLoginError.textContent = 'Could not connect to authentication server.';
+                adminLoginError.style.display = 'block';
+            }
+        });
+    }
+
+    if (btnAdminLogout) {
+        btnAdminLogout.addEventListener('click', () => {
+            localStorage.removeItem('admin_token');
+            if (adminLoginScreen) adminLoginScreen.style.display = 'flex';
+        });
+    }
+
+    // Check Auth on Startup
+    if (checkAdminAuth()) {
+        loadSummary().then(() => {
+            loadDrivers();
+            loadPassengers();
+        });
+    }
 });
+

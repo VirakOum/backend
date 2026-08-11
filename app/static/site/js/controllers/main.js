@@ -181,7 +181,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
         originSelect.addEventListener('change', calculateEstimate);
         destSelect.addEventListener('change', calculateEstimate);
+
+        const tabPassenger = document.getElementById('tab-btn-passenger');
+        const tabDriver = document.getElementById('tab-btn-driver');
+        const passengerPanel = document.getElementById('passenger-steps-panel');
+        const driverPanel = document.getElementById('driver-steps-panel');
+
+        if (tabPassenger && tabDriver) {
+            tabPassenger.addEventListener('click', () => {
+                tabPassenger.classList.add('active');
+                tabDriver.classList.remove('active');
+                passengerPanel.style.display = 'grid';
+                driverPanel.style.display = 'none';
+            });
+
+            tabDriver.addEventListener('click', () => {
+                tabDriver.classList.add('active');
+                tabPassenger.classList.remove('active');
+                driverPanel.style.display = 'grid';
+                passengerPanel.style.display = 'none';
+            });
+        }
     }
 
     init();
 });
+

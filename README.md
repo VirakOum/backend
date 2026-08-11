@@ -204,3 +204,4 @@ alembic revision --autogenerate -m "create categories table"
 alembic upgrade head
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload 
 c:\Users\USer\Documents\Github\Mytravel\backend_repo\.venv\Scripts\Activate.ps1
+git push upstream main

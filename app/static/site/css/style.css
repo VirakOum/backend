@@ -747,6 +747,95 @@ footer {
     color: var(--text-light);
 }
 
+/* Onboarding Account Creation Steps */
+.role-tab-btn {
+    background: var(--bg-main);
+    border: 2px solid var(--border-color);
+    color: var(--accent-dark);
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--radius-full);
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.role-tab-btn:hover {
+    border-color: var(--border-taxi);
+}
+
+.role-tab-btn.active {
+    background: var(--accent-dark);
+    color: var(--accent-taxi);
+    border-color: var(--accent-dark);
+    box-shadow: 0 4px 15px rgba(23, 34, 58, 0.2);
+}
+
+.onboarding-steps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2.5rem;
+}
+
+.onboarding-step-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 2rem 1.5rem;
+    border: 1px solid var(--border-color);
+    position: relative;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition-smooth);
+}
+
+.onboarding-step-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 30px rgba(23, 34, 58, 0.08);
+    border-color: var(--border-taxi);
+}
+
+.step-badge {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 32px;
+    height: 32px;
+    background: var(--accent-taxi);
+    color: var(--accent-dark);
+    font-weight: 800;
+    font-size: 0.95rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.step-icon {
+    width: 52px;
+    height: 52px;
+    background: rgba(23, 34, 58, 0.05);
+    color: var(--accent-dark);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.onboarding-step-card h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--accent-dark);
+    margin-bottom: 0.5rem;
+}
+
+.onboarding-step-card p {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
 /* Responsive Breakpoints */
 @media (max-width: 992px) {
     .hero-grid, .estimator-form, .safety-box {
@@ -762,3 +851,4 @@ footer {
         display: block;
     }
 }
+

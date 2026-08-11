@@ -376,3 +376,16 @@ def test_admin_trip_edit_and_delete() -> None:
     db = TestingSessionLocal()
     assert db.get(Trip, trip_id) is None
     db.close()
+
+
+def test_admin_login_endpoint():
+    resp = client.post("/travel/admin/login", json={"phone_or_username": "admin", "password": "Admin123!"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "access_token" in data
+    assert data["role"] == "admin"
+
+    bad_resp = client.post("/travel/admin/login", json={"phone_or_username": "admin", "password": "WrongPassword"})
+    assert bad_resp.status_code == 401
+
+

@@ -31,6 +31,7 @@
 
             <ul class="nav-links">
                 <li><a href="#about" class="nav-link" data-i18n="nav_about">About</a></li>
+                <li><a href="#account-creation" class="nav-link" data-i18n="nav_account">How to Register</a></li>
                 <li><a href="#estimator" class="nav-link" data-i18n="nav_estimator">Fare Estimator</a></li>
                 <li><a href="#features" class="nav-link" data-i18n="nav_features">Features</a></li>
                 <li><a href="#safety" class="nav-link" data-i18n="nav_safety">Safety</a></li>
@@ -42,10 +43,6 @@
                     <i class="fa-solid fa-globe"></i>
                     <span>ភាសាខ្មែរ</span>
                 </button>
-                <a href="/admin/mytravel" class="btn-admin">
-                    <i class="fa-solid fa-sliders"></i>
-                    <span data-i18n="nav_admin_btn">Admin Portal</span>
-                </a>
             </div>
         </div>
     </nav>
@@ -69,9 +66,9 @@
                         <i class="fa-solid fa-calculator"></i>
                         <span data-i18n="btn_passenger_app">Get Passenger App</span>
                     </a>
-                    <a href="/admin/mytravel" class="btn-secondary">
-                        <i class="fa-solid fa-user-gear"></i>
-                        <span data-i18n="btn_driver_app">Become a Driver Partner</span>
+                    <a href="#account-creation" class="btn-secondary">
+                        <i class="fa-solid fa-user-plus"></i>
+                        <span data-i18n="btn_how_to_start">How to Create Account</span>
                     </a>
                 </div>
             </div>
@@ -112,6 +109,75 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How to Create Account Section (Matching Mobile App Flow) -->
+    <section class="section" id="account-creation">
+        <div class="section-header">
+            <h2 class="section-title" data-i18n="how_start_title">How to Get Started & Create an Account</h2>
+            <p class="section-subtitle" data-i18n="how_start_subtitle">Fast, simple 4-step onboarding for Passengers and Driver Partners matching mobile app flow.</p>
+            
+            <div class="role-tab-container" style="display: flex; justify-content: center; gap: 1rem; margin-top: 1.5rem;">
+                <button class="role-tab-btn active" id="tab-btn-passenger" data-i18n="tab_passenger">Passenger Account</button>
+                <button class="role-tab-btn" id="tab-btn-driver" data-i18n="tab_driver">Driver Partner</button>
+            </div>
+        </div>
+
+        <!-- Passenger Steps Panel -->
+        <div class="onboarding-steps-grid active" id="passenger-steps-panel">
+            <div class="onboarding-step-card">
+                <div class="step-badge">1</div>
+                <div class="step-icon"><i class="fa-solid fa-mobile-retro"></i></div>
+                <h3 data-i18n="step1_p_title">1. Phone Number Signup</h3>
+                <p data-i18n="step1_p_desc">Sign up using your Cambodian phone number (e.g., 012 345 678) and a secure password.</p>
+            </div>
+            <div class="onboarding-step-card">
+                <div class="step-badge">2</div>
+                <div class="step-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                <h3 data-i18n="step2_p_title">2. Trusted Device Security</h3>
+                <p data-i18n="step2_p_desc">Automated hardware device token registers your phone for fast, safe, silent auto-login.</p>
+            </div>
+            <div class="onboarding-step-card">
+                <div class="step-badge">3</div>
+                <div class="step-icon"><i class="fa-solid fa-map-location-dot"></i></div>
+                <h3 data-i18n="step3_p_title">3. Saved Places & Preferences</h3>
+                <p data-i18n="step3_p_desc">Configure your Home and Work provinces for instant 1-tap route searches.</p>
+            </div>
+            <div class="onboarding-step-card">
+                <div class="step-badge">4</div>
+                <div class="step-icon"><i class="fa-solid fa-ticket-simple"></i></div>
+                <h3 data-i18n="step4_p_title">4. Book Seats & Payment</h3>
+                <p data-i18n="step4_p_desc">Pick specific seats, select Cash (USD/KHR) or KHQR digital payment, and track your driver live.</p>
+            </div>
+        </div>
+
+        <!-- Driver Steps Panel -->
+        <div class="onboarding-steps-grid" id="driver-steps-panel" style="display: none;">
+            <div class="onboarding-step-card">
+                <div class="step-badge">1</div>
+                <div class="step-icon"><i class="fa-solid fa-id-card-clip"></i></div>
+                <h3 data-i18n="step1_d_title">1. Driver Phone Registration</h3>
+                <p data-i18n="step1_d_desc">Register your mobile phone number and password in the Driver mode onboarding flow.</p>
+            </div>
+            <div class="onboarding-step-card">
+                <div class="step-badge">2</div>
+                <div class="step-icon"><i class="fa-solid fa-car-rear"></i></div>
+                <h3 data-i18n="step2_d_title">2. Vehicle & Plate Registration</h3>
+                <p data-i18n="step2_d_desc">Enter vehicle details (Model, Plate Number e.g. 2AB-1234, Seat Type, and Color).</p>
+            </div>
+            <div class="onboarding-step-card">
+                <div class="step-badge">3</div>
+                <div class="step-icon"><i class="fa-solid fa-crown"></i></div>
+                <h3 data-i18n="step3_d_title">3. Choose Membership Tier</h3>
+                <p data-i18n="step3_d_desc">Select Standard, Pro, or VIP membership tiers with low daily commission rates.</p>
+            </div>
+            <div class="onboarding-step-card">
+                <div class="step-badge">4</div>
+                <div class="step-icon"><i class="fa-solid fa-sack-dollar"></i></div>
+                <h3 data-i18n="step4_d_title">4. Publish Trips & Earn</h3>
+                <p data-i18n="step4_d_desc">Create inter-city routes, accept passenger bookings, track live GPS progress, and manage earnings.</p>
             </div>
         </div>
     </section>
@@ -202,8 +268,8 @@
                 <div class="feature-icon-box">
                     <i class="fa-solid fa-desktop"></i>
                 </div>
-                <h3 data-i18n="feat_d2_title">Live Command Dashboard</h3>
-                <p data-i18n="feat_d2_desc">Admin and fleet controllers monitor real-time vehicle positions and trip progression.</p>
+                <h3 data-i18n="feat_d2_title">Live Operations Control</h3>
+                <p data-i18n="feat_d2_desc">Real-time trip progress, route status tracking, and proximity arrival alerts.</p>
             </div>
 
             <div class="feature-card">
@@ -257,10 +323,6 @@
                     <div style="font-size: 1.5rem; font-weight: 800; color: #FFFFFF;" data-i18n="brand_name">MYTRAVEL.TAXI</div>
                     <div style="font-size: 0.85rem; color: var(--text-light);" data-i18n="tagline">Cambodia's Modern Inter-City Ride & Taxi Network</div>
                 </div>
-                <a href="/admin/mytravel" class="admin-banner-link">
-                    <i class="fa-solid fa-lock"></i>
-                    <span data-i18n="admin_link_text">System Control & Operations Panel (/admin/mytravel)</span>
-                </a>
             </div>
             <div class="footer-bottom" data-i18n="footer_copyright">
                 © 2026 MyTravel Transport Systems. All rights reserved. Kingdom of Cambodia.

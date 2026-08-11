@@ -19,6 +19,31 @@
     <link rel="stylesheet" href="css/styles.css?v=1.4">
 </head>
 <body>
+    <!-- Admin Authentication Login Modal / Overlay -->
+    <div id="admin-login-screen" class="admin-login-overlay">
+        <div class="admin-login-card">
+            <div class="admin-login-header">
+                <img src="assets/logo.png" alt="My Travel Logo" class="admin-login-logo">
+                <h2>MY TRAVEL COMMAND PORTAL</h2>
+                <p>System Administrator & Operations Authorization</p>
+            </div>
+            <form id="admin-login-form">
+                <div id="admin-login-error" class="admin-login-error" style="display: none;"></div>
+                <div class="form-group mb-3">
+                    <label for="admin-user-input"><i class="fa-solid fa-user"></i> Administrator Phone / Identifier</label>
+                    <input type="text" id="admin-user-input" class="form-control" placeholder="e.g. admin or 012000000" required>
+                </div>
+                <div class="form-group mb-4">
+                    <label for="admin-pass-input"><i class="fa-solid fa-lock"></i> Security Password</label>
+                    <input type="password" id="admin-pass-input" class="form-control" placeholder="••••••••••••" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100" id="btn-admin-login">
+                    <i class="fa-solid fa-right-to-bracket"></i> Sign In to Dashboard
+                </button>
+            </form>
+        </div>
+    </div>
+
     <div class="app-layout">
         <aside class="sidebar" id="app-sidebar">
             <div class="sidebar-brand" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
@@ -29,15 +54,21 @@
                         <span class="brand-subtitle" data-i18n="brand_subtitle">Kinetic Precision Framework</span>
                     </div>
                 </div>
-                <button class="sidebar-close-btn" id="btn-close-sidebar" aria-label="Close menu">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <button id="btn-admin-logout" class="sidebar-logout-btn" title="Sign Out">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
+                    <button class="sidebar-close-btn" id="btn-close-sidebar" aria-label="Close menu">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
             </div>
             
             <nav class="sidebar-nav">
                 <a href="#overview" class="nav-item active" data-tab="overview">
                     <i class="fa-solid fa-chart-pie nav-icon"></i>
                     <span data-i18n="nav_overview">System Overview</span>
+
                 </a>
                 <a href="#map" class="nav-item" data-tab="map">
                     <i class="fa-solid fa-map-location-dot nav-icon"></i>
