@@ -937,7 +937,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 else if (trip.status === 'cancelled') statusColorHex = '#ba1a1a';
                 card.style.setProperty('--status-color', statusColorHex);
                 
-                card.addEventListener('click', () => openTripDetailModal(trip.id));
+                card.addEventListener('click', () => openTripDetailPage(trip.id));
 
                 const tripTimeStr = new Date(trip.departure_time).toLocaleTimeString(currentLanguage === 'en' ? 'en-US' : 'km-KH', {
                     hour: 'numeric',
@@ -1053,45 +1053,120 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Open detailed view of selected trip
-    window.openTripDetailModal = (tripId) => {
-        const trip = currentTrips.find(t => t.id === tripId);
-        if (!trip) return;
+    // Dedicated Trip Detail Page View & Router
+    let pageDetailMap = null;
+    let pageDetailMarker = null;
 
-        // Populate forms
-        editTripId.value = trip.id;
-        editTripStatus.value = trip.status;
-        editTripPrice.value = Math.round(trip.price_per_seat);
-        editTripTotalSeats.value = trip.total_seats;
-        editTripAvailSeats.value = trip.available_seats;
+    window.openTripDetailPage = async (tripId) => {
+        if (!tripId) return;
 
-        // Set route info text
-        detailTripRoute.textContent = `${trip.departure_province} → ${trip.destination_province}`;
-        const timeStr = new Date(trip.departure_time).toLocaleTimeString(currentLanguage === 'en' ? 'en-US' : 'km-KH', {
+        // Update URL Hash without triggering reload
+        const targetHash = `trip-detail?id=${tripId}`;
+        if (window.location.hash !== `#${targetHash}`) {
+            window.location.hash = targetHash;
+        }
+
+        // Show tab-trip-detail pane
+        tabPanes.forEach(pane => {
+            pane.classList.remove('active');
+            if (pane.id === 'tab-trip-detail') {
+                pane.classList.add('active');
+            }
+        });
+        sidebarNav.forEach(n => n.classList.remove('active'));
+
+        // Find trip in currentTrips or fetch from backend
+        let trip = currentTrips.find(t => t.id === tripId);
+        if (!trip) {
+            try {
+                const response = await fetch(`${API_BASE}/trips`);
+                const trips = await response.json();
+                currentTrips = trips;
+                trip = currentTrips.find(t => t.id === tripId);
+            } catch (err) {
+                console.error('Error fetching trips for detail page:', err);
+            }
+        }
+
+        if (!trip) {
+            console.error('Trip not found for id:', tripId);
+            return;
+        }
+
+        // Populate Form Controls
+        const editIdEl = document.getElementById('page-edit-trip-id');
+        if (editIdEl) editIdEl.value = trip.id;
+        const editStatusEl = document.getElementById('page-edit-trip-status');
+        if (editStatusEl) editStatusEl.value = trip.status;
+        const editPriceEl = document.getElementById('page-edit-trip-price');
+        if (editPriceEl) editPriceEl.value = Math.round(trip.price_per_seat);
+        const editTotalSeatsEl = document.getElementById('page-edit-trip-total-seats');
+        if (editTotalSeatsEl) editTotalSeatsEl.value = trip.total_seats;
+        const editAvailSeatsEl = document.getElementById('page-edit-trip-avail-seats');
+        if (editAvailSeatsEl) editAvailSeatsEl.value = trip.available_seats;
+
+        // Populate Headers & Meta
+        const routeTitleEl = document.getElementById('page-trip-route-title');
+        if (routeTitleEl) routeTitleEl.textContent = `${trip.departure_province} → ${trip.destination_province}`;
+
+        const statusBadgeEl = document.getElementById('page-trip-status-badge');
+        if (statusBadgeEl) {
+            statusBadgeEl.textContent = trip.status;
+            statusBadgeEl.className = `ticket-status-badge status-${trip.status}`;
+        }
+
+        const idBadgeEl = document.getElementById('page-trip-id-badge');
+        if (idBadgeEl) idBadgeEl.textContent = `ID: ${trip.id}`;
+
+        const depProvEl = document.getElementById('page-dep-province');
+        if (depProvEl) depProvEl.textContent = trip.departure_province;
+        const destProvEl = document.getElementById('page-dest-province');
+        if (destProvEl) destProvEl.textContent = trip.destination_province;
+
+        const depDate = new Date(trip.departure_time);
+        const timeStr = depDate.toLocaleString(currentLanguage === 'en' ? 'en-US' : 'km-KH', {
+            weekday: 'short',
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
             hour: 'numeric',
             minute: '2-digit'
         });
-        detailTripTime.innerHTML = `<i class="fa-regular fa-clock"></i> ${timeStr}`;
-        detailDriverName.textContent = trip.driver_name;
-        detailVehicle.textContent = `${trip.vehicle_model} (${trip.vehicle_plate})`;
-        
-        detailBookings.textContent = currentLanguage === 'en' 
-            ? `${trip.bookings_count} Bookings`
-            : `${trip.bookings_count} ការកក់`;
+        const depTimeEl = document.getElementById('page-dep-time');
+        if (depTimeEl) depTimeEl.textContent = timeStr;
 
-        // Render modal active overlay
-        tripDetailModal.classList.add('active');
+        const priceEl = document.getElementById('page-price-per-seat');
+        if (priceEl) priceEl.textContent = `៛${trip.price_per_seat.toLocaleString()}`;
 
-        // Init/re-render detail map with live car coordinate
-        setTimeout(() => {
-            initDetailMap(trip);
-        }, 150);
-    };
+        const driverNameEl = document.getElementById('page-driver-name');
+        if (driverNameEl) driverNameEl.textContent = trip.driver_name || '—';
 
-    function initDetailMap(trip) {
+        const driverPhoneEl = document.getElementById('page-driver-phone');
+        if (driverPhoneEl) {
+            if (trip.driver_phone) {
+                driverPhoneEl.innerHTML = `<a href="tel:${trip.driver_phone}" style="color: var(--color-primary); font-weight:700;"><i class="fa-solid fa-phone"></i> ${trip.driver_phone}</a>`;
+            } else {
+                driverPhoneEl.textContent = '—';
+            }
+        }
+
+        const vehicleModelEl = document.getElementById('page-vehicle-model');
+        if (vehicleModelEl) vehicleModelEl.textContent = trip.vehicle_model || '—';
+        const vehiclePlateEl = document.getElementById('page-vehicle-plate');
+        if (vehiclePlateEl) vehiclePlateEl.textContent = trip.vehicle_plate || '—';
+
+        const seatsOccEl = document.getElementById('page-seats-occupancy');
+        if (seatsOccEl) {
+            const booked = trip.total_seats - trip.available_seats;
+            seatsOccEl.textContent = `${booked} / ${trip.total_seats} booked (${trip.available_seats} remaining)`;
+        }
+
+        const bookingsCountEl = document.getElementById('page-bookings-count');
+        if (bookingsCountEl) bookingsCountEl.textContent = `${trip.bookings_count} bookings`;
+
+        // Telemetry GPS
         let lat = trip.live_lat;
         let lng = trip.live_lng;
-
         if (lat === null || lng === null) {
             const provinceCoords = PROVINCE_COORDINATES[trip.departure_province];
             if (provinceCoords) {
@@ -1103,114 +1178,207 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        if (detailMap) {
-            detailMap.setView([lat, lng], 10);
-            if (detailMarker) {
-                detailMarker.setLatLng([lat, lng]);
+        const gpsLatEl = document.getElementById('page-gps-lat');
+        if (gpsLatEl) gpsLatEl.textContent = lat ? lat.toFixed(5) : 'N/A';
+        const gpsLngEl = document.getElementById('page-gps-lng');
+        if (gpsLngEl) gpsLngEl.textContent = lng ? lng.toFixed(5) : 'N/A';
+        const gpsSpeedEl = document.getElementById('page-gps-speed');
+        if (gpsSpeedEl) gpsSpeedEl.textContent = trip.live_speed_kph ? `${trip.live_speed_kph} km/h` : '0 km/h';
+        const gpsHeadingEl = document.getElementById('page-gps-heading');
+        if (gpsHeadingEl) gpsHeadingEl.textContent = trip.live_heading ? `${trip.live_heading}°` : 'N/A';
+
+        // Render Leaflet map container
+        setTimeout(() => {
+            initPageDetailMap(lat, lng);
+        }, 150);
+
+        // Fetch & Render Bookings
+        loadTripBookings(trip.id);
+    };
+
+    function initPageDetailMap(lat, lng) {
+        const mapContainer = document.getElementById('page-trip-detail-map');
+        if (!mapContainer) return;
+
+        if (pageDetailMap) {
+            pageDetailMap.setView([lat, lng], 11);
+            if (pageDetailMarker) {
+                pageDetailMarker.setLatLng([lat, lng]);
             } else {
-                detailMarker = L.circleMarker([lat, lng], {
-                    radius: 8,
+                pageDetailMarker = L.circleMarker([lat, lng], {
+                    radius: 9,
                     fillColor: '#006d43',
-                    fillOpacity: 0.8,
+                    fillOpacity: 0.9,
                     stroke: true,
                     color: '#ffffff',
                     weight: 2
-                }).addTo(detailMap);
+                }).addTo(pageDetailMap);
             }
-            detailMap.invalidateSize();
+            pageDetailMap.invalidateSize();
             return;
         }
 
-        detailMap = L.map('trip-detail-map', {
-            zoomControl: false
-        }).setView([lat, lng], 10);
+        pageDetailMap = L.map('page-trip-detail-map', {
+            zoomControl: true
+        }).setView([lat, lng], 11);
 
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
             maxZoom: 20
-        }).addTo(detailMap);
+        }).addTo(pageDetailMap);
 
-        detailMarker = L.circleMarker([lat, lng], {
-            radius: 8,
+        pageDetailMarker = L.circleMarker([lat, lng], {
+            radius: 9,
             fillColor: '#006d43',
-            fillOpacity: 0.8,
+            fillOpacity: 0.9,
             stroke: true,
             color: '#ffffff',
             weight: 2
-        }).addTo(detailMap);
+        }).addTo(pageDetailMap);
 
-        detailMap.invalidateSize();
+        pageDetailMap.invalidateSize();
     }
 
-    function closeTripModal() {
-        tripDetailModal.classList.remove('active');
+    async function loadTripBookings(tripId) {
+        const tableBody = document.getElementById('page-trip-bookings-list');
+        if (!tableBody) return;
+        tableBody.innerHTML = '<tr><td colspan="7" class="text-center" style="padding: 1.5rem;"><i class="fa-solid fa-spinner fa-spin"></i> Loading passenger bookings...</td></tr>';
+
+        try {
+            const response = await fetch(`${API_BASE}/trips/${tripId}/bookings`);
+            if (response.ok) {
+                const bookings = await response.json();
+                if (bookings.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="7" class="text-center" style="padding: 1.5rem; color: var(--color-text-secondary);">No passenger bookings recorded for this trip yet.</td></tr>';
+                    return;
+                }
+                tableBody.innerHTML = '';
+                bookings.forEach(b => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><strong style="color: var(--color-primary);">${escapeHtml(b.passenger_name || 'Passenger')}</strong></td>
+                        <td>${escapeHtml(b.passenger_phone || '—')}</td>
+                        <td><span class="stub-seats">${b.seats_booked}</span></td>
+                        <td><strong>៛${(b.total_price || 0).toLocaleString()}</strong></td>
+                        <td><span style="font-size: 0.8rem; text-transform: uppercase;">${b.payment_method || 'CASH'}</span></td>
+                        <td><span class="ticket-status-badge status-${b.payment_status === 'paid' ? 'completed' : 'scheduled'}">${b.payment_status || 'PENDING'}</span></td>
+                        <td><span class="ticket-status-badge status-${b.status === 'boarded' || b.status === 'completed' ? 'active' : 'scheduled'}">${b.status || 'BOOKED'}</span></td>
+                    `;
+                    tableBody.appendChild(tr);
+                });
+            } else {
+                tableBody.innerHTML = '<tr><td colspan="7" class="text-center" style="padding: 1.5rem; color: var(--color-text-secondary);">No passenger bookings found for this trip.</td></tr>';
+            }
+        } catch (error) {
+            console.error('Error loading trip bookings:', error);
+            tableBody.innerHTML = '<tr><td colspan="7" class="text-center" style="padding: 1.5rem; color: var(--color-text-secondary);">No passenger bookings found for this trip.</td></tr>';
+        }
     }
 
-    btnCloseTripModal.addEventListener('click', closeTripModal);
-    tripDetailModal.addEventListener('click', (e) => {
-        if (e.target === tripDetailModal) closeTripModal();
-    });
+    // Save changes to trip details from Page View Form
+    const pageTripEditForm = document.getElementById('page-trip-edit-form');
+    if (pageTripEditForm) {
+        pageTripEditForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const dict = TRANSLATIONS[currentLanguage];
+            const tripId = document.getElementById('page-edit-trip-id').value;
 
-    // Save changes to trip details
-    tripEditForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const dict = TRANSLATIONS[currentLanguage];
-        const tripId = editTripId.value;
+            const payload = {
+                status: document.getElementById('page-edit-trip-status').value,
+                price_per_seat: parseFloat(document.getElementById('page-edit-trip-price').value),
+                total_seats: parseInt(document.getElementById('page-edit-trip-total-seats').value),
+                available_seats: parseInt(document.getElementById('page-edit-trip-avail-seats').value)
+            };
 
-        const payload = {
-            status: editTripStatus.value,
-            price_per_seat: parseFloat(editTripPrice.value),
-            total_seats: parseInt(editTripTotalSeats.value),
-            available_seats: parseInt(editTripAvailSeats.value)
-        };
+            try {
+                const response = await fetch(`${API_BASE}/trips/${tripId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
 
-        try {
-            const response = await fetch(`${API_BASE}/trips/${tripId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (response.ok) {
-                showToast(dict.toast_trip_saved);
-                closeTripModal();
-                loadTrips();
-                loadSummary();
-            } else {
+                if (response.ok) {
+                    showToast(dict.toast_trip_saved);
+                    loadTrips();
+                    loadSummary();
+                    openTripDetailPage(tripId);
+                } else {
+                    showToast(dict.toast_network_error, true);
+                }
+            } catch (error) {
+                console.error('Error saving trip edits:', error);
                 showToast(dict.toast_network_error, true);
             }
-        } catch (error) {
-            console.error('Error saving trip edits:', error);
-            showToast(dict.toast_network_error, true);
-        }
-    });
+        });
+    }
 
-    // Delete trip
-    btnDeleteTrip.addEventListener('click', async () => {
-        const dict = TRANSLATIONS[currentLanguage];
-        const tripId = editTripId.value;
+    // Delete trip from Page View
+    const pageBtnDeleteTrip = document.getElementById('page-btn-delete-trip');
+    if (pageBtnDeleteTrip) {
+        pageBtnDeleteTrip.addEventListener('click', async () => {
+            const dict = TRANSLATIONS[currentLanguage];
+            const tripId = document.getElementById('page-edit-trip-id').value;
 
-        if (!confirm(dict.txt_confirm_delete_trip)) {
-            return;
-        }
+            if (!confirm(dict.txt_confirm_delete_trip)) {
+                return;
+            }
 
-        try {
-            const response = await fetch(`${API_BASE}/trips/${tripId}`, {
-                method: 'DELETE'
-            });
+            try {
+                const response = await fetch(`${API_BASE}/trips/${tripId}`, {
+                    method: 'DELETE'
+                });
 
-            if (response.ok) {
-                showToast(dict.toast_trip_deleted);
-                closeTripModal();
-                loadTrips();
-                loadSummary();
-            } else {
+                if (response.ok) {
+                    showToast(dict.toast_trip_deleted);
+                    window.location.hash = 'trips';
+                    loadTrips();
+                    loadSummary();
+                } else {
+                    showToast(dict.toast_network_error, true);
+                }
+            } catch (error) {
+                console.error('Error deleting trip:', error);
                 showToast(dict.toast_network_error, true);
             }
-        } catch (error) {
-            console.error('Error deleting trip:', error);
-            showToast(dict.toast_network_error, true);
+        });
+    }
+
+    // Back to Trips Button
+    const btnBackToTrips = document.getElementById('btn-back-to-trips');
+    if (btnBackToTrips) {
+        btnBackToTrips.addEventListener('click', () => {
+            window.location.hash = 'trips';
+            sidebarNav.forEach(n => {
+                n.classList.remove('active');
+                if (n.getAttribute('data-tab') === 'trips') n.classList.add('active');
+            });
+            tabPanes.forEach(pane => {
+                pane.classList.remove('active');
+                if (pane.id === 'tab-trips') pane.classList.add('active');
+            });
+        });
+    }
+
+    // URL Hash Routing Handler
+    function handleRouteHash() {
+        const hash = window.location.hash.substring(1);
+        if (!hash) return;
+
+        if (hash.startsWith('trip-detail')) {
+            const params = new URLSearchParams(hash.includes('?') ? hash.split('?')[1] : '');
+            const tripId = params.get('id');
+            if (tripId) {
+                openTripDetailPage(tripId);
+            }
+        } else {
+            const nav = document.querySelector(`.sidebar-nav-item[data-tab="${hash}"]`);
+            if (nav) {
+                nav.click();
+            }
         }
-    });
+    }
+
+    window.addEventListener('hashchange', handleRouteHash);
+    setTimeout(handleRouteHash, 300);
 
     // Filters event listeners
     tripDateFilter.addEventListener('change', renderTrips);

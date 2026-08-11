@@ -1802,3 +1802,32 @@ input:checked + .slider:before {
     color: #ff6b6b;
 }
 
+/* Promotions & Ads Grid Responsiveness */
+.promotions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: var(--spacing-lg);
+    align-items: start;
+}
+
+@media (max-width: 992px) {
+    .promotions-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Dedicated Trip Detail Page Styling */
+.trip-detail-page-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: var(--spacing-lg);
+    align-items: start;
+}
+
+@media (max-width: 992px) {
+    .trip-detail-page-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+

@@ -143,6 +143,18 @@ class TripAdminUpdate(BaseModel):
     total_seats: Optional[int] = None
     status: Optional[str] = None
 
+class BookingAdminRead(BaseModel):
+    id: uuid.UUID
+    passenger_name: str
+    passenger_phone: str
+    seats_booked: int
+    total_price: float
+    payment_method: str
+    payment_status: str
+    status: str
+    created_at: datetime
+
+
 class ManualSettleRequest(BaseModel):
     driver_id: uuid.UUID
     notes: Optional[str] = None
@@ -459,6 +471,29 @@ def list_trips(db: Session = Depends(get_db)) -> Any:
             "bookings_count": len(trip.bookings)
         })
         
+    return result
+
+
+@router.get("/trips/{trip_id}/bookings", response_model=List[BookingAdminRead])
+def get_trip_bookings(trip_id: uuid.UUID, db: Session = Depends(get_db)) -> Any:
+    bookings = db.execute(
+        select(Booking).where(Booking.trip_id == trip_id).order_by(Booking.created_at.desc())
+    ).scalars().all()
+    
+    result = []
+    for b in bookings:
+        passenger = db.get(User, b.passenger_id)
+        result.append({
+            "id": b.id,
+            "passenger_name": passenger.full_name if passenger else "Passenger",
+            "passenger_phone": passenger.phone if passenger else "",
+            "seats_booked": b.seats_booked,
+            "total_price": float(b.total_price or 0.0),
+            "payment_method": b.payment_method or "CASH",
+            "payment_status": b.payment_status or "PENDING",
+            "status": b.status or "BOOKED",
+            "created_at": b.created_at
+        })
     return result
 
 

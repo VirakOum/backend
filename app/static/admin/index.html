@@ -346,6 +346,184 @@
                 </div>
             </section>
 
+            <!-- Tab: Dedicated Trip Detail Page View -->
+            <section id="tab-trip-detail" class="tab-pane">
+                <div class="trip-detail-header-bar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--spacing-md); margin-bottom: var(--spacing-md); background: var(--color-surface-lowest); padding: var(--spacing-md); border-radius: var(--radius-xl);">
+                    <button class="btn btn-secondary" id="btn-back-to-trips" style="display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-arrow-left"></i> <span>Back to Trip Operations</span>
+                    </button>
+                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                        <h2 id="page-trip-route-title" class="headline-md" style="margin:0; font-family: var(--font-display); font-weight: 800; color: var(--color-primary);">—</h2>
+                        <span id="page-trip-status-badge" class="ticket-status-badge">scheduled</span>
+                    </div>
+                </div>
+
+                <div class="trip-detail-page-grid" style="display: grid; grid-template-columns: 1fr 340px; gap: var(--spacing-lg); align-items: start;">
+                    <!-- Left Main Column: Full Details & Live Map -->
+                    <div style="display: flex; flex-direction: column; gap: var(--spacing-md);">
+                        
+                        <!-- Route & Time Card -->
+                        <div class="content-card">
+                            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md);">
+                                <h3 class="headline-sm" style="margin: 0; color: var(--color-primary);">
+                                    <i class="fa-solid fa-route" style="margin-right: 6px;"></i> Route & Schedule Details
+                                </h3>
+                                <span id="page-trip-id-badge" style="font-size: 0.8rem; font-family: monospace; background: var(--color-surface-container); padding: 4px 8px; border-radius: 6px; color: var(--color-text-secondary);">ID: —</span>
+                            </div>
+                            <div class="trip-detail-metrics-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--spacing-md);">
+                                <div class="metric-box">
+                                    <span class="metric-lbl" style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase;">Departure</span>
+                                    <span class="metric-val" id="page-dep-province" style="font-weight: 800; font-size: 1.1rem; display: block; margin-top: 2px;">—</span>
+                                </div>
+                                <div class="metric-box">
+                                    <span class="metric-lbl" style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase;">Destination</span>
+                                    <span class="metric-val" id="page-dest-province" style="font-weight: 800; font-size: 1.1rem; display: block; margin-top: 2px;">—</span>
+                                </div>
+                                <div class="metric-box">
+                                    <span class="metric-lbl" style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase;">Departure Time</span>
+                                    <span class="metric-val" id="page-dep-time" style="font-weight: 800; font-size: 1rem; display: block; margin-top: 2px;">—</span>
+                                </div>
+                                <div class="metric-box">
+                                    <span class="metric-lbl" style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase;">Fare Per Seat</span>
+                                    <span class="metric-val" id="page-price-per-seat" style="font-weight: 800; font-size: 1.1rem; color: var(--color-primary); display: block; margin-top: 2px;">—</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Driver & Vehicle Card -->
+                        <div class="content-card">
+                            <div class="card-header" style="margin-bottom: var(--spacing-md);">
+                                <h3 class="headline-sm" style="margin: 0; color: var(--color-primary);">
+                                    <i class="fa-solid fa-id-card" style="margin-right: 6px;"></i> Driver & Vehicle Information
+                                </h3>
+                            </div>
+                            <div class="trip-info-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--spacing-md);">
+                                <div class="info-block">
+                                    <span class="info-label" style="font-size: 0.75rem; color: var(--color-text-secondary); display: block;">Driver Name</span>
+                                    <span class="info-value" id="page-driver-name" style="font-weight: 700; font-size: 0.95rem;">—</span>
+                                </div>
+                                <div class="info-block">
+                                    <span class="info-label" style="font-size: 0.75rem; color: var(--color-text-secondary); display: block;">Driver Phone</span>
+                                    <span class="info-value" id="page-driver-phone" style="font-weight: 700; font-size: 0.95rem;">—</span>
+                                </div>
+                                <div class="info-block">
+                                    <span class="info-label" style="font-size: 0.75rem; color: var(--color-text-secondary); display: block;">Vehicle Model</span>
+                                    <span class="info-value" id="page-vehicle-model" style="font-weight: 700; font-size: 0.95rem;">—</span>
+                                </div>
+                                <div class="info-block">
+                                    <span class="info-label" style="font-size: 0.75rem; color: var(--color-text-secondary); display: block;">Plate Number</span>
+                                    <span class="info-value" id="page-vehicle-plate" style="font-weight: 700; font-size: 0.95rem;">—</span>
+                                </div>
+                                <div class="info-block">
+                                    <span class="info-label" style="font-size: 0.75rem; color: var(--color-text-secondary); display: block;">Seating Capacity</span>
+                                    <span class="info-value" id="page-seats-occupancy" style="font-weight: 700; font-size: 0.95rem;">—</span>
+                                </div>
+                                <div class="info-block">
+                                    <span class="info-label" style="font-size: 0.75rem; color: var(--color-text-secondary); display: block;">App Bookings</span>
+                                    <span class="info-value" id="page-bookings-count" style="font-weight: 700; font-size: 0.95rem;">—</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Live Tracking Map & GPS -->
+                        <div class="content-card">
+                            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md);">
+                                <h3 class="headline-sm" style="margin: 0; color: var(--color-primary);">
+                                    <i class="fa-solid fa-map-location-dot" style="margin-right: 6px;"></i> Live GPS & Vehicle Coordinates
+                                </h3>
+                                <span class="badge" id="page-gps-status-badge" style="background: var(--color-success-container); color: var(--color-success); font-weight: 700; font-size: 0.75rem; padding: 4px 10px; border-radius: 20px;">GPS Tracking Active</span>
+                            </div>
+                            <div style="position: relative; height: 300px; width: 100%; border-radius: var(--radius-md); overflow: hidden; margin-bottom: var(--spacing-sm);">
+                                <div id="page-trip-detail-map" style="width: 100%; height: 100%;"></div>
+                            </div>
+                            <div class="gps-telemetry-row" style="display: flex; flex-wrap: wrap; gap: var(--spacing-md); font-size: 0.85rem; color: var(--color-text-secondary); background: var(--color-surface-container-low); padding: var(--spacing-sm) var(--spacing-md); border-radius: var(--radius-md);">
+                                <div><i class="fa-solid fa-location-crosshairs"></i> Lat: <strong id="page-gps-lat" style="color: var(--color-text);">—</strong>, Lng: <strong id="page-gps-lng" style="color: var(--color-text);">—</strong></div>
+                                <div><i class="fa-solid fa-gauge-high"></i> Speed: <strong id="page-gps-speed" style="color: var(--color-text);">—</strong></div>
+                                <div><i class="fa-solid fa-compass"></i> Heading: <strong id="page-gps-heading" style="color: var(--color-text);">—</strong></div>
+                            </div>
+                        </div>
+
+                        <!-- Passenger Bookings List -->
+                        <div class="content-card">
+                            <div class="card-header" style="margin-bottom: var(--spacing-md);">
+                                <h3 class="headline-sm" style="margin: 0; color: var(--color-primary);">
+                                    <i class="fa-solid fa-users" style="margin-right: 6px;"></i> Booked Passengers List
+                                </h3>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Passenger</th>
+                                            <th>Phone</th>
+                                            <th>Seats</th>
+                                            <th>Total Price</th>
+                                            <th>Payment Method</th>
+                                            <th>Payment Status</th>
+                                            <th>Boarding Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="page-trip-bookings-list">
+                                        <!-- Rendered by JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Right Column: Admin Operations & Edit Panel -->
+                    <div style="display: flex; flex-direction: column; gap: var(--spacing-md);">
+                        
+                        <div class="content-card" style="position: sticky; top: 90px;">
+                            <div class="card-header" style="margin-bottom: var(--spacing-md);">
+                                <h3 class="headline-sm" style="margin: 0; color: var(--color-primary);">
+                                    <i class="fa-solid fa-sliders" style="margin-right: 6px;"></i> Operations & Settings
+                                </h3>
+                            </div>
+                            <form id="page-trip-edit-form" style="display: flex; flex-direction: column; gap: var(--spacing-md);">
+                                <input type="hidden" id="page-edit-trip-id">
+
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label for="page-edit-trip-status" style="margin-bottom: 4px; font-weight: 700; display: block; font-size: 0.85rem;">Trip Status</label>
+                                    <select id="page-edit-trip-status" class="search-input" style="padding: 0.6rem 1rem; cursor: pointer; width: 100%;">
+                                        <option value="scheduled">Scheduled</option>
+                                        <option value="active">Active</option>
+                                        <option value="completed">Completed</option>
+                                        <option value="cancelled">Cancelled</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label for="page-edit-trip-price" style="margin-bottom: 4px; font-weight: 700; display: block; font-size: 0.85rem;">Price Per Seat (KHR)</label>
+                                    <input type="number" id="page-edit-trip-price" class="search-input" style="padding: 0.6rem 1rem; width: 100%;" required>
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label for="page-edit-trip-total-seats" style="margin-bottom: 4px; font-weight: 700; display: block; font-size: 0.85rem;">Total Seating Capacity</label>
+                                    <input type="number" id="page-edit-trip-total-seats" class="search-input" style="padding: 0.6rem 1rem; width: 100%;" required>
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label for="page-edit-trip-avail-seats" style="margin-bottom: 4px; font-weight: 700; display: block; font-size: 0.85rem;">Available Seats</label>
+                                    <input type="number" id="page-edit-trip-avail-seats" class="search-input" style="padding: 0.6rem 1rem; width: 100%;" required>
+                                </div>
+
+                                <div style="display: flex; flex-direction: column; gap: var(--spacing-xs); margin-top: var(--spacing-sm);">
+                                    <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem 1rem; font-size: 0.9rem;">
+                                        <i class="fa-solid fa-save"></i> Save Trip Settings
+                                    </button>
+                                    <button type="button" class="btn btn-danger" id="page-btn-delete-trip" style="width: 100%; padding: 0.75rem 1rem; font-size: 0.9rem;">
+                                        <i class="fa-solid fa-trash-can"></i> Delete Trip
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                    </div>
+                </div>
+            </section>
+
             <!-- Tab: Drivers -->
             <section id="tab-drivers" class="tab-pane">
                 <div class="search-bar-container">
