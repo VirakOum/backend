@@ -157,6 +157,9 @@ def serve_js(filename: str):
 @app.get("/favicon.ico", include_in_schema=False)
 @api_v1_router.get("/favicon.ico", include_in_schema=False)
 def serve_favicon():
+    ico_path = STATIC_SITE_DIR / "favicon.ico"
+    if ico_path.is_file():
+        return FileResponse(ico_path)
     file_path = STATIC_SITE_DIR / "assets" / "logo.png"
     if file_path.is_file():
         return FileResponse(file_path, media_type="image/png")
@@ -164,6 +167,7 @@ def serve_favicon():
     if admin_logo.is_file():
         return FileResponse(admin_logo, media_type="image/png")
     raise HTTPException(status_code=404, detail="Favicon not found")
+
 
 @app.get("/assets/{filename:path}", include_in_schema=False)
 @api_v1_router.get("/assets/{filename:path}", include_in_schema=False)
