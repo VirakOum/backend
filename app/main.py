@@ -112,11 +112,29 @@ for r in [meta_router, travel_router, passenger_router, addresses_router, driver
     app.include_router(r)
     api_v1_router.include_router(r)
 
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+        servers=app.servers,
+    )
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
+
+
 # Custom Swagger UI & OpenAPI Endpoints (supporting both /v1/api/docs and /docs)
 @app.get("/v1/api/openapi.json", include_in_schema=False)
 @app.get("/openapi.json", include_in_schema=False)
 def custom_openapi_json():
-    return JSONResponse(get_openapi(title=app.title, version=app.version, description=app.description, routes=app.routes))
+    return JSONResponse(app.openapi())
+
 
 @app.get("/v1/api/docs", include_in_schema=False)
 @app.get("/docs", include_in_schema=False)
