@@ -75,7 +75,7 @@ def setup_function() -> None:
 
 def test_admin_settings_get_and_post() -> None:
     # 1. Get default settings
-    response = client.get("/travel/admin/settings")
+    response = client.get("/v1/api/travel/admin/settings")
     assert response.status_code == 200
     data = response.json()
     assert data["enable_digital_payment"] is False
@@ -90,7 +90,7 @@ def test_admin_settings_get_and_post() -> None:
         "driver_cash_debt_limit_usd": 50.0,
         "driver_cash_debt_limit_khr": 200000,
     }
-    post_response = client.post("/travel/admin/settings", json=update_payload)
+    post_response = client.post("/v1/api/travel/admin/settings", json=update_payload)
     assert post_response.status_code == 200
     updated_data = post_response.json()
     assert updated_data["enable_digital_payment"] is True
@@ -123,7 +123,7 @@ def test_admin_summary() -> None:
     db.commit()
 
     # Get summary
-    response = client.get("/travel/admin/summary")
+    response = client.get("/v1/api/travel/admin/summary")
     assert response.status_code == 200
     data = response.json()
     assert data["total_drivers"] == 1
@@ -152,7 +152,7 @@ def test_admin_user_management_and_toggle_verification() -> None:
     db.close()
 
     # 1. Get users list
-    response = client.get("/travel/admin/users")
+    response = client.get("/v1/api/travel/admin/users")
     assert response.status_code == 200
     users = response.json()
     assert len(users) == 1
@@ -160,12 +160,12 @@ def test_admin_user_management_and_toggle_verification() -> None:
     assert users[0]["is_verified"] is False
 
     # 2. Toggle verification
-    toggle_resp = client.post(f"/travel/admin/users/{user_id}/toggle-verification")
+    toggle_resp = client.post(f"/v1/api/travel/admin/users/{user_id}/toggle-verification")
     assert toggle_resp.status_code == 200
     assert toggle_resp.json()["is_verified"] is True
 
     # 3. Verify changes persist
-    response2 = client.get("/travel/admin/users")
+    response2 = client.get("/v1/api/travel/admin/users")
     assert response2.json()[0]["is_verified"] is True
 
 
@@ -195,25 +195,25 @@ def test_admin_driver_lock_and_membership() -> None:
     db.close()
 
     # 1. Toggle Lock (Lock driver)
-    lock_resp = client.post(f"/travel/admin/users/{driver_id}/toggle-wallet-lock?reason=SuspiciousActivity")
+    lock_resp = client.post(f"/v1/api/travel/admin/users/{driver_id}/toggle-wallet-lock?reason=SuspiciousActivity")
     assert lock_resp.status_code == 200
     assert lock_resp.json()["admin_locked"] is True
     assert lock_resp.json()["is_locked"] is True
     assert lock_resp.json()["locked_reason"] == "SuspiciousActivity"
 
     # 2. Toggle Lock again (Unlock driver)
-    unlock_resp = client.post(f"/travel/admin/users/{driver_id}/toggle-wallet-lock")
+    unlock_resp = client.post(f"/v1/api/travel/admin/users/{driver_id}/toggle-wallet-lock")
     assert unlock_resp.status_code == 200
     assert unlock_resp.json()["admin_locked"] is False
     assert unlock_resp.json()["is_locked"] is False
 
     # 3. Change membership tier to VIP
-    membership_resp = client.post(f"/travel/admin/users/{driver_id}/change-membership?tier=vip")
+    membership_resp = client.post(f"/v1/api/travel/admin/users/{driver_id}/change-membership?tier=vip")
     assert membership_resp.status_code == 200
     assert membership_resp.json()["tier"] == "vip"
 
     # 4. Settle wallet debt (Even though it is 0, test success)
-    settle_resp = client.post("/travel/admin/wallet/settle", json={"driver_id": str(driver_id), "notes": "Office visit"})
+    settle_resp = client.post("/v1/api/travel/admin/wallet/settle", json={"driver_id": str(driver_id), "notes": "Office visit"})
     assert settle_resp.status_code == 200
     assert float(settle_resp.json()["wallet"]["total_owed_usd"]) == 0.0
 
@@ -304,7 +304,7 @@ def test_admin_revenue_api() -> None:
     db.commit()
     db.close()
     
-    response = client.get("/travel/admin/revenue")
+    response = client.get("/v1/api/travel/admin/revenue")
     assert response.status_code == 200
     data = response.json()
     
@@ -360,7 +360,7 @@ def test_admin_trip_edit_and_delete() -> None:
         "total_seats": 12,
         "available_seats": 8
     }
-    update_resp = client.put(f"/travel/admin/trips/{trip_id}", json=update_payload)
+    update_resp = client.put(f"/v1/api/travel/admin/trips/{trip_id}", json=update_payload)
     assert update_resp.status_code == 200
     updated_data = update_resp.json()
     assert updated_data["status"] == "active"
@@ -369,7 +369,7 @@ def test_admin_trip_edit_and_delete() -> None:
     assert updated_data["available_seats"] == 8
     
     # 2. Delete Trip
-    delete_resp = client.delete(f"/travel/admin/trips/{trip_id}")
+    delete_resp = client.delete(f"/v1/api/travel/admin/trips/{trip_id}")
     assert delete_resp.status_code == 204
     
     # 3. Assert deleted
@@ -379,13 +379,13 @@ def test_admin_trip_edit_and_delete() -> None:
 
 
 def test_admin_login_endpoint():
-    resp = client.post("/travel/admin/login", json={"phone_or_username": "admin", "password": "Admin123!"})
+    resp = client.post("/v1/api/travel/admin/login", json={"phone_or_username": "admin", "password": "Admin123!"})
     assert resp.status_code == 200
     data = resp.json()
     assert "access_token" in data
     assert data["role"] == "admin"
 
-    bad_resp = client.post("/travel/admin/login", json={"phone_or_username": "admin", "password": "WrongPassword"})
+    bad_resp = client.post("/v1/api/travel/admin/login", json={"phone_or_username": "admin", "password": "WrongPassword"})
     assert bad_resp.status_code == 401
 
 

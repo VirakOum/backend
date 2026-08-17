@@ -1,7 +1,8 @@
 // My Travel Command Dashboard JavaScript
 document.addEventListener('DOMContentLoaded', () => {
-    // API Base URL (relative to this page)
-    const API_BASE = '/travel/admin';
+    // API Base URLs (relative to this page)
+    const API_BASE = '/v1/api/travel/admin';
+    const API_V1_BASE = '/v1/api';
 
     // Cambodia 25 Provinces list for searchable select components
     const CAMBODIA_PROVINCES = [

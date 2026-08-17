@@ -94,7 +94,7 @@ def setup_function() -> None:
 
 
 def test_get_provinces() -> None:
-    response = client.get("/addresses/provinces")
+    response = client.get("/v1/api/addresses/provinces")
 
     assert response.status_code == 200
     body = response.json()
@@ -104,9 +104,9 @@ def test_get_provinces() -> None:
 
 
 def test_cascading_address_dropdown_routes() -> None:
-    districts_response = client.get("/addresses/districts/06")
-    communes_response = client.get("/addresses/communes/601")
-    villages_response = client.get("/addresses/villages/60101")
+    districts_response = client.get("/v1/api/addresses/districts/06")
+    communes_response = client.get("/v1/api/addresses/communes/601")
+    villages_response = client.get("/v1/api/addresses/villages/60101")
 
     assert districts_response.status_code == 200
     assert districts_response.json()[0]["description"] == "ស្ទឹងសែន"
@@ -119,9 +119,9 @@ def test_cascading_address_dropdown_routes() -> None:
 
 
 def test_generic_address_lookup_routes() -> None:
-    by_type_response = client.get("/addresses/by-type/district")
-    by_parent_response = client.get("/addresses/by-parent/06")
-    by_code_response = client.get("/addresses/code/601")
+    by_type_response = client.get("/v1/api/addresses/by-type/district")
+    by_parent_response = client.get("/v1/api/addresses/by-parent/06")
+    by_code_response = client.get("/v1/api/addresses/code/601")
 
     assert by_type_response.status_code == 200
     assert by_type_response.json()[0]["code"] == "601"
@@ -134,7 +134,7 @@ def test_generic_address_lookup_routes() -> None:
 
 
 def test_districts_route_rejects_non_province_code() -> None:
-    response = client.get("/addresses/districts/601")
+    response = client.get("/v1/api/addresses/districts/601")
 
     assert response.status_code == 400
     assert response.json()["detail"] == "province_code must belong to a province"
@@ -142,7 +142,7 @@ def test_districts_route_rejects_non_province_code() -> None:
 
 def test_create_address_form_entry() -> None:
     response = client.post(
-        "/addresses/forms",
+        "/v1/api/addresses/forms",
         json={
             "province_code": "06",
             "district_code": "601",
@@ -164,7 +164,7 @@ def test_create_address_form_entry() -> None:
 
 def test_create_address_form_entry_rejects_invalid_hierarchy() -> None:
     response = client.post(
-        "/addresses/forms",
+        "/v1/api/addresses/forms",
         json={
             "province_code": "06",
             "district_code": "601",
@@ -178,7 +178,7 @@ def test_create_address_form_entry_rejects_invalid_hierarchy() -> None:
 
 
 def test_get_commune_stops_returns_catalog_stops() -> None:
-    response = client.get("/addresses/stops/communes/60101")
+    response = client.get("/v1/api/addresses/stops/communes/60101")
 
     assert response.status_code == 200
     body = response.json()
@@ -195,7 +195,7 @@ def test_get_commune_stops_returns_catalog_stops() -> None:
 
 
 def test_get_commune_stops_returns_empty_list_when_no_catalog_stops_exist() -> None:
-    response = client.get("/addresses/stops/communes/60102")
+    response = client.get("/v1/api/addresses/stops/communes/60102")
 
     assert response.status_code == 200
     assert response.json() == []

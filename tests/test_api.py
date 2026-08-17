@@ -39,7 +39,7 @@ def setup_function() -> None:
 def test_root_and_health() -> None:
     site_response = client.get("/")
     v1_api_response = client.get("/v1/api")
-    health_response = client.get("/health")
+    health_response = client.get("/v1/api/health")
 
     assert site_response.status_code == 200
     assert "MYTRAVEL.TAXI" in site_response.text

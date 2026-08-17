@@ -185,7 +185,7 @@ def setup_function() -> None:
 
 def _signup_driver() -> str:
     response = client.post(
-        "/travel/auth/signup",
+        "/v1/api/travel/auth/signup",
         json={
             "phone": "012345678",
             "full_name": "Driver Demo",
@@ -204,7 +204,7 @@ def _auth_headers(token: str) -> dict[str, str]:
 
 def _signup_passenger(phone: str = "098765432") -> str:
     response = client.post(
-        "/travel/auth/signup",
+        "/v1/api/travel/auth/signup",
         json={
             "phone": phone,
             "full_name": "Passenger Demo",
@@ -219,7 +219,7 @@ def _signup_passenger(phone: str = "098765432") -> str:
 
 def _create_vehicle(token: str) -> str:
     response = client.post(
-        "/travel/vehicles",
+        "/v1/api/travel/vehicles",
         headers=_auth_headers(token),
         json={
             "plate_number": "2AB-9999",
@@ -242,7 +242,7 @@ def _create_trip_for_test(
     repeat_mode: str = "none",
 ) -> str:
     response = client.post(
-        "/travel/trips",
+        "/v1/api/travel/trips",
         headers=_auth_headers(token),
         json={
             "vehicle_id": vehicle_id,
@@ -268,7 +268,7 @@ def test_vehicle_type_is_derived_from_seat_type() -> None:
     token = _signup_driver()
 
     response = client.post(
-        "/travel/vehicles",
+        "/v1/api/travel/vehicles",
         headers=_auth_headers(token),
         json={
             "plate_number": "2AB-8888",
@@ -291,7 +291,7 @@ def test_vehicle_type_is_rederived_when_seat_type_changes() -> None:
     vehicle_id = _create_vehicle(token)
 
     response = client.patch(
-        f"/travel/vehicles/{vehicle_id}",
+        f"/v1/api/travel/vehicles/{vehicle_id}",
         headers=_auth_headers(token),
         json={
             "plate_number": "2AB-9999",
@@ -311,7 +311,7 @@ def test_vehicle_type_is_rederived_when_seat_type_changes() -> None:
 
 def test_trusted_device_login_issues_new_token_without_password() -> None:
     signup_response = client.post(
-        "/travel/auth/signup",
+        "/v1/api/travel/auth/signup",
         json={
             "phone": "011111111",
             "full_name": "Trusted Device User",
@@ -330,7 +330,7 @@ def test_trusted_device_login_issues_new_token_without_password() -> None:
     assert trusted_device["device_secret"]
 
     login_response = client.post(
-        "/travel/auth/device-login",
+        "/v1/api/travel/auth/device-login",
         json={
             "device_id": "android:trusted-device-1",
             "device_secret": trusted_device["device_secret"],
@@ -348,7 +348,7 @@ def test_app_config_returns_google_places_key_from_backend_env(monkeypatch) -> N
     monkeypatch.delenv("GOOGLE_PLACES_API_KEY_ANDROID", raising=False)
     monkeypatch.delenv("GOOGLE_PLACES_API_KEY_IOS", raising=False)
 
-    response = client.get("/travel/app-config")
+    response = client.get("/v1/api/travel/app-config")
 
     assert response.status_code == 200
     assert response.json() == {
@@ -363,7 +363,7 @@ def test_app_config_returns_platform_google_places_keys(monkeypatch) -> None:
     monkeypatch.setenv("GOOGLE_PLACES_API_KEY_ANDROID", "android-places-key")
     monkeypatch.setenv("GOOGLE_PLACES_API_KEY_IOS", "ios-places-key")
 
-    response = client.get("/travel/app-config")
+    response = client.get("/v1/api/travel/app-config")
 
     assert response.status_code == 200
     assert response.json() == {
@@ -378,7 +378,7 @@ def test_app_config_omits_google_places_key_when_backend_env_missing(monkeypatch
     monkeypatch.delenv("GOOGLE_PLACES_API_KEY_ANDROID", raising=False)
     monkeypatch.delenv("GOOGLE_PLACES_API_KEY_IOS", raising=False)
 
-    response = client.get("/travel/app-config")
+    response = client.get("/v1/api/travel/app-config")
 
     assert response.status_code == 200
     assert response.json() == {
@@ -392,7 +392,7 @@ def test_signup_succeeds_without_trusted_device_when_table_is_missing() -> None:
     TrustedDevice.__table__.drop(bind=test_engine, checkfirst=True)
 
     signup_response = client.post(
-        "/travel/auth/signup",
+        "/v1/api/travel/auth/signup",
         json={
             "phone": "022222222",
             "full_name": "Fallback Signup User",
@@ -414,7 +414,7 @@ def test_signup_succeeds_without_trusted_device_when_table_is_missing() -> None:
 
 def test_login_succeeds_without_trusted_device_when_table_is_missing() -> None:
     signup_response = client.post(
-        "/travel/auth/signup",
+        "/v1/api/travel/auth/signup",
         json={
             "phone": "033333333",
             "full_name": "Fallback Login User",
@@ -428,7 +428,7 @@ def test_login_succeeds_without_trusted_device_when_table_is_missing() -> None:
     TrustedDevice.__table__.drop(bind=test_engine, checkfirst=True)
 
     login_response = client.post(
-        "/travel/auth/login",
+        "/v1/api/travel/auth/login",
         json={
             "phone": "033333333",
             "password": "strongpass123",
@@ -450,7 +450,7 @@ def test_create_trip_with_structured_route_and_stops_round_trips_through_read_an
     vehicle_id = _create_vehicle(token)
 
     create_response = client.post(
-        "/travel/trips",
+        "/v1/api/travel/trips",
         headers=_auth_headers(token),
         json={
             "vehicle_id": vehicle_id,
@@ -521,7 +521,7 @@ def test_create_trip_with_structured_route_and_stops_round_trips_through_read_an
 
     trip_id = created_trip["id"]
     update_response = client.patch(
-        f"/travel/trips/{trip_id}",
+        f"/v1/api/travel/trips/{trip_id}",
         headers=_auth_headers(token),
         json={"price_per_seat": 6},
     )
@@ -533,7 +533,7 @@ def test_create_trip_with_structured_route_and_stops_round_trips_through_read_an
     assert updated_trip["pickup_stop"]["label"] == "ផ្សារកំពង់ធំ"
     assert updated_trip["dropoff_stop"]["label"] == "មុខរបងវត្ត"
 
-    get_response = client.get(f"/travel/trips/{trip_id}")
+    get_response = client.get(f"/v1/api/travel/trips/{trip_id}")
 
     assert get_response.status_code == 200
     fetched_trip = get_response.json()
@@ -548,7 +548,7 @@ def test_create_trip_rejects_stop_commune_mismatch() -> None:
     vehicle_id = _create_vehicle(token)
 
     response = client.post(
-        "/travel/trips",
+        "/v1/api/travel/trips",
         headers=_auth_headers(token),
         json={
             "vehicle_id": vehicle_id,
@@ -594,7 +594,7 @@ def test_search_trips_includes_active_and_scheduled_results_in_real_time_for_sam
     vehicle_id = _create_vehicle(token)
 
     active_response = client.post(
-        "/travel/trips",
+        "/v1/api/travel/trips",
         headers=_auth_headers(token),
         json={
             "vehicle_id": vehicle_id,
@@ -613,7 +613,7 @@ def test_search_trips_includes_active_and_scheduled_results_in_real_time_for_sam
     active_trip_id = active_response.json()["id"]
 
     scheduled_response = client.post(
-        "/travel/trips",
+        "/v1/api/travel/trips",
         headers=_auth_headers(token),
         json={
             "vehicle_id": vehicle_id,
@@ -630,7 +630,7 @@ def test_search_trips_includes_active_and_scheduled_results_in_real_time_for_sam
     scheduled_trip_id = scheduled_response.json()["id"]
 
     search_response = client.get(
-        "/travel/trips/search",
+        "/v1/api/travel/trips/search",
         params={
             "departure_province": "ភ្នំពេញ",
             "destination_province": "កណ្ដាល",
@@ -644,7 +644,7 @@ def test_search_trips_includes_active_and_scheduled_results_in_real_time_for_sam
     assert scheduled_trip_id in search_ids
 
     default_timezone_response = client.get(
-        "/travel/trips/search",
+        "/v1/api/travel/trips/search",
         params={
             "departure_province": "ភ្នំពេញ",
             "destination_province": "កណ្ដាល",
@@ -659,7 +659,7 @@ def test_search_trips_includes_active_and_scheduled_results_in_real_time_for_sam
     assert scheduled_trip_id in default_timezone_ids
 
     now_response = client.get(
-        "/travel/trips/search",
+        "/v1/api/travel/trips/search",
         params={
             "departure_province": "ភ្នំពេញ",
             "destination_province": "កណ្ដាល",
@@ -682,7 +682,7 @@ def test_complete_trip_rejects_completion_before_departure_time(monkeypatch) -> 
     vehicle_id = _create_vehicle(token)
 
     create_response = client.post(
-        "/travel/trips",
+        "/v1/api/travel/trips",
         headers=_auth_headers(token),
         json={
             "vehicle_id": vehicle_id,
@@ -699,7 +699,7 @@ def test_complete_trip_rejects_completion_before_departure_time(monkeypatch) -> 
     trip_id = create_response.json()["id"]
 
     complete_response = client.post(
-        f"/travel/trips/{trip_id}/complete",
+        f"/v1/api/travel/trips/{trip_id}/complete",
         headers=_auth_headers(token),
     )
 
@@ -709,7 +709,7 @@ def test_complete_trip_rejects_completion_before_departure_time(monkeypatch) -> 
         == "Trip cannot be completed before its departure time"
     )
 
-    get_response = client.get(f"/travel/trips/{trip_id}")
+    get_response = client.get(f"/v1/api/travel/trips/{trip_id}")
     assert get_response.status_code == 200
     assert get_response.json()["status"] == "scheduled"
 
@@ -723,7 +723,7 @@ def test_complete_trip_posts_wallet_cash_collected_as_khr(monkeypatch) -> None:
     vehicle_id = _create_vehicle(driver_token)
 
     create_response = client.post(
-        "/travel/trips",
+        "/v1/api/travel/trips",
         headers=_auth_headers(driver_token),
         json={
             "vehicle_id": vehicle_id,
@@ -740,7 +740,7 @@ def test_complete_trip_posts_wallet_cash_collected_as_khr(monkeypatch) -> None:
     trip_id = create_response.json()["id"]
 
     passenger_id = client.get(
-        "/travel/auth/me",
+        "/v1/api/travel/auth/me",
         headers=_auth_headers(passenger_token),
     ).json()["id"]
     booking_id = str(uuid4())
@@ -753,7 +753,7 @@ def test_complete_trip_posts_wallet_cash_collected_as_khr(monkeypatch) -> None:
     )
 
     complete_response = client.post(
-        f"/travel/trips/{trip_id}/complete",
+        f"/v1/api/travel/trips/{trip_id}/complete",
         headers=_auth_headers(driver_token),
     )
 
@@ -776,7 +776,7 @@ def test_search_trips_repairs_future_trip_marked_completed_too_early(monkeypatch
     vehicle_id = _create_vehicle(token)
 
     create_response = client.post(
-        "/travel/trips",
+        "/v1/api/travel/trips",
         headers=_auth_headers(token),
         json={
             "vehicle_id": vehicle_id,
@@ -799,7 +799,7 @@ def test_search_trips_repairs_future_trip_marked_completed_too_early(monkeypatch
         db.commit()
 
     search_response = client.get(
-        "/travel/trips/search",
+        "/v1/api/travel/trips/search",
         params={
             "departure_province": "ភ្នំពេញ",
             "destination_province": "កណ្ដាល",
@@ -811,7 +811,7 @@ def test_search_trips_repairs_future_trip_marked_completed_too_early(monkeypatch
     search_ids = {trip["id"] for trip in search_response.json()}
     assert trip_id in search_ids
 
-    get_response = client.get(f"/travel/trips/{trip_id}")
+    get_response = client.get(f"/v1/api/travel/trips/{trip_id}")
     assert get_response.status_code == 200
     assert get_response.json()["status"] == "scheduled"
 
@@ -822,7 +822,7 @@ def test_create_booking_creates_driver_notification() -> None:
     vehicle_id = _create_vehicle(driver_token)
 
     trip_response = client.post(
-        "/travel/trips",
+        "/v1/api/travel/trips",
         headers=_auth_headers(driver_token),
         json={
             "vehicle_id": vehicle_id,
@@ -860,7 +860,7 @@ def test_create_booking_creates_driver_notification() -> None:
         booking_id = str(booking.id)
 
     notifications_response = client.get(
-        "/travel/notifications",
+        "/v1/api/travel/notifications",
         headers=_auth_headers(driver_token),
     )
     assert notifications_response.status_code == 200
@@ -877,7 +877,7 @@ def test_mark_driver_arrived_creates_passenger_notification() -> None:
     vehicle_id = _create_vehicle(driver_token)
 
     trip_response = client.post(
-        "/travel/trips",
+        "/v1/api/travel/trips",
         headers=_auth_headers(driver_token),
         json={
             "vehicle_id": vehicle_id,
@@ -915,7 +915,7 @@ def test_mark_driver_arrived_creates_passenger_notification() -> None:
         booking_id = str(booking.id)
 
     notifications_response = client.get(
-        "/travel/notifications",
+        "/v1/api/travel/notifications",
         headers=_auth_headers(passenger_token),
     )
     assert notifications_response.status_code == 200
@@ -931,7 +931,7 @@ def test_driver_arrived_fails_without_live_location() -> None:
     vehicle_id = _create_vehicle(driver_token)
 
     trip_response = client.post(
-        "/travel/trips",
+        "/v1/api/travel/trips",
         headers=_auth_headers(driver_token),
         json={
             "vehicle_id": vehicle_id,
@@ -953,7 +953,7 @@ def test_driver_arrived_fails_without_live_location() -> None:
         _insert_booking(booking_id, trip_id, str(passenger.id))
 
     response = client.post(
-        f"/travel/bookings/{booking_id}/driver-arrived",
+        f"/v1/api/travel/bookings/{booking_id}/driver-arrived",
         headers=_auth_headers(driver_token),
     )
     assert response.status_code == 400
@@ -969,7 +969,7 @@ def test_driver_arrived_succeeds_with_live_location(monkeypatch) -> None:
     vehicle_id = _create_vehicle(driver_token)
 
     trip_response = client.post(
-        "/travel/trips",
+        "/v1/api/travel/trips",
         headers=_auth_headers(driver_token),
         json={
             "vehicle_id": vehicle_id,
@@ -994,14 +994,14 @@ def test_driver_arrived_succeeds_with_live_location(monkeypatch) -> None:
 
     # Passenger shares live location close to driver
     loc_resp = client.put(
-        f"/travel/bookings/{booking_id}/passenger-live-location",
+        f"/v1/api/travel/bookings/{booking_id}/passenger-live-location",
         headers=_auth_headers(passenger_token),
         json={"lat": 11.5565, "lng": 104.9283, "accuracy_m": 10},
     )
     assert loc_resp.status_code == 200
 
     response = client.post(
-        f"/travel/bookings/{booking_id}/driver-arrived",
+        f"/v1/api/travel/bookings/{booking_id}/driver-arrived",
         headers=_auth_headers(driver_token),
     )
     assert response.status_code == 200
@@ -1019,7 +1019,7 @@ def test_driver_arrived_uses_pickup_point_when_passenger_location_missing(monkey
     vehicle_id = _create_vehicle(driver_token)
 
     trip_response = client.post(
-        "/travel/trips",
+        "/v1/api/travel/trips",
         headers=_auth_headers(driver_token),
         json={
             "vehicle_id": vehicle_id,
@@ -1044,7 +1044,7 @@ def test_driver_arrived_uses_pickup_point_when_passenger_location_missing(monkey
 
     # No passenger live location set. Driver is already at the pickup point.
     response = client.post(
-        f"/travel/bookings/{booking_id}/driver-arrived",
+        f"/v1/api/travel/bookings/{booking_id}/driver-arrived",
         headers=_auth_headers(driver_token),
     )
     assert response.status_code == 200
@@ -1062,7 +1062,7 @@ def test_driver_arrived_fails_when_passenger_too_far(monkeypatch) -> None:
     vehicle_id = _create_vehicle(driver_token)
 
     trip_response = client.post(
-        "/travel/trips",
+        "/v1/api/travel/trips",
         headers=_auth_headers(driver_token),
         json={
             "vehicle_id": vehicle_id,
@@ -1089,14 +1089,14 @@ def test_driver_arrived_fails_when_passenger_too_far(monkeypatch) -> None:
 
     # Passenger shares location ~1km away
     loc_resp = client.put(
-        f"/travel/bookings/{booking_id}/passenger-live-location",
+        f"/v1/api/travel/bookings/{booking_id}/passenger-live-location",
         headers=_auth_headers(passenger_token),
         json={"lat": 11.5650, "lng": 104.9350, "accuracy_m": 10},
     )
     assert loc_resp.status_code == 200
 
     response = client.post(
-        f"/travel/bookings/{booking_id}/driver-arrived",
+        f"/v1/api/travel/bookings/{booking_id}/driver-arrived",
         headers=_auth_headers(driver_token),
     )
     assert response.status_code == 400
@@ -1115,7 +1115,7 @@ def test_driver_arrived_uses_pickup_point_when_passenger_location_stale(monkeypa
     vehicle_id = _create_vehicle(driver_token)
 
     trip_response = client.post(
-        "/travel/trips",
+        "/v1/api/travel/trips",
         headers=_auth_headers(driver_token),
         json={
             "vehicle_id": vehicle_id,
@@ -1142,7 +1142,7 @@ def test_driver_arrived_uses_pickup_point_when_passenger_location_stale(monkeypa
 
     # Passenger shares location
     loc_resp = client.put(
-        f"/travel/bookings/{booking_id}/passenger-live-location",
+        f"/v1/api/travel/bookings/{booking_id}/passenger-live-location",
         headers=_auth_headers(passenger_token),
         json={"lat": 11.5565, "lng": 104.9283, "accuracy_m": 10},
     )
@@ -1153,7 +1153,7 @@ def test_driver_arrived_uses_pickup_point_when_passenger_location_stale(monkeypa
     monkeypatch.setattr(travel_routes, "phnom_penh_now", lambda: stale_time)
 
     response = client.post(
-        f"/travel/bookings/{booking_id}/driver-arrived",
+        f"/v1/api/travel/bookings/{booking_id}/driver-arrived",
         headers=_auth_headers(driver_token),
     )
     assert response.status_code == 200
@@ -1172,7 +1172,7 @@ def test_boarding_request_requires_driver_arrived_first(monkeypatch) -> None:
     vehicle_id = _create_vehicle(driver_token)
 
     trip_response = client.post(
-        "/travel/trips",
+        "/v1/api/travel/trips",
         headers=_auth_headers(driver_token),
         json={
             "vehicle_id": vehicle_id,
@@ -1196,7 +1196,7 @@ def test_boarding_request_requires_driver_arrived_first(monkeypatch) -> None:
         _insert_booking(booking_id, trip_id, str(passenger.id))
 
     response = client.post(
-        f"/travel/bookings/{booking_id}/boarding/request",
+        f"/v1/api/travel/bookings/{booking_id}/boarding/request",
         headers=_auth_headers(driver_token),
     )
     assert response.status_code == 400
@@ -1212,7 +1212,7 @@ def test_full_boarding_flow(monkeypatch) -> None:
     vehicle_id = _create_vehicle(driver_token)
 
     trip_response = client.post(
-        "/travel/trips",
+        "/v1/api/travel/trips",
         headers=_auth_headers(driver_token),
         json={
             "vehicle_id": vehicle_id,
@@ -1239,7 +1239,7 @@ def test_full_boarding_flow(monkeypatch) -> None:
 
     # Passenger shares live location close to driver
     loc_resp = client.put(
-        f"/travel/bookings/{booking_id}/passenger-live-location",
+        f"/v1/api/travel/bookings/{booking_id}/passenger-live-location",
         headers=_auth_headers(passenger_token),
         json={"lat": 11.5565, "lng": 104.9283, "accuracy_m": 10},
     )
@@ -1247,14 +1247,14 @@ def test_full_boarding_flow(monkeypatch) -> None:
 
     # Step 1: Driver arrives (has departure_lat/lng = live location)
     arrived = client.post(
-        f"/travel/bookings/{booking_id}/driver-arrived",
+        f"/v1/api/travel/bookings/{booking_id}/driver-arrived",
         headers=_auth_headers(driver_token),
     )
     assert arrived.status_code == 200
 
     # Step 2: Driver requests boarding (immediately auto-confirming/boarding)
     request_resp = client.post(
-        f"/travel/bookings/{booking_id}/boarding/request",
+        f"/v1/api/travel/bookings/{booking_id}/boarding/request",
         headers=_auth_headers(driver_token),
     )
     assert request_resp.status_code == 200
@@ -1264,7 +1264,7 @@ def test_full_boarding_flow(monkeypatch) -> None:
 
     # Step 3: Check boarding status from passenger side
     status_resp = client.get(
-        f"/travel/bookings/{booking_id}/boarding/status",
+        f"/v1/api/travel/bookings/{booking_id}/boarding/status",
         headers=_auth_headers(passenger_token),
     )
     assert status_resp.status_code == 200
@@ -1272,7 +1272,7 @@ def test_full_boarding_flow(monkeypatch) -> None:
 
     # Step 4: Passenger confirms boarding (should be idempotent success)
     confirm_resp = client.post(
-        f"/travel/bookings/{booking_id}/boarding/passenger-confirm",
+        f"/v1/api/travel/bookings/{booking_id}/boarding/passenger-confirm",
         headers=_auth_headers(passenger_token),
     )
     assert confirm_resp.status_code == 200
@@ -1283,7 +1283,7 @@ def test_full_boarding_flow(monkeypatch) -> None:
 
     # Step 5: Check notification was created for driver
     notifications = client.get(
-        "/travel/notifications",
+        "/v1/api/travel/notifications",
         headers=_auth_headers(driver_token),
     )
     assert notifications.status_code == 200
@@ -1300,7 +1300,7 @@ def test_boarding_cancel(monkeypatch) -> None:
     vehicle_id = _create_vehicle(driver_token)
 
     trip_response = client.post(
-        "/travel/trips",
+        "/v1/api/travel/trips",
         headers=_auth_headers(driver_token),
         json={
             "vehicle_id": vehicle_id,
@@ -1327,7 +1327,7 @@ def test_boarding_cancel(monkeypatch) -> None:
 
     # Passenger shares live location close to driver
     loc_resp = client.put(
-        f"/travel/bookings/{booking_id}/passenger-live-location",
+        f"/v1/api/travel/bookings/{booking_id}/passenger-live-location",
         headers=_auth_headers(passenger_token),
         json={"lat": 11.5565, "lng": 104.9283, "accuracy_m": 10},
     )
@@ -1335,21 +1335,21 @@ def test_boarding_cancel(monkeypatch) -> None:
 
     # Mark arrived
     arrived_resp = client.post(
-        f"/travel/bookings/{booking_id}/driver-arrived",
+        f"/v1/api/travel/bookings/{booking_id}/driver-arrived",
         headers=_auth_headers(driver_token),
     )
     assert arrived_resp.status_code == 200
 
     # Request boarding (automatically boards passenger)
     request_resp = client.post(
-        f"/travel/bookings/{booking_id}/boarding/request",
+        f"/v1/api/travel/bookings/{booking_id}/boarding/request",
         headers=_auth_headers(driver_token),
     )
     assert request_resp.status_code == 200
 
     # Passenger declines/cancels boarding - should fail with 400 because they are already boarded
     cancel_resp = client.post(
-        f"/travel/bookings/{booking_id}/boarding/cancel",
+        f"/v1/api/travel/bookings/{booking_id}/boarding/cancel",
         headers=_auth_headers(passenger_token),
     )
     assert cancel_resp.status_code == 400
@@ -1366,7 +1366,7 @@ def test_booking_passenger_contact_scoped_to_booking_users(monkeypatch) -> None:
     vehicle_id = _create_vehicle(driver_token)
 
     trip_response = client.post(
-        "/travel/trips",
+        "/v1/api/travel/trips",
         headers=_auth_headers(driver_token),
         json={
             "vehicle_id": vehicle_id,
@@ -1392,14 +1392,14 @@ def test_booking_passenger_contact_scoped_to_booking_users(monkeypatch) -> None:
         _insert_booking(booking_id, trip_id, str(passenger.id))
 
     live_location_resp = client.put(
-        f"/travel/bookings/{booking_id}/passenger-live-location",
+        f"/v1/api/travel/bookings/{booking_id}/passenger-live-location",
         headers=_auth_headers(passenger_token),
         json={"lat": 11.5565, "lng": 104.9283, "accuracy_m": 8},
     )
     assert live_location_resp.status_code == 200
 
     driver_bookings = client.get(
-        "/travel/bookings",
+        "/v1/api/travel/bookings",
         headers=_auth_headers(driver_token),
     )
     assert driver_bookings.status_code == 200
@@ -1412,7 +1412,7 @@ def test_booking_passenger_contact_scoped_to_booking_users(monkeypatch) -> None:
     assert driver_booking["passenger_live_location"]["accuracy_m"] == 8
 
     passenger_booking = client.get(
-        f"/travel/bookings/{booking_id}",
+        f"/v1/api/travel/bookings/{booking_id}",
         headers=_auth_headers(passenger_token),
     )
     assert passenger_booking.status_code == 200
@@ -1421,7 +1421,7 @@ def test_booking_passenger_contact_scoped_to_booking_users(monkeypatch) -> None:
     assert passenger_booking.json()["passenger_live_location"]["lng"] == 104.9283
 
     denied = client.get(
-        f"/travel/bookings/{booking_id}",
+        f"/v1/api/travel/bookings/{booking_id}",
         headers=_auth_headers(other_passenger_token),
     )
     assert denied.status_code == 403
@@ -1436,7 +1436,7 @@ def test_passenger_live_location(monkeypatch) -> None:
     vehicle_id = _create_vehicle(driver_token)
 
     trip_response = client.post(
-        "/travel/trips",
+        "/v1/api/travel/trips",
         headers=_auth_headers(driver_token),
         json={
             "vehicle_id": vehicle_id,
@@ -1463,7 +1463,7 @@ def test_passenger_live_location(monkeypatch) -> None:
 
     # Update passenger live location
     loc_resp = client.put(
-        f"/travel/bookings/{booking_id}/passenger-live-location",
+        f"/v1/api/travel/bookings/{booking_id}/passenger-live-location",
         headers=_auth_headers(passenger_token),
         json={"lat": 11.5565, "lng": 104.9283, "accuracy_m": 10},
     )
@@ -1477,7 +1477,7 @@ def test_passenger_live_location(monkeypatch) -> None:
         )
 
     arrived_loc_resp = client.put(
-        f"/travel/bookings/{booking_id}/passenger-live-location",
+        f"/v1/api/travel/bookings/{booking_id}/passenger-live-location",
         headers=_auth_headers(passenger_token),
         json={"lat": 11.5566, "lng": 104.9284, "accuracy_m": 9},
     )
@@ -1491,7 +1491,7 @@ def test_passenger_live_location(monkeypatch) -> None:
         )
 
     boarded_loc_resp = client.put(
-        f"/travel/bookings/{booking_id}/passenger-live-location",
+        f"/v1/api/travel/bookings/{booking_id}/passenger-live-location",
         headers=_auth_headers(passenger_token),
         json={"lat": 11.5567, "lng": 104.9285, "accuracy_m": 8},
     )
@@ -1506,7 +1506,7 @@ def test_passenger_live_location(monkeypatch) -> None:
 
     # Driver checks proximity
     prox_resp = client.get(
-        f"/travel/bookings/{booking_id}/proximity",
+        f"/v1/api/travel/bookings/{booking_id}/proximity",
         headers=_auth_headers(driver_token),
     )
     assert prox_resp.status_code == 200
@@ -1526,7 +1526,7 @@ def test_live_location_websocket_accepts_passenger_location(monkeypatch) -> None
     vehicle_id = _create_vehicle(driver_token)
 
     trip_response = client.post(
-        "/travel/trips",
+        "/v1/api/travel/trips",
         headers=_auth_headers(driver_token),
         json={
             "vehicle_id": vehicle_id,
@@ -1593,7 +1593,7 @@ def test_live_location_websocket_accepts_passenger_location(monkeypatch) -> None
     assert f"booking:{booking_id}" in broadcast_rooms
 
     with client.websocket_connect(
-        f"/travel/live/ws?token={passenger_token}&booking_id={booking_id}&trip_id={trip_id}"
+        f"/v1/api/travel/live/ws?token={passenger_token}&booking_id={booking_id}&trip_id={trip_id}"
     ) as passenger_ws:
         passenger_ws.send_json(
             {
@@ -1642,7 +1642,7 @@ def test_expired_trip_cancels_active_bookings_and_clears_passenger_active_state(
         db.commit()
 
     driver_bookings = client.get(
-        "/travel/bookings",
+        "/v1/api/travel/bookings",
         headers=_auth_headers(driver_token),
     )
     assert driver_bookings.status_code == 200
@@ -1651,7 +1651,7 @@ def test_expired_trip_cancels_active_bookings_and_clears_passenger_active_state(
     assert expired_booking["trip"]["status"] == "cancelled"
 
     passenger_active = client.get(
-        "/travel/bookings/active",
+        "/v1/api/travel/bookings/active",
         headers=_auth_headers(passenger_token),
     )
     assert passenger_active.status_code == 200
@@ -1688,7 +1688,7 @@ def test_active_booking_keeps_past_departure_pickup_trackable(monkeypatch) -> No
         db.commit()
 
     passenger_active = client.get(
-        "/travel/bookings/active",
+        "/v1/api/travel/bookings/active",
         headers=_auth_headers(passenger_token),
     )
 
@@ -1716,7 +1716,7 @@ def test_expired_daily_trip_creates_next_scheduled_repeat(monkeypatch) -> None:
         db.commit()
 
     trips_response = client.get(
-        "/travel/driver/trips",
+        "/v1/api/travel/driver/trips",
         headers=_auth_headers(driver_token),
     )
     assert trips_response.status_code == 200
@@ -1772,7 +1772,7 @@ def test_list_bookings_tolerates_duplicate_future_repeated_trips(monkeypatch) ->
         db.commit()
 
     response = client.get(
-        "/travel/bookings",
+        "/v1/api/travel/bookings",
         headers=_auth_headers(driver_token),
     )
 
@@ -1792,7 +1792,7 @@ def test_recommended_trips_passenger():
 
     # Call endpoint with passenger auth
     response = client.get(
-        "/passenger/recommended-trips",
+        "/v1/api/passenger/recommended-trips",
         headers=_auth_headers(passenger_token),
     )
     assert response.status_code == 200
@@ -1802,7 +1802,7 @@ def test_recommended_trips_passenger():
 
     # Call endpoint with driver auth (should be forbidden)
     denied = client.get(
-        "/passenger/recommended-trips",
+        "/v1/api/passenger/recommended-trips",
         headers=_auth_headers(driver_token),
     )
     assert denied.status_code == 403
@@ -1827,7 +1827,7 @@ def test_list_passenger_trips():
     )
 
     response = client.get(
-        "/passenger/trips",
+        "/v1/api/passenger/trips",
         headers=_auth_headers(passenger_token),
     )
     assert response.status_code == 200
@@ -1837,7 +1837,7 @@ def test_list_passenger_trips():
     assert second_trip_id in ids
 
     limited = client.get(
-        "/passenger/trips",
+        "/v1/api/passenger/trips",
         params={"limit": 1},
         headers=_auth_headers(passenger_token),
     )
@@ -1845,7 +1845,7 @@ def test_list_passenger_trips():
     assert len(limited.json()) == 1
 
     denied = client.get(
-        "/passenger/trips",
+        "/v1/api/passenger/trips",
         headers=_auth_headers(driver_token),
     )
     assert denied.status_code == 403
@@ -1887,7 +1887,7 @@ def test_find_trips_now_endpoint() -> None:
     # 3. Create a trip from Kampong Thom to Phnom Penh
     from datetime import timedelta
     create_response = client.post(
-        "/travel/trips",
+        "/v1/api/travel/trips",
         headers=_auth_headers(token),
         json={
             "vehicle_id": vehicle_id,
@@ -1918,7 +1918,7 @@ def test_find_trips_now_endpoint() -> None:
     
     # 4. Search for trips near Kampong Thom (12.71123, 104.88991)
     response = client.get(
-        "/travel/trips/find-now",
+        "/v1/api/travel/trips/find-now",
         params={
             "lat": 12.71123,
             "lng": 104.88991,
@@ -1936,7 +1936,7 @@ def test_find_trips_now_endpoint() -> None:
     # This trip reaches Phnom Penh from a different corridor and must still be
     # offered so the passenger can decide whether its route is suitable.
     alternate_route_response = client.post(
-        "/travel/trips",
+        "/v1/api/travel/trips",
         headers=_auth_headers(token),
         json={
             "vehicle_id": vehicle_id,
@@ -1958,7 +1958,7 @@ def test_find_trips_now_endpoint() -> None:
     alternate_trip_id = alternate_route_response.json()["id"]
 
     destination_response = client.get(
-        "/travel/trips/find-now",
+        "/v1/api/travel/trips/find-now",
         params={
             "lat": 12.71123,
             "lng": 104.88991,
@@ -1977,7 +1977,7 @@ def test_find_trips_now_prioritizes_nearest_active_trip() -> None:
     near_token = _signup_driver()
     near_vehicle_id = _create_vehicle(near_token)
     far_signup = client.post(
-        "/travel/auth/signup",
+        "/v1/api/travel/auth/signup",
         json={
             "phone": "012345679",
             "full_name": "Driver Far",
@@ -1989,7 +1989,7 @@ def test_find_trips_now_prioritizes_nearest_active_trip() -> None:
     assert far_signup.status_code == 201
     far_token = far_signup.json()["token"]
     far_vehicle_response = client.post(
-        "/travel/vehicles",
+        "/v1/api/travel/vehicles",
         headers=_auth_headers(far_token),
         json={
             "plate_number": "2AB-9998",
@@ -2062,7 +2062,7 @@ def test_find_trips_now_prioritizes_nearest_active_trip() -> None:
     from datetime import timedelta
 
     near_response = client.post(
-        "/travel/trips",
+        "/v1/api/travel/trips",
         headers=_auth_headers(near_token),
         json={
             "vehicle_id": near_vehicle_id,
@@ -2089,7 +2089,7 @@ def test_find_trips_now_prioritizes_nearest_active_trip() -> None:
     near_trip_id = near_response.json()["id"]
 
     far_response = client.post(
-        "/travel/trips",
+        "/v1/api/travel/trips",
         headers=_auth_headers(far_token),
         json={
             "vehicle_id": far_vehicle_id,
@@ -2128,7 +2128,7 @@ def test_find_trips_now_prioritizes_nearest_active_trip() -> None:
         db.close()
 
     response = client.get(
-        "/travel/trips/find-now",
+        "/v1/api/travel/trips/find-now",
         params={
             "lat": 12.71123,
             "lng": 104.88991,
@@ -2146,7 +2146,7 @@ def test_find_trips_now_prioritizes_nearest_active_trip() -> None:
 def test_signup_driver_avatar_validation() -> None:
     # 1. Driver signup without avatar_url should fail with 400
     response = client.post(
-        "/travel/auth/signup",
+        "/v1/api/travel/auth/signup",
         json={
             "phone": "099999991",
             "full_name": "Driver No Avatar",
@@ -2160,7 +2160,7 @@ def test_signup_driver_avatar_validation() -> None:
 
     # 2. Driver signup with empty avatar_url should fail with 400
     response = client.post(
-        "/travel/auth/signup",
+        "/v1/api/travel/auth/signup",
         json={
             "phone": "099999991",
             "full_name": "Driver Empty Avatar",
@@ -2174,7 +2174,7 @@ def test_signup_driver_avatar_validation() -> None:
 
     # 3. Driver signup with avatar_url should succeed with 201
     response = client.post(
-        "/travel/auth/signup",
+        "/v1/api/travel/auth/signup",
         json={
             "phone": "099999991",
             "full_name": "Driver With Avatar",
@@ -2189,7 +2189,7 @@ def test_signup_driver_avatar_validation() -> None:
 
 def test_signup_passenger_avatar_is_optional_and_returned() -> None:
     response = client.post(
-        "/travel/auth/signup",
+        "/v1/api/travel/auth/signup",
         json={
             "phone": "099999992",
             "full_name": "Passenger With Avatar",
@@ -2204,7 +2204,7 @@ def test_signup_passenger_avatar_is_optional_and_returned() -> None:
     assert body["user"]["avatar_url"] == "data:image/png;base64,dummy_passenger_avatar_bytes"
 
     me_response = client.get(
-        "/travel/auth/me",
+        "/v1/api/travel/auth/me",
         headers=_auth_headers(body["token"]),
     )
     assert me_response.status_code == 200
@@ -2216,7 +2216,7 @@ def test_update_current_user_profile() -> None:
     avatar_url = "data:image/png;base64,updated_passenger_avatar_bytes"
 
     response = client.patch(
-        "/travel/auth/me",
+        "/v1/api/travel/auth/me",
         headers=_auth_headers(token),
         json={
             "full_name": "Updated Passenger",
@@ -2229,7 +2229,7 @@ def test_update_current_user_profile() -> None:
     assert body["full_name"] == "Updated Passenger"
     assert body["avatar_url"] == avatar_url
 
-    me_response = client.get("/travel/auth/me", headers=_auth_headers(token))
+    me_response = client.get("/v1/api/travel/auth/me", headers=_auth_headers(token))
     assert me_response.status_code == 200
     assert me_response.json()["full_name"] == "Updated Passenger"
     assert me_response.json()["avatar_url"] == avatar_url
@@ -2239,7 +2239,7 @@ def test_update_current_user_profile_can_clear_avatar() -> None:
     token = _signup_passenger("099999994")
 
     response = client.patch(
-        "/travel/auth/me",
+        "/v1/api/travel/auth/me",
         headers=_auth_headers(token),
         json={
             "avatar_url": "   ",

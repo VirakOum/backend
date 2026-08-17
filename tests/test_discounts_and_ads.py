@@ -72,7 +72,7 @@ def _auth_headers(token: str) -> dict[str, str]:
 
 def _signup_passenger(phone: str = "098765432") -> str:
     response = client.post(
-        "/travel/auth/signup",
+        "/v1/api/travel/auth/signup",
         json={
             "phone": phone,
             "full_name": "Passenger Demo",
@@ -104,7 +104,7 @@ def test_discounts_crud_flow() -> None:
         "expires_at": (datetime.now() + timedelta(days=30)).isoformat(),
         "is_active": True
     }
-    response = client.post("/travel/admin/discounts", json=payload)
+    response = client.post("/v1/api/travel/admin/discounts", json=payload)
     assert response.status_code == 200, response.text
     data = response.json()
     assert data["code"] == "PROMO20"
@@ -113,7 +113,7 @@ def test_discounts_crud_flow() -> None:
     discount_id = data["id"]
 
     # 2. List discounts (admin)
-    list_response = client.get("/travel/admin/discounts")
+    list_response = client.get("/v1/api/travel/admin/discounts")
     assert list_response.status_code == 200
     list_data = list_response.json()
     assert len(list_data) == 1
@@ -130,39 +130,39 @@ def test_discounts_crud_flow() -> None:
         "expires_at": (datetime.now() + timedelta(days=30)).isoformat(),
         "is_active": True
     }
-    update_response = client.put(f"/travel/admin/discounts/{discount_id}", json=update_payload)
+    update_response = client.put(f"/v1/api/travel/admin/discounts/{discount_id}", json=update_payload)
     assert update_response.status_code == 200
     updated_data = update_response.json()
     assert updated_data["code"] == "PROMO25"
     assert updated_data["discount_percent"] == 25
 
     # 4. Toggle active status
-    toggle_response = client.post(f"/travel/admin/discounts/{discount_id}/toggle-active")
+    toggle_response = client.post(f"/v1/api/travel/admin/discounts/{discount_id}/toggle-active")
     assert toggle_response.status_code == 200
     toggled_data = toggle_response.json()
     assert toggled_data["is_active"] is False
 
     # 5. Fetch active discounts (passenger side)
     # Toggled off so it should be empty
-    passenger_response = client.get("/passenger/discounts", headers=_auth_headers(token))
+    passenger_response = client.get("/v1/api/passenger/discounts", headers=_auth_headers(token))
     assert passenger_response.status_code == 200
     passenger_data = passenger_response.json()
     assert len(passenger_data) == 0
 
     # Toggle active status back to true
-    client.post(f"/travel/admin/discounts/{discount_id}/toggle-active")
-    passenger_response = client.get("/passenger/discounts", headers=_auth_headers(token))
+    client.post(f"/v1/api/travel/admin/discounts/{discount_id}/toggle-active")
+    passenger_response = client.get("/v1/api/passenger/discounts", headers=_auth_headers(token))
     assert passenger_response.status_code == 200
     passenger_data = passenger_response.json()
     assert len(passenger_data) == 1
     assert passenger_data[0]["code"] == "PROMO25"
 
     # 6. Delete discount
-    delete_response = client.delete(f"/travel/admin/discounts/{discount_id}")
+    delete_response = client.delete(f"/v1/api/travel/admin/discounts/{discount_id}")
     assert delete_response.status_code == 204
 
     # Verify not found in admin list
-    list_response = client.get("/travel/admin/discounts")
+    list_response = client.get("/v1/api/travel/admin/discounts")
     assert len(list_response.json()) == 0
 
 
@@ -178,7 +178,7 @@ def test_ads_crud_flow() -> None:
         "description_kh": "ផ្ទាំងផ្សព្វផ្សាយស្វាគមន៍",
         "is_active": True
     }
-    response = client.post("/travel/admin/ads", json=payload)
+    response = client.post("/v1/api/travel/admin/ads", json=payload)
     assert response.status_code == 200, response.text
     data = response.json()
     assert data["title"] == "Welcome Ad"
@@ -187,7 +187,7 @@ def test_ads_crud_flow() -> None:
     ad_id = data["id"]
 
     # 2. List ads (admin)
-    list_response = client.get("/travel/admin/ads")
+    list_response = client.get("/v1/api/travel/admin/ads")
     assert list_response.status_code == 200
     list_data = list_response.json()
     assert len(list_data) == 1
@@ -203,39 +203,39 @@ def test_ads_crud_flow() -> None:
         "description_kh": "ផ្ទាំងផ្សព្វផ្សាយថ្មី",
         "is_active": True
     }
-    update_response = client.put(f"/travel/admin/ads/{ad_id}", json=update_payload)
+    update_response = client.put(f"/v1/api/travel/admin/ads/{ad_id}", json=update_payload)
     assert update_response.status_code == 200
     updated_data = update_response.json()
     assert updated_data["title"] == "Welcome Ad V2"
     assert updated_data["image_url"] == "https://example.com/ad2.jpg"
 
     # 4. Toggle active status
-    toggle_response = client.post(f"/travel/admin/ads/{ad_id}/toggle-active")
+    toggle_response = client.post(f"/v1/api/travel/admin/ads/{ad_id}/toggle-active")
     assert toggle_response.status_code == 200
     toggled_data = toggle_response.json()
     assert toggled_data["is_active"] is False
 
     # 5. Fetch active ads (passenger side)
     # Toggled off so it should be empty
-    passenger_response = client.get("/passenger/ads", headers=_auth_headers(token))
+    passenger_response = client.get("/v1/api/passenger/ads", headers=_auth_headers(token))
     assert passenger_response.status_code == 200
     passenger_data = passenger_response.json()
     assert len(passenger_data) == 0
 
     # Toggle active status back to true
-    client.post(f"/travel/admin/ads/{ad_id}/toggle-active")
-    passenger_response = client.get("/passenger/ads", headers=_auth_headers(token))
+    client.post(f"/v1/api/travel/admin/ads/{ad_id}/toggle-active")
+    passenger_response = client.get("/v1/api/passenger/ads", headers=_auth_headers(token))
     assert passenger_response.status_code == 200
     passenger_data = passenger_response.json()
     assert len(passenger_data) == 1
     assert passenger_data[0]["title"] == "Welcome Ad V2"
 
     # 6. Delete ad
-    delete_response = client.delete(f"/travel/admin/ads/{ad_id}")
+    delete_response = client.delete(f"/v1/api/travel/admin/ads/{ad_id}")
     assert delete_response.status_code == 204
 
     # Verify not found in admin list
-    list_response = client.get("/travel/admin/ads")
+    list_response = client.get("/v1/api/travel/admin/ads")
     assert len(list_response.json()) == 0
 
 
@@ -250,7 +250,7 @@ def test_admin_ad_image_upload_from_device_file() -> None:
         b"\x00\x00\x00\x00IEND\xaeB`\x82"
     )
     response = client.post(
-        "/travel/admin/ads/upload-image",
+        "/v1/api/travel/admin/ads/upload-image",
         content=image_bytes,
         headers={"Content-Type": "image/png"},
     )
@@ -270,7 +270,7 @@ def test_admin_ad_image_upload_from_device_file() -> None:
 
 def test_admin_ad_image_upload_rejects_non_image() -> None:
     response = client.post(
-        "/travel/admin/ads/upload-image",
+        "/v1/api/travel/admin/ads/upload-image",
         content=b"not an image",
         headers={"Content-Type": "text/plain"},
     )

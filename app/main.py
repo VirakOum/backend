@@ -109,7 +109,6 @@ def api_v1_root():
     return {"message": "FastAPI project is ready", "docs": "/v1/api/docs", "redoc": "/v1/api/redoc"}
 
 for r in [meta_router, travel_router, passenger_router, addresses_router, driver_fee_router, admin_router, live_ws_router, items_router]:
-    app.include_router(r)
     api_v1_router.include_router(r)
 
 def custom_openapi():
