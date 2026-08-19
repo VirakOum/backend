@@ -13,6 +13,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - default
 
   app:
     build: .
@@ -41,6 +43,9 @@ services:
       - "coolify.managed=true"
     command: >
       sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    networks:
+      - default
+      - coolify
 
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -59,7 +64,16 @@ services:
         condition: service_healthy
     labels:
       - "coolify.managed=true"
+    networks:
+      - default
+      - coolify
 
 volumes:
   fastapi_learning_postgres_data:
   pgadmin_data:
+
+networks:
+  default:
+  coolify:
+    name: coolify
+    external: true
