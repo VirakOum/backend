@@ -39,15 +39,6 @@ services:
       AUTO_LOCK_DRIVER_ON_DEBT_LIMIT: ${AUTO_LOCK_DRIVER_ON_DEBT_LIMIT:-true}
     labels:
       - "coolify.managed=true"
-      - "traefik.enable=true"
-      - "traefik.docker.network=coolify"
-      - "traefik.http.routers.mytravel-backend.rule=Host(`mytravel.taxi`)"
-      - "traefik.http.routers.mytravel-backend.service=mytravel-backend"
-      - "traefik.http.routers.mytravel-backend.entrypoints=websecure"
-      - "traefik.http.routers.mytravel-backend.tls=true"
-      - "traefik.http.routers.mytravel-backend.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.mytravel-backend.priority=10000"
-      - "traefik.http.services.mytravel-backend.loadbalancer.server.port=8000"
     command: >
       sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
@@ -68,15 +59,16 @@ services:
         condition: service_healthy
     labels:
       - "coolify.managed=true"
-      - "traefik.enable=true"
-      - "traefik.docker.network=coolify"
-      - "traefik.http.routers.mytravel-pgadmin.rule=Host(`pgadmin.mytravel.taxi`)"
-      - "traefik.http.routers.mytravel-pgadmin.service=mytravel-pgadmin"
-      - "traefik.http.routers.mytravel-pgadmin.entrypoints=websecure"
-      - "traefik.http.routers.mytravel-pgadmin.tls=true"
-      - "traefik.http.routers.mytravel-pgadmin.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.mytravel-pgadmin.priority=10000"
-      - "traefik.http.services.mytravel-pgadmin.loadbalancer.server.port=80"
+
+volumes:
+  fastapi_learning_postgres_data:
+  pgadmin_data:
+
+networks:
+  default:
+    name: coolify
+    external: true
+
 
 
 
