@@ -6,6 +6,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-fastapi_learning}
       POSTGRES_USER: ${POSTGRES_USER:-fastapi}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fastapi}
+    ports:
+      - "5433:5432"
     volumes:
       - fastapi_learning_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -41,6 +43,7 @@ services:
       AUTO_LOCK_DRIVER_ON_DEBT_LIMIT: ${AUTO_LOCK_DRIVER_ON_DEBT_LIMIT:-true}
     labels:
       - "coolify.managed=true"
+      - "traefik.http.services.app.loadbalancer.server.port=8000"
     command: >
       sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
     networks:
@@ -64,6 +67,7 @@ services:
         condition: service_healthy
     labels:
       - "coolify.managed=true"
+      - "traefik.http.services.pgadmin.loadbalancer.server.port=80"
     networks:
       - default
       - coolify
