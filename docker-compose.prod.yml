@@ -62,6 +62,15 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    labels:
+      - "coolify.managed=true"
+      - "traefik.enable=true"
+      - "traefik.http.routers.mytravel-pgadmin.rule=Host(`pgadmin.mytravel.taxi`)"
+      - "traefik.http.routers.mytravel-pgadmin.entrypoints=websecure"
+      - "traefik.http.routers.mytravel-pgadmin.tls=true"
+      - "traefik.http.routers.mytravel-pgadmin.tls.certresolver=letsencrypt"
+      - "traefik.http.services.mytravel-pgadmin.loadbalancer.server.port=80"
+
 
 volumes:
   fastapi_learning_postgres_data:
