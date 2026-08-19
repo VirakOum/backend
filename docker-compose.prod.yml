@@ -53,6 +53,7 @@ services:
 
   pgadmin:
     image: dpage/pgadmin4:latest
+    user: root
     restart: unless-stopped
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@mytravel.local}
@@ -65,6 +66,11 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-O", "-", "http://localhost:80/misc/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     labels:
       - "coolify.managed=true"
       - "traefik.enable=true"
@@ -74,7 +80,9 @@ services:
       - "traefik.http.routers.mytravel-pgadmin.entrypoints=websecure"
       - "traefik.http.routers.mytravel-pgadmin.tls=true"
       - "traefik.http.routers.mytravel-pgadmin.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.mytravel-pgadmin.priority=10000"
       - "traefik.http.services.mytravel-pgadmin.loadbalancer.server.port=80"
+
 
 
 
