@@ -61,8 +61,3 @@ services:
 volumes:
   fastapi_learning_postgres_data:
   pgadmin_data:
-
-networks:
-  default:
-    name: coolify
-    external: true
