@@ -6,6 +6,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-fastapi_learning}
       POSTGRES_USER: ${POSTGRES_USER:-fastapi}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fastapi}
+    ports:
+      - "${DB_PORT:-5433}:5432"
     volumes:
       - fastapi_learning_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -21,7 +23,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://fastapi:fastapi@db:5432/fastapi_learning}
+      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-fastapi}:${POSTGRES_PASSWORD:-fastapi}@db:5432/${POSTGRES_DB:-fastapi_learning}}
       FASTAPI_ROOT_PATH: ${FASTAPI_ROOT_PATH:-}
       GOOGLE_PLACES_API_KEY: ${GOOGLE_PLACES_API_KEY:-AIzaSyADL_kclBCW_GULlB7k7rojC584wMku1yQ}
       GOOGLE_PLACES_API_KEY_ANDROID: ${GOOGLE_PLACES_API_KEY_ANDROID:-AIzaSyAoletVeVPIxwAp6Zsw6Z0iefvSWT3McM4}
@@ -37,6 +39,8 @@ services:
       DEFAULT_DRIVER_CASH_DEBT_LIMIT_USD: ${DEFAULT_DRIVER_CASH_DEBT_LIMIT_USD:-20}
       DEFAULT_DRIVER_CASH_DEBT_LIMIT_KHR: ${DEFAULT_DRIVER_CASH_DEBT_LIMIT_KHR:-80000}
       AUTO_LOCK_DRIVER_ON_DEBT_LIMIT: ${AUTO_LOCK_DRIVER_ON_DEBT_LIMIT:-true}
+    ports:
+      - "${APP_PORT:-8000}:8000"
     labels:
       - "coolify.managed=true"
     command: >
@@ -47,8 +51,8 @@ services:
     user: root
     restart: unless-stopped
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@mytravel.local
-      PGADMIN_DEFAULT_PASSWORD: adminpassword
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@mytravel.taxi}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-adminpassword}
       PGADMIN_LISTEN_PORT: 80
     ports:
       - "${PGADMIN_PORT:-5050}:80"
@@ -67,20 +71,3 @@ volumes:
 networks:
   default:
     name: coolify
-    external: true
-
-
-
-
-
-
-
-volumes:
-  fastapi_learning_postgres_data:
-  pgadmin_data:
-
-networks:
-  default:
-    name: coolify
-    external: true
-
