@@ -17,6 +17,7 @@ services:
       retries: 10
     networks:
       - default
+      - coolify
 
   app:
     build: .
