@@ -103,6 +103,11 @@ class NoCacheStaticFiles(StaticFiles):
 # Explicit API router under /v1/api
 api_v1_router = APIRouter(prefix="/v1/api")
 
+@app.get("/health", include_in_schema=False)
+@app.get("/v1/api/health", include_in_schema=False)
+def top_level_health():
+    return {"status": "ok"}
+
 @api_v1_router.get("", include_in_schema=False)
 @api_v1_router.get("/", include_in_schema=False)
 def api_v1_root():
