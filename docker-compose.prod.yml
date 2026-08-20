@@ -6,6 +6,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-fastapi_learning}
       POSTGRES_USER: ${POSTGRES_USER:-fastapi}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fastapi}
+    ports:
+      - "${DB_PORT:-127.0.0.1:5432}:5432"
     volumes:
       - fastapi_learning_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -46,7 +48,7 @@ services:
     command: >
       sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/api/health')\""]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -55,29 +57,8 @@ services:
       - default
       - coolify
 
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    user: root
-    restart: unless-stopped
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@mytravel.taxi}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-adminpassword}
-      PGADMIN_LISTEN_PORT: 80
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
-    depends_on:
-      db:
-        condition: service_healthy
-    labels:
-      - "coolify.managed=true"
-      - "traefik.http.services.pgadmin.loadbalancer.server.port=80"
-    networks:
-      - default
-      - coolify
-
 volumes:
   fastapi_learning_postgres_data:
-  pgadmin_data:
 
 networks:
   default:
