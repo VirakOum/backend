@@ -1262,9 +1262,14 @@ def _create_boarding_confirmed_notification(db: Session, booking: Booking) -> No
 	)
 
 
+def _clean_phone(phone: str) -> str:
+	return phone.strip().replace(" ", "").replace("-", "")
+
+
 @router.post("/auth/signup", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
 def signup(payload: UserCreate, db: Session = Depends(get_db)) -> AuthResponse:
-	existing = db.execute(select(User).where(User.phone == payload.phone)).scalar_one_or_none()
+	clean_phone = _clean_phone(payload.phone)
+	existing = db.execute(select(User).where(User.phone == clean_phone)).scalar_one_or_none()
 	if existing is not None:
 		raise HTTPException(status_code=409, detail="Phone already exists")
 
@@ -1272,9 +1277,9 @@ def signup(payload: UserCreate, db: Session = Depends(get_db)) -> AuthResponse:
 		raise HTTPException(status_code=400, detail="Drivers must upload a face image")
 
 	user_data = payload.model_dump(
-		exclude={"password", "device_id", "device_platform", "device_name"},
+		exclude={"password", "device_id", "device_platform", "device_name", "phone"},
 	)
-	user = User(**user_data, password_hash=hash_password(payload.password))
+	user = User(**user_data, phone=clean_phone, password_hash=hash_password(payload.password))
 	db.add(user)
 	db.commit()
 	db.refresh(user)
@@ -1299,7 +1304,8 @@ def signup(payload: UserCreate, db: Session = Depends(get_db)) -> AuthResponse:
 
 @router.post("/auth/login", response_model=AuthResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)) -> AuthResponse:
-	user = db.execute(select(User).where(User.phone == payload.phone)).scalar_one_or_none()
+	clean_phone = _clean_phone(payload.phone)
+	user = db.execute(select(User).where(User.phone == clean_phone)).scalar_one_or_none()
 	if user is None or not verify_password(payload.password, user.password_hash):
 		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid phone or password")
 
