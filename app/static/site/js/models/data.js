@@ -137,7 +137,6 @@ window.MyTravelData = {
         }
     ],
 
-
     // Real-Time System Telemetry Metrics
     STATS: [
         { count: "25", label_en: "Provinces Covered", label_km: "ខេត្តក្រុងទូទាំងប្រទេស", icon: "fa-map-location-dot" },
@@ -250,6 +249,10 @@ window.MyTravelData = {
             safety_card2_desc: "Driver arrival and passenger boarding confirmed by system GPS radius truth, not guesswork.",
             faq_title: "Frequently Asked Questions",
             faq_subtitle: "Everything you need to know about riding and driving with MyTravel.",
+            footer_support_title: "24/7 Hot Support & Contact",
+            footer_phone_label: "Hotline Support:",
+            footer_email_label: "Direct Email:",
+            footer_telegram_label: "Telegram Support:",
             footer_copyright: "© 2026 MyTravel Transport Systems. All rights reserved. Kingdom of Cambodia."
         },
         km: {
@@ -302,7 +305,6 @@ window.MyTravelData = {
             est_distance: "ចម្ងាយផ្លូវប្រហែល",
             est_usd: "តម្លៃប៉ាន់ស្មាន ($ ដុល្លារ)",
             est_khr: "តម្លៃប៉ាន់ស្មាន (៛ រៀល)",
-
             features_p_title: "មុខងារសំខាន់ៗ កម្មវិធីអ្នកជិះ",
             features_p_desc: "ផ្តល់ភាពងាយស្រួលដល់អ្នកធ្វើដំណើរ ជាមួយការស្វែងរកផ្លូវ ជ្រើសរើសកៅអី និងតាមដានទីតាំងផ្ទាល់។",
             feat_1_title: "តាមដានទីតាំង GPS ផ្ទាល់",
@@ -327,7 +329,11 @@ window.MyTravelData = {
             safety_card2_desc: "ការបញ្ជាក់ការមកដល់របស់អ្នកបើកបរ និងការឡើងរថយន្តផ្អែកលើចម្ងាយ GPS ពិតប្រាកដ។",
             faq_title: "សំណួរដែលសួរញឹកញាប់",
             faq_subtitle: "ព័ត៌មានចាំបាច់ទាំងអស់អំពីការធ្វើដំណើរ និងការបើកបរជាមួយ MyTravel។",
-            footer_copyright: "© ២០២៦ ប្រព័ន្ធដឹកជញ្ជូន MyTravel។ រក្សាសិទ្ធិគ្រប់យ៉ាង។ ព្រះរាជាណាចក្រកម្ពុជា។"
+            footer_support_title: "សេវាគាំទ្របន្ទាន់ 24/7 & ទំនាក់ទំនង",
+            footer_phone_label: "ខ្សែទូរស័ព្ទផ្ទាល់៖",
+            footer_email_label: "អ៊ីមែលទំនាក់ទំនង៖",
+            footer_telegram_label: "ឆាត Telegram៖",
+            footer_copyright: "© ២០២៦ ប្រព័ន្ធដឹកជញ្ជូន MyTravel។ រក្សាសិទ្ធិគ្រប់យ៉ាង។ ព្រះរាជាណាចក្រកម្ពុជា voyage."
         }
     }
 };

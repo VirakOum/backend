@@ -2914,8 +2914,8 @@ def create_support_ticket(
 def get_support_config() -> SupportConfigResponse:
 	return SupportConfigResponse(
 		telegram_username=os.getenv("SUPPORT_TELEGRAM_USERNAME", "MyTravel_Taxi_bot"),
-		support_phone=os.getenv("SUPPORT_PHONE"),
-		support_email=os.getenv("SUPPORT_EMAIL"),
+		support_phone=os.getenv("SUPPORT_PHONE", "0966519115"),
+		support_email=os.getenv("SUPPORT_EMAIL", "virakoumst@gmail.com"),
 	)
 
 
