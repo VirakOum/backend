@@ -126,13 +126,31 @@ def _get_firebase_app():
     try:
         import firebase_admin
         from firebase_admin import credentials
+        from pathlib import Path
 
+        backend_root = Path(__file__).resolve().parents[1]
         cred_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH")
-        if cred_path and os.path.exists(cred_path):
-            cred = credentials.Certificate(cred_path)
+        resolved_path = None
+
+        if cred_path:
+            if os.path.isabs(cred_path) and os.path.exists(cred_path):
+                resolved_path = cred_path
+            elif (backend_root / cred_path).exists():
+                resolved_path = str(backend_root / cred_path)
+            elif os.path.exists(cred_path):
+                resolved_path = cred_path
+
+        if not resolved_path:
+            # Auto-discover any firebase-adminsdk json in backend_repo root
+            for candidate in backend_root.glob("*firebase-adminsdk*.json"):
+                resolved_path = str(candidate)
+                break
+
+        if resolved_path:
+            cred = credentials.Certificate(resolved_path)
             firebase_admin.initialize_app(cred)
             _firebase_app_initialized = True
-            logger.info("Firebase Admin initialized from %s", cred_path)
+            logger.info("Firebase Admin initialized from %s", resolved_path)
             return True
         elif len(firebase_admin._apps) > 0:
             _firebase_app_initialized = True

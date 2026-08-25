@@ -7,3 +7,9 @@ __pycache__/
 .env
 .venv/
 alembic/versions/*.pyc
+*serviceAccount*.json
+firebase-service-account.json
+*firebase-adminsdk*.json
+google-services.json
+*.der
+
