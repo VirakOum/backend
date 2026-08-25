@@ -106,6 +106,7 @@ class User(Base):
     trusted_devices: Mapped[list["TrustedDevice"]] = relationship("TrustedDevice", back_populates="user", cascade="all, delete-orphan")
     notification_preferences: Mapped["NotificationPreference | None"] = relationship("NotificationPreference", back_populates="user", cascade="all, delete-orphan")
     notifications: Mapped[list["UserNotification"]] = relationship("UserNotification", back_populates="user", cascade="all, delete-orphan")
+    push_tokens: Mapped[list["UserPushToken"]] = relationship("UserPushToken", back_populates="user", cascade="all, delete-orphan")
     support_tickets: Mapped[list["SupportTicket"]] = relationship("SupportTicket", back_populates="user")
 
     __table_args__ = (
@@ -359,6 +360,24 @@ class TrustedDevice(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, nullable=False)
 
     user: Mapped["User"] = relationship("User", back_populates="trusted_devices")
+
+
+class UserPushToken(Base):
+    """
+    Table: user_push_tokens
+    Stores device FCM / APNS push tokens for users for sending background notifications.
+    """
+    __tablename__ = "user_push_tokens"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    push_token: Mapped[str] = mapped_column(String(512), nullable=False, unique=True, index=True)
+    platform: Mapped[str] = mapped_column(String(30), default="android", nullable=False)
+    device_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, onupdate=phnom_penh_now, nullable=False)
+
+    user: Mapped["User"] = relationship("User", back_populates="push_tokens")
 
 
 class PassengerQuickPlace(Base):

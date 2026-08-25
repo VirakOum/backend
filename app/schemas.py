@@ -860,3 +860,16 @@ class SystemAdCreate(BaseModel):
     description: str | None = None
     description_kh: str | None = None
     is_active: bool = True
+
+
+class PushTokenRegisterRequest(BaseModel):
+    push_token: str = Field(..., min_length=10, max_length=512)
+    platform: str = Field("android", max_length=30)
+    device_id: str | None = Field(None, max_length=128)
+
+
+class PushTokenRegisterResponse(BaseModel):
+    status: str = "ok"
+    registered: bool = True
+    push_token: str
+

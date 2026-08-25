@@ -35,6 +35,7 @@ from ..schemas import (
 )
 from ..auth import hash_password, verify_password, issue_token
 from .driver_fee import evaluate_driver_wallet_lock, get_runtime_settings, MEMBERSHIP_CATALOG
+from ..services import send_push_notification_to_user
 
 
 router = APIRouter(prefix="/travel/admin", tags=["admin-dashboard"])
@@ -922,6 +923,16 @@ def create_admin_message(payload: SystemMessageCreate, db: Session = Depends(get
                 is_read=False,
             )
             db.add(notif)
+            send_push_notification_to_user(
+                db=db,
+                user_id=user.id,
+                title=payload.title,
+                body=payload.body,
+                data={
+                    "type": notif_type,
+                    "message_id": str(msg.id),
+                },
+            )
         db.commit()
 
     return msg

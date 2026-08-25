@@ -27,13 +27,14 @@ from ..config import (
 	get_google_places_api_key_ios,
 )
 from ..db import get_db
-from ..models import Address, Booking, BookingLiveLocation, BookingPaymentInstruction, DriverWalletEntry, NotificationPreference, Payment, SupportTicket, SystemMessage, Trip, User, UserNotification, Vehicle, phnom_penh_now
+from ..models import Address, Booking, BookingLiveLocation, BookingPaymentInstruction, DriverWalletEntry, NotificationPreference, Payment, SupportTicket, SystemMessage, Trip, User, UserNotification, UserPushToken, Vehicle, phnom_penh_now
 from .driver_fee import (
     evaluate_driver_wallet_lock,
     get_or_create_driver_wallet,
     get_runtime_settings,
     snapshot_booking_fees,
 )
+from ..services import send_push_notification_to_user
 from math import asin, cos, radians, sin, sqrt
 
 from ..schemas import (
@@ -48,6 +49,8 @@ from ..schemas import (
 	BookingRead,
 	BoardingConfirmationRead,
 	BookingWithTripRead,
+	PushTokenRegisterRequest,
+	PushTokenRegisterResponse,
 	DriverArrivedRequest,
 	LoginRequest,
 	NotificationPreferences,
@@ -1168,18 +1171,29 @@ def _create_driver_arrived_notification(db: Session, booking: Booking) -> None:
 		existing.trip_id = booking.trip_id
 		existing.is_read = False
 		existing.created_at = phnom_penh_now()
-		return
-
-	db.add(
-		UserNotification(
-			user_id=booking.passenger_id,
-			type="driver_arrived",
-			title="Driver arrived",
-			body="Your driver has arrived. Please prepare to board.",
-			trip_id=booking.trip_id,
-			booking_id=booking.id,
-			is_read=False,
+	else:
+		db.add(
+			UserNotification(
+				user_id=booking.passenger_id,
+				type="driver_arrived",
+				title="Driver arrived",
+				body="Your driver has arrived. Please prepare to board.",
+				trip_id=booking.trip_id,
+				booking_id=booking.id,
+				is_read=False,
+			)
 		)
+
+	send_push_notification_to_user(
+		db=db,
+		user_id=booking.passenger_id,
+		title="Driver arrived",
+		body="Your driver has arrived. Please prepare to board.",
+		data={
+			"type": "driver_arrived",
+			"trip_id": str(booking.trip_id),
+			"booking_id": str(booking.id),
+		},
 	)
 
 
@@ -1205,16 +1219,31 @@ def _create_driver_booking_notification(
 	seat_count = len(booking.seat_numbers or [])
 	seat_label = "seat" if seat_count == 1 else "seats"
 	passenger_name = passenger.full_name.strip() or "A passenger"
+	title = "New passenger booking"
+	body = f"{passenger_name} booked {seat_count} {seat_label} on your trip."
+
 	db.add(
 		UserNotification(
 			user_id=trip.driver_id,
 			type="booking_created",
-			title="New passenger booking",
-			body=f"{passenger_name} booked {seat_count} {seat_label} on your trip.",
+			title=title,
+			body=body,
 			trip_id=trip.id,
 			booking_id=booking.id,
 			is_read=False,
 		)
+	)
+
+	send_push_notification_to_user(
+		db=db,
+		user_id=trip.driver_id,
+		title=title,
+		body=body,
+		data={
+			"type": "booking_created",
+			"trip_id": str(trip.id),
+			"booking_id": str(booking.id),
+		},
 	)
 
 
@@ -1222,16 +1251,31 @@ def _create_boarding_requested_notification(db: Session, booking: Booking) -> No
 	if not _has_user_notifications_table(db):
 		return
 
+	title = "Driver arrived"
+	body = "Your driver has arrived. Please prepare to board."
+
 	db.add(
 		UserNotification(
 			user_id=booking.passenger_id,
 			type="boarding_requested",
-			title="Driver arrived",
-			body="Your driver has arrived. Please prepare to board.",
+			title=title,
+			body=body,
 			trip_id=booking.trip_id,
 			booking_id=booking.id,
 			is_read=False,
 		)
+	)
+
+	send_push_notification_to_user(
+		db=db,
+		user_id=booking.passenger_id,
+		title=title,
+		body=body,
+		data={
+			"type": "boarding_requested",
+			"trip_id": str(booking.trip_id),
+			"booking_id": str(booking.id),
+		},
 	)
 
 
@@ -1249,16 +1293,31 @@ def _create_boarding_confirmed_notification(db: Session, booking: Booking) -> No
 	if existing is not None:
 		return
 
+	title = "Passenger boarded"
+	body = "The passenger has confirmed boarding."
+
 	db.add(
 		UserNotification(
 			user_id=booking.trip.driver_id,
 			type="boarding_confirmed",
-			title="Passenger boarded",
-			body="The passenger has confirmed boarding.",
+			title=title,
+			body=body,
 			trip_id=booking.trip_id,
 			booking_id=booking.id,
 			is_read=False,
 		)
+	)
+
+	send_push_notification_to_user(
+		db=db,
+		user_id=booking.trip.driver_id,
+		title=title,
+		body=body,
+		data={
+			"type": "boarding_confirmed",
+			"trip_id": str(booking.trip_id),
+			"booking_id": str(booking.id),
+		},
 	)
 
 
@@ -3018,6 +3077,41 @@ def mark_user_notification_read(
 	db.commit()
 	db.refresh(notification)
 	return _build_user_notification_read(notification)
+
+
+@router.post("/devices/push-token", response_model=PushTokenRegisterResponse)
+def register_push_token(
+	payload: PushTokenRegisterRequest,
+	db: Session = Depends(get_db),
+	current_user: User = Depends(get_current_user),
+) -> PushTokenRegisterResponse:
+	bind = db.get_bind()
+	if not inspect(bind).has_table("user_push_tokens"):
+		return PushTokenRegisterResponse(status="ok", registered=True, push_token=payload.push_token)
+
+	existing = db.execute(
+		select(UserPushToken).where(UserPushToken.push_token == payload.push_token)
+	).scalar_one_or_none()
+
+	now = phnom_penh_now()
+	if existing is not None:
+		existing.user_id = current_user.id
+		existing.platform = payload.platform
+		existing.device_id = payload.device_id
+		existing.updated_at = now
+	else:
+		db.add(
+			UserPushToken(
+				user_id=current_user.id,
+				push_token=payload.push_token,
+				platform=payload.platform,
+				device_id=payload.device_id,
+				created_at=now,
+				updated_at=now,
+			)
+		)
+	db.commit()
+	return PushTokenRegisterResponse(status="ok", registered=True, push_token=payload.push_token)
 
 
 @router.get("/messages/active", response_model=SystemMessageListResponse)

@@ -106,3 +106,173 @@ class PaymentService:
 
 
 item_service = ItemService()
+
+
+# Push Notification Service
+import logging
+import os
+from typing import Any
+from .models import UserPushToken
+
+logger = logging.getLogger("mytravel.push")
+
+_firebase_app_initialized = False
+
+
+def _get_firebase_app():
+    global _firebase_app_initialized
+    if _firebase_app_initialized:
+        return True
+    try:
+        import firebase_admin
+        from firebase_admin import credentials
+
+        cred_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH")
+        if cred_path and os.path.exists(cred_path):
+            cred = credentials.Certificate(cred_path)
+            firebase_admin.initialize_app(cred)
+            _firebase_app_initialized = True
+            logger.info("Firebase Admin initialized from %s", cred_path)
+            return True
+        elif len(firebase_admin._apps) > 0:
+            _firebase_app_initialized = True
+            return True
+        else:
+            try:
+                firebase_admin.initialize_app()
+                _firebase_app_initialized = True
+                logger.info("Firebase Admin initialized with default credentials")
+                return True
+            except Exception as e:
+                logger.debug("Firebase Admin default init skipped: %s", e)
+                return False
+    except ImportError:
+        logger.debug("firebase-admin package not installed; falling back to logged push dispatch")
+        return False
+    except Exception as e:
+        logger.warning("Failed to initialize Firebase Admin: %s", e)
+        return False
+
+
+def send_push_notification_to_user(
+    db: Session,
+    user_id: UUID | str,
+    title: str,
+    body: str,
+    data: dict[str, Any] | None = None,
+    badge_count: int | None = None,
+) -> int:
+    """
+    Sends a push notification to all registered active devices for a given user.
+    Returns the number of devices targeted.
+    """
+    try:
+        from sqlalchemy import inspect
+        bind = db.get_bind()
+        if not inspect(bind).has_table("user_push_tokens"):
+            return 0
+    except Exception:
+        return 0
+
+    if isinstance(user_id, str):
+        try:
+            target_uid = UUID(user_id)
+        except ValueError:
+            return 0
+    else:
+        target_uid = user_id
+
+    try:
+        tokens = db.execute(
+            select(UserPushToken.push_token)
+            .where(UserPushToken.user_id == target_uid)
+        ).scalars().all()
+    except Exception as e:
+        logger.debug("Failed to query user push tokens: %s", e)
+        return 0
+
+    if not tokens:
+        logger.debug("No push tokens registered for user %s", target_uid)
+        return 0
+
+    return send_push_notification_to_tokens(
+        tokens=list(tokens),
+        title=title,
+        body=body,
+        data=data,
+        badge_count=badge_count,
+    )
+
+
+def send_push_notification_to_tokens(
+    tokens: list[str],
+    title: str,
+    body: str,
+    data: dict[str, Any] | None = None,
+    badge_count: int | None = None,
+) -> int:
+    """
+    Sends a push notification to a list of FCM device registration tokens.
+    """
+    if not tokens:
+        return 0
+
+    clean_data = {str(k): str(v) for k, v in (data or {}).items() if v is not None}
+    clean_data["click_action"] = "FLUTTER_NOTIFICATION_CLICK"
+
+    has_firebase = _get_firebase_app()
+    if has_firebase:
+        try:
+            from firebase_admin import messaging
+
+            android_config = messaging.AndroidConfig(
+                priority="high",
+                notification=messaging.AndroidNotification(
+                    title=title,
+                    body=body,
+                    sound="default",
+                    channel_id="mytravel_channel",
+                    priority="max",
+                    default_vibrate_timings=True,
+                ),
+                data=clean_data,
+            )
+            apns_config = messaging.APNSConfig(
+                payload=messaging.APNSPayload(
+                    aps=messaging.Aps(
+                        alert=messaging.ApsAlert(title=title, body=body),
+                        sound="default",
+                        badge=badge_count,
+                    )
+                )
+            )
+
+            messages = [
+                messaging.Message(
+                    token=token,
+                    notification=messaging.Notification(title=title, body=body),
+                    data=clean_data,
+                    android=android_config,
+                    apns=apns_config,
+                )
+                for token in tokens
+            ]
+            response = messaging.send_each(messages)
+            logger.info(
+                "Dispatched FCM push to %d devices: %d successes, %d failures",
+                len(tokens),
+                response.success_count,
+                response.failure_count,
+            )
+            return response.success_count
+        except Exception as e:
+            logger.warning("FCM dispatch error: %s", e)
+
+    logger.info(
+        "[PUSH NOTIFICATION] Target tokens (%d): Title='%s' Body='%s' Data=%s",
+        len(tokens),
+        title,
+        body,
+        clean_data,
+    )
+    return len(tokens)
