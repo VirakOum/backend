@@ -34,12 +34,16 @@ app = FastAPI(
     openapi_url=None,
     servers=[
         {
-            "url": "https://mytravel.taxi/v1/api",
+            "url": "https://mytravel.taxi",
             "description": "Production server",
         },
         {
-            "url": "http://10.20.30.180:8000",
+            "url": "http://localhost:8000",
             "description": "Local development server",
+        },
+        {
+            "url": "http://10.20.30.180:8000",
+            "description": "Network development server",
         },
     ],
 )
@@ -104,7 +108,7 @@ class NoCacheStaticFiles(StaticFiles):
 api_v1_router = APIRouter(prefix="/v1/api")
 
 @app.get("/health", include_in_schema=False)
-@app.get("/v1/api/health", include_in_schema=False)
+@api_v1_router.get("/health", include_in_schema=False)
 def top_level_health():
     return {"status": "ok"}
 
@@ -115,7 +119,6 @@ def api_v1_root():
 
 for r in [meta_router, travel_router, passenger_router, addresses_router, driver_fee_router, admin_router, live_ws_router, items_router]:
     api_v1_router.include_router(r)
-    app.include_router(r)
 
 def custom_openapi():
     if app.openapi_schema:

@@ -111,8 +111,9 @@ docker compose -f docker-compose.prod.yml up -d --build
   - Static dashboard files located in `app/static/admin/`.
 
 - **API Base Path**: `https://mytravel.taxi/v1/api` (`GET /v1/api`)
-  - All backend endpoints are reachable under the `/v1/api` prefix as well as un-prefixed.
-  - Interactive Swagger Docs: `https://mytravel.taxi/v1/api/docs` or `http://localhost:8000/docs`.
+  - All backend endpoints are mounted under the unified `/v1/api` prefix.
+  - Interactive Swagger Docs: `https://mytravel.taxi/v1/api/docs` or `http://localhost:8000/v1/api/docs` (also available via `/docs`).
+  - OpenAPI Specification: `https://mytravel.taxi/v1/api/openapi.json` or `http://localhost:8000/v1/api/openapi.json`.
 
 ## Try these routes
 
@@ -120,44 +121,44 @@ docker compose -f docker-compose.prod.yml up -d --build
 - `GET /admin/mytravel` - Admin Control Dashboard
 - `GET /v1/api` - API Base Information
 - `GET /v1/api/health` or `GET /health` - Service Health Check
-- `GET /items`
-- `POST /items`
-- `GET /items/{item_id}`
-- `PUT /items/{item_id}`
-- `DELETE /items/{item_id}`
-- `POST /travel/auth/signup` (or `/v1/api/travel/auth/signup`)
-- `POST /travel/auth/login` (or `/v1/api/travel/auth/login`)
-- `GET /travel/auth/me`
-- `GET /travel/users/{user_id}`
-- `POST /travel/vehicles`
-- `GET /travel/vehicles/{vehicle_id}`
-- `POST /travel/trips`
-- `GET /travel/trips/{trip_id}`
-- `GET /travel/trips/search?departure_province=...&destination_province=...`
-- `POST /travel/bookings`
-- `GET /travel/bookings/{booking_id}`
-- `POST /travel/payments`
-- `GET /travel/payments/{payment_id}`
-- `GET /passenger/profile/places`
-- `PUT /passenger/profile/places/{key}`
-- `GET /passenger/trips/search-config`
-- `GET /addresses/provinces`
-- `GET /addresses/districts/{province_code}`
-- `GET /addresses/communes/{district_code}`
-- `GET /addresses/villages/{commune_code}`
-- `GET /addresses/by-type/{address_type}`
-- `GET /addresses/by-parent/{parent_code}`
-- `GET /addresses/code/{code}`
-- `POST /addresses/forms`
+- `GET /v1/api/items`
+- `POST /v1/api/items`
+- `GET /v1/api/items/{item_id}`
+- `PUT /v1/api/items/{item_id}`
+- `DELETE /v1/api/items/{item_id}`
+- `POST /v1/api/travel/auth/signup`
+- `POST /v1/api/travel/auth/login`
+- `GET /v1/api/travel/auth/me`
+- `GET /v1/api/travel/users/{user_id}`
+- `POST /v1/api/travel/vehicles`
+- `GET /v1/api/travel/vehicles/{vehicle_id}`
+- `POST /v1/api/travel/trips`
+- `GET /v1/api/travel/trips/{trip_id}`
+- `GET /v1/api/travel/trips/search?departure_province=...&destination_province=...`
+- `POST /v1/api/travel/bookings`
+- `GET /v1/api/travel/bookings/{booking_id}`
+- `POST /v1/api/travel/payments`
+- `GET /v1/api/travel/payments/{payment_id}`
+- `GET /v1/api/passenger/profile/places`
+- `PUT /v1/api/passenger/profile/places/{key}`
+- `GET /v1/api/passenger/trips/search-config`
+- `GET /v1/api/addresses/provinces`
+- `GET /v1/api/addresses/districts/{province_code}`
+- `GET /v1/api/addresses/communes/{district_code}`
+- `GET /v1/api/addresses/villages/{commune_code}`
+- `GET /v1/api/addresses/by-type/{address_type}`
+- `GET /v1/api/addresses/by-parent/{parent_code}`
+- `GET /v1/api/addresses/code/{code}`
+- `POST /v1/api/addresses/forms`
 
-Open `http://127.0.0.1:8000/docs` for interactive API docs.
+Open `http://127.0.0.1:8000/v1/api/docs` (or `/docs`) for interactive API docs.
 
 ## Travel auth
 
-The travel API now uses bearer-token authentication.
+The travel API uses bearer-token authentication under `/v1/api/travel/auth/`.
 
-1. Sign up with `POST /travel/auth/signup`
-2. Log in with `POST /travel/auth/login`
+1. Sign up with `POST /v1/api/travel/auth/signup`
+2. Log in with `POST /v1/api/travel/auth/login`
 3. Send the returned token in `Authorization: Bearer <token>`
 
 Signup body example:

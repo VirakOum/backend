@@ -43,6 +43,29 @@ def test_v1_api_and_direct_api_endpoints():
     assert response_direct.status_code == 200
     assert response_direct.json() == {"status": "ok"}
 
+
+def test_no_unprefixed_api_duplicate_routes():
+    # Unprefixed routes must return 404 Not Found
+    assert client.get("/travel/auth/me").status_code == 404
+    assert client.get("/passenger/trips").status_code == 404
+    assert client.get("/addresses/provinces").status_code == 404
+    assert client.get("/travel/wallet/driver-fee-summary").status_code == 404
+
+    # Proper /v1/api/ routes must exist
+    assert client.get("/v1/api/addresses/provinces").status_code == 200
+    assert client.get("/v1/api/travel/app-config").status_code == 200
+
+
+def test_openapi_schema_contains_only_v1_api_paths():
+    response = client.get("/v1/api/openapi.json")
+    assert response.status_code == 200
+    schema = response.json()
+    paths = schema.get("paths", {})
+    assert len(paths) > 0
+    for path in paths:
+        assert path.startswith("/v1/api"), f"Expected all API paths to start with /v1/api, found: {path}"
+
+
 def test_favicon_and_assets_resolution():
     favicon_res = client.get("/favicon.ico")
     assert favicon_res.status_code == 200

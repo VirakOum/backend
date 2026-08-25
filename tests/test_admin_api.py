@@ -385,10 +385,6 @@ def test_admin_login_endpoint():
     assert "access_token" in data
     assert data["role"] == "admin"
 
-    resp2 = client.post("/travel/admin/login", json={"phone_or_username": "admin", "password": "Admin123!"})
-    assert resp2.status_code == 200
-    assert "access_token" in resp2.json()
-
     bad_resp = client.post("/v1/api/travel/admin/login", json={"phone_or_username": "admin", "password": "WrongPassword"})
     assert bad_resp.status_code == 401
 
