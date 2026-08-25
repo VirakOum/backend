@@ -2521,24 +2521,86 @@ document.addEventListener('DOMContentLoaded', () => {
     const adminLoginScreen = document.getElementById('admin-login-screen');
     const adminLoginForm = document.getElementById('admin-login-form');
     const adminLoginError = document.getElementById('admin-login-error');
+    const adminLoginErrorMsg = document.getElementById('admin-login-error-msg');
+    const btnAdminLogin = document.getElementById('btn-admin-login');
     const btnAdminLogout = document.getElementById('btn-admin-logout');
+    const btnTogglePass = document.getElementById('btn-toggle-pass');
+    const adminPassInput = document.getElementById('admin-pass-input');
+    const adminUserInput = document.getElementById('admin-user-input');
+    const adminCapsWarning = document.getElementById('admin-caps-warning');
 
     function checkAdminAuth() {
         const token = localStorage.getItem('admin_token');
         if (!token) {
             if (adminLoginScreen) adminLoginScreen.style.display = 'flex';
+            if (adminUserInput) setTimeout(() => adminUserInput.focus(), 150);
             return false;
         }
         if (adminLoginScreen) adminLoginScreen.style.display = 'none';
         return true;
     }
 
+    // Password visibility toggle handler
+    if (btnTogglePass && adminPassInput) {
+        btnTogglePass.addEventListener('click', () => {
+            const isPassword = adminPassInput.getAttribute('type') === 'password';
+            adminPassInput.setAttribute('type', isPassword ? 'text' : 'password');
+            const icon = document.getElementById('pass-visibility-icon');
+            if (icon) {
+                icon.className = isPassword ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
+            }
+        });
+    }
+
+    // Caps Lock indicator
+    if (adminPassInput && adminCapsWarning) {
+        ['keyup', 'keydown'].forEach(evt => {
+            adminPassInput.addEventListener(evt, (e) => {
+                if (e.getModifierState && e.getModifierState('CapsLock')) {
+                    adminCapsWarning.style.display = 'flex';
+                } else {
+                    adminCapsWarning.style.display = 'none';
+                }
+            });
+        });
+        adminPassInput.addEventListener('blur', () => {
+            adminCapsWarning.style.display = 'none';
+        });
+    }
+
+    function showAdminLoginError(message) {
+        if (adminLoginErrorMsg) {
+            adminLoginErrorMsg.textContent = message;
+        } else if (adminLoginError) {
+            adminLoginError.textContent = message;
+        }
+        if (adminLoginError) {
+            adminLoginError.style.display = 'flex';
+            // Re-trigger shake animation
+            adminLoginError.style.animation = 'none';
+            adminLoginError.offsetHeight; /* trigger reflow */
+            adminLoginError.style.animation = 'shakeLoginError 0.45s ease-in-out';
+        }
+    }
+
     if (adminLoginForm) {
         adminLoginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const phone_or_username = document.getElementById('admin-user-input').value.trim();
-            const password = document.getElementById('admin-pass-input').value;
-            adminLoginError.style.display = 'none';
+            const phone_or_username = adminUserInput ? adminUserInput.value.trim() : '';
+            const password = adminPassInput ? adminPassInput.value : '';
+            if (adminLoginError) adminLoginError.style.display = 'none';
+
+            if (!phone_or_username || !password) {
+                showAdminLoginError('Please enter both identifier and password.');
+                return;
+            }
+
+            // Set Loading UI
+            const btnContent = btnAdminLogin ? btnAdminLogin.querySelector('.btn-login-content') : null;
+            const btnSpinner = btnAdminLogin ? btnAdminLogin.querySelector('.btn-login-spinner') : null;
+            if (btnAdminLogin) btnAdminLogin.disabled = true;
+            if (btnContent) btnContent.style.display = 'none';
+            if (btnSpinner) btnSpinner.style.display = 'inline-flex';
 
             try {
                 const response = await fetch(`${API_BASE}/login`, {
@@ -2557,13 +2619,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 } else {
                     const err = await response.json();
-                    adminLoginError.textContent = err.detail || 'Invalid admin credentials.';
-                    adminLoginError.style.display = 'block';
+                    showAdminLoginError(err.detail || 'Invalid administrator credentials.');
                 }
             } catch (error) {
                 console.error('Admin login error:', error);
-                adminLoginError.textContent = 'Could not connect to authentication server.';
-                adminLoginError.style.display = 'block';
+                showAdminLoginError('Could not connect to authentication server.');
+            } finally {
+                if (btnAdminLogin) btnAdminLogin.disabled = false;
+                if (btnContent) btnContent.style.display = 'inline-flex';
+                if (btnSpinner) btnSpinner.style.display = 'none';
             }
         });
     }
@@ -2571,7 +2635,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnAdminLogout) {
         btnAdminLogout.addEventListener('click', () => {
             localStorage.removeItem('admin_token');
-            if (adminLoginScreen) adminLoginScreen.style.display = 'flex';
+            if (adminLoginScreen) {
+                adminLoginScreen.style.display = 'flex';
+                if (adminUserInput) setTimeout(() => adminUserInput.focus(), 150);
+            }
         });
     }
 

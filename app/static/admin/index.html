@@ -16,31 +16,85 @@
     <!-- Chart.js for High-end Revenue Graphs -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="css/styles.css?v=1.4">
+    <link rel="stylesheet" href="css/styles.css?v=1.5">
 </head>
 <body>
     <!-- Admin Authentication Login Modal / Overlay -->
     <div id="admin-login-screen" class="admin-login-overlay">
+        <!-- Ambient Glowing Aura Orbs & Grid Background -->
+        <div class="login-bg-glow login-glow-1"></div>
+        <div class="login-bg-glow login-glow-2"></div>
+        <div class="login-bg-grid"></div>
+
         <div class="admin-login-card">
+            <!-- Top Accent Glow Stripe -->
+            <div class="login-card-top-accent"></div>
+
             <div class="admin-login-header">
-                <img src="assets/logo.png" alt="My Travel Logo" class="admin-login-logo">
-                <h2>MY TRAVEL COMMAND PORTAL</h2>
-                <p>System Administrator & Operations Authorization</p>
+                <div class="admin-logo-halo">
+                    <img src="assets/logo.png" alt="My Travel Logo" class="admin-login-logo">
+                </div>
+                <div class="login-system-pill">
+                    <span class="system-status-pulse"></span>
+                    <span class="system-status-text">SYSTEM ONLINE &bull; PHNOM PENH REGION</span>
+                </div>
+                <h2 class="admin-login-title">MY TRAVEL <span class="accent-gold">PORTAL</span></h2>
+                <p class="admin-login-subtitle">System Administrator &amp; Operations Authorization</p>
             </div>
-            <form id="admin-login-form">
-                <div id="admin-login-error" class="admin-login-error" style="display: none;"></div>
-                <div class="form-group mb-3">
-                    <label for="admin-user-input"><i class="fa-solid fa-user"></i> Administrator Phone / Identifier</label>
-                    <input type="text" id="admin-user-input" class="form-control" placeholder="e.g. admin or 012000000" required>
+
+            <form id="admin-login-form" novalidate>
+                <div id="admin-login-error" class="admin-login-error" style="display: none;">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span id="admin-login-error-msg"></span>
                 </div>
-                <div class="form-group mb-4">
-                    <label for="admin-pass-input"><i class="fa-solid fa-lock"></i> Security Password</label>
-                    <input type="password" id="admin-pass-input" class="form-control" placeholder="••••••••••••" required>
+
+                <div class="login-field-group mb-3">
+                    <label for="admin-user-input" class="login-field-label">
+                        <i class="fa-solid fa-user-shield"></i> Administrator Identifier
+                    </label>
+                    <div class="login-input-wrapper">
+                        <span class="input-leading-icon"><i class="fa-solid fa-id-badge"></i></span>
+                        <input type="text" id="admin-user-input" class="form-control login-input" placeholder="e.g. admin or 012000000" autocomplete="username" required>
+                    </div>
                 </div>
-                <button type="submit" class="btn btn-primary w-100" id="btn-admin-login">
-                    <i class="fa-solid fa-right-to-bracket"></i> Sign In to Dashboard
+
+                <div class="login-field-group mb-4">
+                    <label for="admin-pass-input" class="login-field-label">
+                        <i class="fa-solid fa-shield-halved"></i> Security Password
+                    </label>
+                    <div class="login-input-wrapper">
+                        <span class="input-leading-icon"><i class="fa-solid fa-lock"></i></span>
+                        <input type="password" id="admin-pass-input" class="form-control login-input" placeholder="••••••••••••" autocomplete="current-password" required>
+                        <button type="button" class="btn-toggle-password" id="btn-toggle-pass" aria-label="Toggle password visibility" title="Show / Hide Password">
+                            <i class="fa-solid fa-eye" id="pass-visibility-icon"></i>
+                        </button>
+                    </div>
+                    <div id="admin-caps-warning" class="caps-lock-warning" style="display: none;">
+                        <i class="fa-solid fa-arrow-up-from-bracket"></i> Caps Lock is active
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-admin-login-submit w-100" id="btn-admin-login">
+                    <span class="btn-login-content">
+                        <i class="fa-solid fa-right-to-bracket"></i>
+                        <span>Sign In to Dashboard</span>
+                    </span>
+                    <span class="btn-login-spinner" style="display: none;">
+                        <i class="fa-solid fa-circle-notch fa-spin"></i>
+                        <span>Authenticating...</span>
+                    </span>
                 </button>
             </form>
+
+            <div class="admin-login-footer">
+                <div class="login-security-badges">
+                    <span class="sec-badge"><i class="fa-solid fa-shield-check"></i> 256-Bit Encrypted</span>
+                    <span class="sec-badge"><i class="fa-solid fa-bolt"></i> Kinetic Ops Hub</span>
+                </div>
+                <div class="login-footer-copy">
+                    <span>&copy; 2026 My Travel Taxi</span> &bull; <span>Cambodia Enterprise Platform</span>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1034,6 +1088,6 @@
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <!-- Custom JS -->
-    <script src="js/app.js?v=1.4"></script>
+    <script src="js/app.js?v=1.5"></script>
 </body>
 </html>

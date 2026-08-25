@@ -373,6 +373,21 @@ def test_app_config_returns_platform_google_places_keys(monkeypatch) -> None:
     }
 
 
+def test_app_config_returns_only_platform_keys_when_shared_is_missing(monkeypatch) -> None:
+    monkeypatch.delenv("GOOGLE_PLACES_API_KEY", raising=False)
+    monkeypatch.setenv("GOOGLE_PLACES_API_KEY_ANDROID", "android-places-key")
+    monkeypatch.setenv("GOOGLE_PLACES_API_KEY_IOS", "ios-places-key")
+
+    response = client.get("/v1/api/travel/app-config")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "google_places_api_key": None,
+        "google_places_api_key_android": "android-places-key",
+        "google_places_api_key_ios": "ios-places-key",
+    }
+
+
 def test_app_config_omits_google_places_key_when_backend_env_missing(monkeypatch) -> None:
     monkeypatch.delenv("GOOGLE_PLACES_API_KEY", raising=False)
     monkeypatch.delenv("GOOGLE_PLACES_API_KEY_ANDROID", raising=False)
