@@ -64,84 +64,73 @@ client = TestClient(app)
 
 
 def setup_function():
+    app.dependency_overrides[get_db] = override_get_db
     Base.metadata.drop_all(bind=test_engine)
     Base.metadata.create_all(bind=test_engine)
 
 
 def test_vehicle_models_admin_and_public_crud():
-    # 1. Initially empty list
+    # 1. Initially auto-seeds default popular Cambodian vehicle models (48 items)
     response = client.get("/v1/api/travel/admin/vehicle-models")
     assert response.status_code == 200
-    assert response.json() == []
+    initial_models = response.json()
+    assert len(initial_models) == 48
 
-    # 2. Create vehicle model
+    # 2. Create custom vehicle model
     create_payload = {
-        "brand": "Toyota",
-        "model_name": "Prius",
-        "display_name": "Toyota Prius 2024",
+        "brand": "CustomBrand",
+        "model_name": "EVX",
+        "display_name": "CustomBrand EVX 2026",
         "vehicle_type": "Sedan",
         "seat_count": 4,
         "is_active": True,
-        "sort_order": 1,
+        "sort_order": 999,
     }
     create_res = client.post("/v1/api/travel/admin/vehicle-models", json=create_payload)
     assert create_res.status_code == 201
     model_data = create_res.json()
     model_id = model_data["id"]
-    assert model_data["brand"] == "Toyota"
-    assert model_data["model_name"] == "Prius"
-    assert model_data["display_name"] == "Toyota Prius 2024"
+    assert model_data["brand"] == "CustomBrand"
+    assert model_data["model_name"] == "EVX"
+    assert model_data["display_name"] == "CustomBrand EVX 2026"
     assert model_data["seat_count"] == 4
 
-    # 3. Create second model
-    client.post(
-        "/v1/api/travel/admin/vehicle-models",
-        json={
-            "brand": "Hyundai",
-            "model_name": "Starex",
-            "vehicle_type": "Minivan",
-            "seat_count": 12,
-            "is_active": True,
-            "sort_order": 2,
-        },
-    )
-
-    # 4. List models via Admin API with filter
-    list_res = client.get("/v1/api/travel/admin/vehicle-models?query=prius")
+    # 3. List models via Admin API with filter
+    list_res = client.get("/v1/api/travel/admin/vehicle-models?query=custombrand")
     assert list_res.status_code == 200
     assert len(list_res.json()) == 1
-    assert list_res.json()[0]["brand"] == "Toyota"
+    assert list_res.json()[0]["brand"] == "CustomBrand"
 
-    # 5. List models via Public API (GET /v1/api/travel/vehicle-models)
+    # 4. List models via Public API (GET /v1/api/travel/vehicle-models)
     public_res = client.get("/v1/api/travel/vehicle-models")
     assert public_res.status_code == 200
-    assert len(public_res.json()) == 2
+    assert len(public_res.json()) == 49
 
-    # 6. Update vehicle model
+    # 5. Update vehicle model
     update_res = client.put(
         f"/v1/api/travel/admin/vehicle-models/{model_id}",
-        json={"display_name": "Toyota Prius Hybrid", "seat_count": 5},
+        json={"display_name": "CustomBrand EVX Pro", "seat_count": 5},
     )
     assert update_res.status_code == 200
-    assert update_res.json()["display_name"] == "Toyota Prius Hybrid"
+    assert update_res.json()["display_name"] == "CustomBrand EVX Pro"
     assert update_res.json()["seat_count"] == 5
 
-    # 7. Toggle active status
+    # 6. Toggle active status
     toggle_res = client.post(f"/v1/api/travel/admin/vehicle-models/{model_id}/toggle-active")
     assert toggle_res.status_code == 200
     assert toggle_res.json()["is_active"] is False
 
-    # 8. Public API should now return only 1 active model (Hyundai Starex)
+    # 7. Public API should now return 48 active models (excluding inactive CustomBrand)
     public_active_res = client.get("/v1/api/travel/vehicle-models")
     assert public_active_res.status_code == 200
-    assert len(public_active_res.json()) == 1
-    assert public_active_res.json()[0]["brand"] == "Hyundai"
+    assert len(public_active_res.json()) == 48
 
-    # 9. Delete vehicle model
+    # 8. Delete vehicle model
     del_res = client.delete(f"/v1/api/travel/admin/vehicle-models/{model_id}")
     assert del_res.status_code == 204
 
-    # 10. Admin list has only 1 model left
+    # 9. Admin list has 48 models left
     admin_after_del = client.get("/v1/api/travel/admin/vehicle-models")
     assert admin_after_del.status_code == 200
-    assert len(admin_after_del.json()) == 1
+    assert len(admin_after_del.json()) == 48
+

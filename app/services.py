@@ -349,19 +349,22 @@ DEFAULT_CAR_MODELS = [
 
 
 def ensure_default_vehicle_models(db: Session) -> None:
-    count = db.execute(select(func.count(VehicleModel.id))).scalar() or 0
-    if count == 0:
-        import uuid
-        for item in DEFAULT_CAR_MODELS:
-            v_model = VehicleModel(
-                id=uuid.uuid4(),
-                brand=item["brand"],
-                model_name=item["model_name"],
-                display_name=item["display_name"],
-                vehicle_type=item["vehicle_type"],
-                seat_count=item["seat_count"],
-                is_active=True,
-                sort_order=item["sort_order"],
-            )
-            db.add(v_model)
-        db.commit()
+    try:
+        count = db.execute(select(func.count(VehicleModel.id))).scalar() or 0
+        if count == 0:
+            import uuid
+            for item in DEFAULT_CAR_MODELS:
+                v_model = VehicleModel(
+                    id=uuid.uuid4(),
+                    brand=item["brand"],
+                    model_name=item["model_name"],
+                    display_name=item["display_name"],
+                    vehicle_type=item["vehicle_type"],
+                    seat_count=item["seat_count"],
+                    is_active=True,
+                    sort_order=item["sort_order"],
+                )
+                db.add(v_model)
+            db.commit()
+    except Exception:
+        db.rollback()
