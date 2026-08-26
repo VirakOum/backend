@@ -70,11 +70,11 @@ def setup_function():
 
 
 def test_vehicle_models_admin_and_public_crud():
-    # 1. Initially auto-seeds default popular Cambodian vehicle models (48 items)
+    # 1. Initially auto-seeds default popular Cambodian vehicle models (103 items)
     response = client.get("/v1/api/travel/admin/vehicle-models")
     assert response.status_code == 200
     initial_models = response.json()
-    assert len(initial_models) == 48
+    assert len(initial_models) == 103
 
     # 2. Create custom vehicle model
     create_payload = {
@@ -104,7 +104,7 @@ def test_vehicle_models_admin_and_public_crud():
     # 4. List models via Public API (GET /v1/api/travel/vehicle-models)
     public_res = client.get("/v1/api/travel/vehicle-models")
     assert public_res.status_code == 200
-    assert len(public_res.json()) == 49
+    assert len(public_res.json()) == 104
 
     # 5. Update vehicle model
     update_res = client.put(
@@ -120,17 +120,17 @@ def test_vehicle_models_admin_and_public_crud():
     assert toggle_res.status_code == 200
     assert toggle_res.json()["is_active"] is False
 
-    # 7. Public API should now return 48 active models (excluding inactive CustomBrand)
+    # 7. Public API should now return 103 active models (excluding inactive CustomBrand)
     public_active_res = client.get("/v1/api/travel/vehicle-models")
     assert public_active_res.status_code == 200
-    assert len(public_active_res.json()) == 48
+    assert len(public_active_res.json()) == 103
 
     # 8. Delete vehicle model
     del_res = client.delete(f"/v1/api/travel/admin/vehicle-models/{model_id}")
     assert del_res.status_code == 204
 
-    # 9. Admin list has 48 models left
+    # 9. Admin list has 103 models left
     admin_after_del = client.get("/v1/api/travel/admin/vehicle-models")
     assert admin_after_del.status_code == 200
-    assert len(admin_after_del.json()) == 48
+    assert len(admin_after_del.json()) == 103
 
