@@ -39,7 +39,7 @@ from ..schemas import (
 )
 from ..auth import hash_password, verify_password, issue_token
 from .driver_fee import evaluate_driver_wallet_lock, get_runtime_settings, MEMBERSHIP_CATALOG
-from ..services import send_push_notification_to_user
+from ..services import send_push_notification_to_user, ensure_default_vehicle_models
 
 
 router = APIRouter(prefix="/travel/admin", tags=["admin-dashboard"])
@@ -995,6 +995,7 @@ def list_admin_vehicle_models(
     query: Optional[str] = Query(None, description="Search by brand or model name"),
     db: Session = Depends(get_db)
 ) -> Any:
+    ensure_default_vehicle_models(db)
     stmt = select(VehicleModel)
     if query:
         pattern = f"%{query.strip()}%"

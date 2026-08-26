@@ -15,6 +15,7 @@ if str(ROOT) not in sys.path:
 
 from app.auth import hash_password
 from app.db import SessionLocal
+from app.services import ensure_default_vehicle_models
 from app.models import (
     AppRuntimeSetting,
     Booking,
@@ -1217,6 +1218,7 @@ def seed() -> None:
             expires_at=now + timedelta(days=120),
         )
 
+        ensure_default_vehicle_models(db)
         db.commit()
         print("Demo & Store Release data ready.")
         print("Store Review Driver login: 012000000 / Password123!")

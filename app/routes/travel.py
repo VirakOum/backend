@@ -34,7 +34,7 @@ from .driver_fee import (
     get_runtime_settings,
     snapshot_booking_fees,
 )
-from ..services import send_push_notification_to_user
+from ..services import send_push_notification_to_user, ensure_default_vehicle_models
 from math import asin, cos, radians, sin, sqrt
 
 from ..schemas import (
@@ -1548,6 +1548,7 @@ def delete_vehicle(
 
 @router.get("/vehicle-models", response_model=list[VehicleModelRead])
 def get_public_vehicle_models(db: Session = Depends(get_db)) -> list[VehicleModelRead]:
+	ensure_default_vehicle_models(db)
 	stmt = (
 		select(VehicleModel)
 		.where(VehicleModel.is_active == True)

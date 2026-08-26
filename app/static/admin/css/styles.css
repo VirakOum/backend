@@ -2219,5 +2219,15 @@ input:checked + .slider:before {
     }
 }
 
+/* Utility Helper Classes */
+.text-center {
+    text-align: center;
+}
+.text-muted {
+    color: var(--color-on-surface-variant);
+    font-size: 0.85rem;
+}
+
+
 
 
