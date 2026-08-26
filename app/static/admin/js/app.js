@@ -70,6 +70,15 @@ document.addEventListener('DOMContentLoaded', () => {
             nav_messages: "System Messages",
             title_messages: "System Messages & Announcements",
             subtitle_messages: "Broadcast informational messages and alerts to app users",
+            nav_vehicle_models: "Vehicle Models",
+            title_vehicle_models: "Car & Vehicle Models",
+            subtitle_vehicle_models: "Manage available vehicle makes, models, and default seating configurations",
+            btn_add_vehicle_model: "Add Car Model",
+            table_brand: "Make / Brand",
+            table_model_name: "Model Name",
+            table_display_name: "Display Name",
+            table_vehicle_type: "Body / Type",
+            table_seat_count: "Default Seats",
             btn_refresh: "Refresh Data",
             kpi_active_vehicles: "Active Vehicles",
             kpi_registered_drivers: "Registered Drivers",
@@ -215,6 +224,15 @@ document.addEventListener('DOMContentLoaded', () => {
             nav_messages: "សារប្រព័ន្ធ",
             title_messages: "សារប្រព័ន្ធ និងការប្រកាសដំណឹង",
             subtitle_messages: "ផ្សព្វផ្សាយសារព័ត៌មាន និងការព្រមានដល់អ្នកប្រើប្រាស់កម្មវិធី",
+            nav_vehicle_models: "ម៉ូដែលរថយន្ត",
+            title_vehicle_models: "ម៉ូដែលរថយន្ត និងយានយន្ត",
+            subtitle_vehicle_models: "គ្រប់គ្រងម៉ាក ម៉ូដែល និងចំនួនកៅអីតាមលំនាំដើមរបស់រថយន្ត",
+            btn_add_vehicle_model: "បន្ថែមម៉ូដែលរថយន្ត",
+            table_brand: "ម៉ាក / ផលិតករ",
+            table_model_name: "ឈ្មោះម៉ូដែល",
+            table_display_name: "ឈ្មោះបង្ហាញពេញ",
+            table_vehicle_type: "ប្រភេទ / ប្រភេទទូក",
+            table_seat_count: "ចំនួនកៅអីលំនាំដើម",
             btn_refresh: "ទាញយកទិន្នន័យថ្មី",
             kpi_active_vehicles: "យានយន្តសកម្ម",
             kpi_registered_drivers: "អ្នកបើកបរដែលបានចុះឈ្មោះ",
@@ -662,6 +680,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // Trigger messages load
             if (activeTabId === 'messages') {
                 loadAdminMessages();
+            }
+
+            // Trigger vehicle models load
+            if (activeTabId === 'vehicle-models') {
+                loadVehicleModels();
             }
         });
     });
@@ -2641,6 +2664,184 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // --- Vehicle Models Management ---
+    let currentVehicleModels = [];
+    const searchVehicleModelsInput = document.getElementById('search-vehicle-models');
+    const btnAddVehicleModel = document.getElementById('btn-add-vehicle-model');
+    const btnCloseVehicleModelModal = document.getElementById('btn-close-vehicle-model-modal');
+    const vehicleModelModal = document.getElementById('vehicle-model-modal');
+    const formModalVehicleModel = document.getElementById('form-modal-vehicle-model');
+    const vehicleModelsTableBody = document.getElementById('vehicle-models-table-body');
+
+    if (searchVehicleModelsInput) {
+        searchVehicleModelsInput.addEventListener('input', () => {
+            renderVehicleModelsTable(searchVehicleModelsInput.value.trim());
+        });
+    }
+
+    if (btnAddVehicleModel) {
+        btnAddVehicleModel.addEventListener('click', () => {
+            document.getElementById('vehicle-model-modal-title').textContent = 'Add Vehicle Model';
+            document.getElementById('edit-vehicle-model-id').value = '';
+            document.getElementById('modal-vm-brand').value = '';
+            document.getElementById('modal-vm-model-name').value = '';
+            document.getElementById('modal-vm-display-name').value = '';
+            document.getElementById('modal-vm-vehicle-type').value = '';
+            document.getElementById('modal-vm-seat-count').value = '';
+            document.getElementById('modal-vm-sort-order').value = '0';
+            document.getElementById('modal-vm-active').checked = true;
+            document.getElementById('vehicle-model-modal-save-label').textContent = 'Save Model';
+            vehicleModelModal.classList.add('active');
+        });
+    }
+
+    if (btnCloseVehicleModelModal) {
+        btnCloseVehicleModelModal.addEventListener('click', () => {
+            vehicleModelModal.classList.remove('active');
+        });
+    }
+
+    async function loadVehicleModels() {
+        try {
+            const res = await fetch(`${API_BASE}/vehicle-models`, { headers: getAuthHeaders() });
+            if (!res.ok) throw new Error('Failed to fetch vehicle models');
+            currentVehicleModels = await res.json();
+            renderVehicleModelsTable();
+        } catch (err) {
+            console.error('Error loading vehicle models:', err);
+        }
+    }
+
+    function renderVehicleModelsTable(filterQuery = '') {
+        if (!vehicleModelsTableBody) return;
+        vehicleModelsTableBody.innerHTML = '';
+
+        let list = currentVehicleModels;
+        if (filterQuery) {
+            const q = filterQuery.toLowerCase();
+            list = list.filter(m =>
+                (m.brand && m.brand.toLowerCase().includes(q)) ||
+                (m.model_name && m.model_name.toLowerCase().includes(q)) ||
+                (m.display_name && m.display_name.toLowerCase().includes(q))
+            );
+        }
+
+        if (list.length === 0) {
+            vehicleModelsTableBody.innerHTML = `<tr><td colspan="7" class="text-center text-muted" style="padding: 2rem;">No vehicle models found. Click "Add Car Model" to create one.</td></tr>`;
+            return;
+        }
+
+        list.forEach(m => {
+            const tr = document.createElement('tr');
+            const statusBadge = m.is_active
+                ? `<span class="badge badge-success" style="cursor:pointer;" onclick="window.toggleVehicleModelActive('${m.id}')"><i class="fa-solid fa-check"></i> Active</span>`
+                : `<span class="badge badge-secondary" style="cursor:pointer;" onclick="window.toggleVehicleModelActive('${m.id}')"><i class="fa-solid fa-ban"></i> Inactive</span>`;
+
+            tr.innerHTML = `
+                <td><strong>${escapeHtml(m.brand)}</strong></td>
+                <td>${escapeHtml(m.model_name)}</td>
+                <td><span style="font-weight: 600;">${escapeHtml(m.display_name)}</span></td>
+                <td>${m.vehicle_type ? escapeHtml(m.vehicle_type) : '<span class="text-muted">-</span>'}</td>
+                <td>${m.seat_count ? m.seat_count + ' seats' : '<span class="text-muted">-</span>'}</td>
+                <td>${statusBadge}</td>
+                <td class="text-right">
+                    <button class="btn btn-secondary btn-sm" onclick="window.editVehicleModel('${m.id}')" title="Edit Model" style="padding: 0.3rem 0.6rem;">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="window.deleteVehicleModel('${m.id}')" title="Delete Model" style="padding: 0.3rem 0.6rem; margin-left: 4px;">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </td>
+            `;
+            vehicleModelsTableBody.appendChild(tr);
+        });
+    }
+
+    if (formModalVehicleModel) {
+        formModalVehicleModel.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const modelId = document.getElementById('edit-vehicle-model-id').value;
+            const brand = document.getElementById('modal-vm-brand').value.trim();
+            const modelName = document.getElementById('modal-vm-model-name').value.trim();
+            const displayName = document.getElementById('modal-vm-display-name').value.trim();
+            const vehicleType = document.getElementById('modal-vm-vehicle-type').value.trim();
+            const seatCountVal = document.getElementById('modal-vm-seat-count').value;
+            const sortOrderVal = document.getElementById('modal-vm-sort-order').value;
+            const isActive = document.getElementById('modal-vm-active').checked;
+
+            const payload = {
+                brand: brand,
+                model_name: modelName,
+                display_name: displayName || null,
+                vehicle_type: vehicleType || null,
+                seat_count: seatCountVal ? parseInt(seatCountVal) : null,
+                sort_order: sortOrderVal ? parseInt(sortOrderVal) : 0,
+                is_active: isActive
+            };
+
+            try {
+                const url = modelId ? `${API_BASE}/vehicle-models/${modelId}` : `${API_BASE}/vehicle-models`;
+                const method = modelId ? 'PUT' : 'POST';
+                const res = await fetch(url, {
+                    method: method,
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) {
+                    const errJson = await res.json();
+                    throw new Error(errJson.detail || 'Failed to save vehicle model');
+                }
+                vehicleModelModal.classList.remove('active');
+                await loadVehicleModels();
+            } catch (err) {
+                alert('Error saving vehicle model: ' + err.message);
+            }
+        });
+    }
+
+    window.editVehicleModel = function(id) {
+        const item = currentVehicleModels.find(m => m.id === id);
+        if (!item) return;
+        document.getElementById('vehicle-model-modal-title').textContent = 'Edit Vehicle Model';
+        document.getElementById('edit-vehicle-model-id').value = item.id;
+        document.getElementById('modal-vm-brand').value = item.brand || '';
+        document.getElementById('modal-vm-model-name').value = item.model_name || '';
+        document.getElementById('modal-vm-display-name').value = item.display_name || '';
+        document.getElementById('modal-vm-vehicle-type').value = item.vehicle_type || '';
+        document.getElementById('modal-vm-seat-count').value = item.seat_count !== null ? item.seat_count : '';
+        document.getElementById('modal-vm-sort-order').value = item.sort_order || 0;
+        document.getElementById('modal-vm-active').checked = item.is_active;
+        document.getElementById('vehicle-model-modal-save-label').textContent = 'Update Model';
+        vehicleModelModal.classList.add('active');
+    };
+
+    window.toggleVehicleModelActive = async function(id) {
+        try {
+            const res = await fetch(`${API_BASE}/vehicle-models/${id}/toggle-active`, {
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+            if (!res.ok) throw new Error('Failed to toggle status');
+            await loadVehicleModels();
+        } catch (err) {
+            alert('Error updating model status: ' + err.message);
+        }
+    };
+
+    window.deleteVehicleModel = async function(id) {
+        if (!confirm('Are you sure you want to delete this vehicle model?')) return;
+        try {
+            const res = await fetch(`${API_BASE}/vehicle-models/${id}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+            if (!res.ok) throw new Error('Failed to delete vehicle model');
+            await loadVehicleModels();
+        } catch (err) {
+            alert('Error deleting model: ' + err.message);
+        }
+    };
 
     // Check Auth on Startup
     if (checkAdminAuth()) {

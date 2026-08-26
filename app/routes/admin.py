@@ -12,6 +12,7 @@ from ..db import get_db
 from ..models import (
     User,
     Vehicle,
+    VehicleModel,
     Trip,
     Booking,
     DriverWallet,
@@ -31,7 +32,10 @@ from ..schemas import (
     SystemAdCreate,
     SystemMessageRead,
     SystemMessageCreate,
-    SystemMessageUpdate
+    SystemMessageUpdate,
+    VehicleModelCreate,
+    VehicleModelUpdate,
+    VehicleModelRead
 )
 from ..auth import hash_password, verify_password, issue_token
 from .driver_fee import evaluate_driver_wallet_lock, get_runtime_settings, MEMBERSHIP_CATALOG
@@ -981,4 +985,97 @@ def delete_admin_message(message_id: uuid.UUID, db: Session = Depends(get_db)) -
     if not msg:
         raise HTTPException(status_code=404, detail="System message not found")
     db.delete(msg)
+    db.commit()
+
+
+# --- Vehicle Models Management Endpoints ---
+
+@router.get("/vehicle-models", response_model=List[VehicleModelRead])
+def list_admin_vehicle_models(
+    query: Optional[str] = Query(None, description="Search by brand or model name"),
+    db: Session = Depends(get_db)
+) -> Any:
+    stmt = select(VehicleModel)
+    if query:
+        pattern = f"%{query.strip()}%"
+        stmt = stmt.where(
+            or_(
+                VehicleModel.brand.ilike(pattern),
+                VehicleModel.model_name.ilike(pattern),
+                VehicleModel.display_name.ilike(pattern),
+            )
+        )
+    stmt = stmt.order_by(VehicleModel.sort_order.asc(), VehicleModel.brand.asc(), VehicleModel.model_name.asc())
+    return db.scalars(stmt).all()
+
+
+@router.post("/vehicle-models", response_model=VehicleModelRead, status_code=201)
+def create_admin_vehicle_model(payload: VehicleModelCreate, db: Session = Depends(get_db)) -> Any:
+    display_name = payload.display_name.strip() if payload.display_name else f"{payload.brand.strip()} {payload.model_name.strip()}"
+    v_model = VehicleModel(
+        id=uuid.uuid4(),
+        brand=payload.brand.strip(),
+        model_name=payload.model_name.strip(),
+        display_name=display_name,
+        vehicle_type=payload.vehicle_type.strip() if payload.vehicle_type else None,
+        seat_count=payload.seat_count,
+        is_active=payload.is_active,
+        sort_order=payload.sort_order,
+    )
+    db.add(v_model)
+    db.commit()
+    db.refresh(v_model)
+    return v_model
+
+
+@router.put("/vehicle-models/{model_id}", response_model=VehicleModelRead)
+def update_admin_vehicle_model(
+    model_id: uuid.UUID,
+    payload: VehicleModelUpdate,
+    db: Session = Depends(get_db)
+) -> Any:
+    v_model = db.get(VehicleModel, model_id)
+    if not v_model:
+        raise HTTPException(status_code=404, detail="Vehicle model not found")
+    if payload.brand is not None:
+        v_model.brand = payload.brand.strip()
+    if payload.model_name is not None:
+        v_model.model_name = payload.model_name.strip()
+    if payload.display_name is not None:
+        v_model.display_name = payload.display_name.strip()
+    elif payload.brand is not None or payload.model_name is not None:
+        v_model.display_name = f"{v_model.brand} {v_model.model_name}"
+    if payload.vehicle_type is not None:
+        v_model.vehicle_type = payload.vehicle_type.strip() if payload.vehicle_type else None
+    if payload.seat_count is not None:
+        v_model.seat_count = payload.seat_count
+    if payload.is_active is not None:
+        v_model.is_active = payload.is_active
+    if payload.sort_order is not None:
+        v_model.sort_order = payload.sort_order
+
+    v_model.updated_at = phnom_penh_now()
+    db.commit()
+    db.refresh(v_model)
+    return v_model
+
+
+@router.post("/vehicle-models/{model_id}/toggle-active", response_model=VehicleModelRead)
+def toggle_admin_vehicle_model_active(model_id: uuid.UUID, db: Session = Depends(get_db)) -> Any:
+    v_model = db.get(VehicleModel, model_id)
+    if not v_model:
+        raise HTTPException(status_code=404, detail="Vehicle model not found")
+    v_model.is_active = not v_model.is_active
+    v_model.updated_at = phnom_penh_now()
+    db.commit()
+    db.refresh(v_model)
+    return v_model
+
+
+@router.delete("/vehicle-models/{model_id}", status_code=204)
+def delete_admin_vehicle_model(model_id: uuid.UUID, db: Session = Depends(get_db)) -> None:
+    v_model = db.get(VehicleModel, model_id)
+    if not v_model:
+        raise HTTPException(status_code=404, detail="Vehicle model not found")
+    db.delete(v_model)
     db.commit()

@@ -212,6 +212,40 @@ class VehicleRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class VehicleModelCreate(BaseModel):
+    brand: str = Field(min_length=1, max_length=50)
+    model_name: str = Field(min_length=1, max_length=50)
+    display_name: str | None = Field(default=None, max_length=100)
+    vehicle_type: str | None = Field(default=None, max_length=50)
+    seat_count: int | None = Field(default=None, gt=0)
+    is_active: bool = True
+    sort_order: int = 0
+
+
+class VehicleModelUpdate(BaseModel):
+    brand: str | None = Field(default=None, min_length=1, max_length=50)
+    model_name: str | None = Field(default=None, min_length=1, max_length=50)
+    display_name: str | None = Field(default=None, max_length=100)
+    vehicle_type: str | None = Field(default=None, max_length=50)
+    seat_count: int | None = Field(default=None, gt=0)
+    is_active: bool | None = None
+    sort_order: int | None = None
+
+
+class VehicleModelRead(BaseModel):
+    id: UUID
+    brand: str
+    model_name: str
+    display_name: str
+    vehicle_type: str | None = None
+    seat_count: int | None = None
+    is_active: bool
+    sort_order: int
+    created_at: datetime
+    updated_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+
 class TripCreate(BaseModel):
     vehicle_id: UUID | None = None
     departure_province: str = Field(min_length=1, max_length=50)

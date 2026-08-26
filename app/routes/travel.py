@@ -27,7 +27,7 @@ from ..config import (
 	get_google_places_api_key_ios,
 )
 from ..db import get_db
-from ..models import Address, Booking, BookingLiveLocation, BookingPaymentInstruction, DriverWalletEntry, NotificationPreference, Payment, SupportTicket, SystemMessage, Trip, User, UserNotification, UserPushToken, Vehicle, phnom_penh_now
+from ..models import Address, Booking, BookingLiveLocation, BookingPaymentInstruction, DriverWalletEntry, NotificationPreference, Payment, SupportTicket, SystemMessage, Trip, User, UserNotification, UserPushToken, Vehicle, VehicleModel, phnom_penh_now
 from .driver_fee import (
     evaluate_driver_wallet_lock,
     get_or_create_driver_wallet,
@@ -86,6 +86,7 @@ from ..schemas import (
 	VehicleCreate,
 	VehicleRead,
 	VehicleUpdate,
+	VehicleModelRead,
 	WalletSummaryResponse,
 	WalletTransactionItem,
 )
@@ -1543,6 +1544,16 @@ def delete_vehicle(
 	db.delete(vehicle)
 	db.commit()
 	return None
+
+
+@router.get("/vehicle-models", response_model=list[VehicleModelRead])
+def get_public_vehicle_models(db: Session = Depends(get_db)) -> list[VehicleModelRead]:
+	stmt = (
+		select(VehicleModel)
+		.where(VehicleModel.is_active == True)
+		.order_by(VehicleModel.sort_order.asc(), VehicleModel.brand.asc(), VehicleModel.model_name.asc())
+	)
+	return db.scalars(stmt).all()
 
 
 @router.post("/trips", response_model=TripRead, status_code=status.HTTP_201_CREATED)

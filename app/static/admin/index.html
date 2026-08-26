@@ -156,6 +156,10 @@
                     <i class="fa-solid fa-bullhorn nav-icon"></i>
                     <span data-i18n="nav_messages">System Messages</span>
                 </a>
+                <a href="#vehicle-models" class="nav-item" data-tab="vehicle-models">
+                    <i class="fa-solid fa-car-side nav-icon"></i>
+                    <span data-i18n="nav_vehicle_models">Vehicle Models</span>
+                </a>
             </nav>
 
             <div class="sidebar-footer">
@@ -856,6 +860,46 @@
                     
                 </div>
             </section>
+
+            <!-- Tab: Vehicle Models -->
+            <section id="tab-vehicle-models" class="tab-pane">
+                <div class="content-card" style="padding: var(--spacing-lg);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md); flex-wrap: wrap; gap: 10px;">
+                        <div>
+                            <h2 class="headline-sm" data-i18n="title_vehicle_models">Car & Vehicle Models</h2>
+                            <p class="header-subtitle" data-i18n="subtitle_vehicle_models">Manage available vehicle makes, models, and default seating configurations</p>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <div class="search-input-wrap" style="width: 260px;">
+                                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                                <input type="text" id="search-vehicle-models" class="search-input" placeholder="Search brand or model..." style="padding: 0.5rem 0.8rem 0.5rem 2.2rem;">
+                            </div>
+                            <button class="btn btn-primary" id="btn-add-vehicle-model">
+                                <i class="fa-solid fa-plus"></i> <span data-i18n="btn_add_vehicle_model">Add Car Model</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th data-i18n="table_brand">Make / Brand</th>
+                                    <th data-i18n="table_model_name">Model Name</th>
+                                    <th data-i18n="table_display_name">Display Name</th>
+                                    <th data-i18n="table_vehicle_type">Body / Type</th>
+                                    <th data-i18n="table_seat_count">Default Seats</th>
+                                    <th data-i18n="table_status">Status</th>
+                                    <th class="text-right" data-i18n="table_actions">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="vehicle-models-table-body">
+                                <!-- Populated dynamically by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
 
@@ -1076,6 +1120,63 @@
                 <div class="modal-footer promo-modal-footer">
                     <button type="submit" class="btn btn-primary">
                         <i class="fa-solid fa-save"></i> <span id="ad-modal-save-label">Save Banner</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Create/Edit Vehicle Model -->
+    <div class="modal-overlay" id="vehicle-model-modal">
+        <div class="modal-card promo-modal-card">
+            <div class="modal-header">
+                <h2 class="headline-sm" id="vehicle-model-modal-title">Add Vehicle Model</h2>
+                <button class="btn-close" id="btn-close-vehicle-model-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-modal-vehicle-model" class="settings-form promo-modal-form">
+                <input type="hidden" id="edit-vehicle-model-id">
+                <div class="promo-form-grid">
+                    <div class="form-group">
+                        <label for="modal-vm-brand">Make / Brand (e.g. Toyota, Hyundai)</label>
+                        <input type="text" id="modal-vm-brand" class="search-input" style="padding: 0.6rem 1rem;" required placeholder="e.g. Toyota">
+                    </div>
+                    <div class="form-group">
+                        <label for="modal-vm-model-name">Model Name (e.g. Prius, Starex)</label>
+                        <input type="text" id="modal-vm-model-name" class="search-input" style="padding: 0.6rem 1rem;" required placeholder="e.g. Prius">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="modal-vm-display-name">Full Display Name (Optional)</label>
+                    <input type="text" id="modal-vm-display-name" class="search-input" style="padding: 0.6rem 1rem;" placeholder="e.g. Toyota Prius (auto-generated if empty)">
+                </div>
+                <div class="promo-form-grid">
+                    <div class="form-group">
+                        <label for="modal-vm-vehicle-type">Vehicle Type (Optional)</label>
+                        <input type="text" id="modal-vm-vehicle-type" class="search-input" style="padding: 0.6rem 1rem;" placeholder="e.g. Sedan, SUV, Minivan, Van">
+                    </div>
+                    <div class="form-group">
+                        <label for="modal-vm-seat-count">Default Seat Count</label>
+                        <input type="number" id="modal-vm-seat-count" class="search-input" style="padding: 0.6rem 1rem;" placeholder="e.g. 4, 7, 12, 15" min="1" max="60">
+                    </div>
+                </div>
+                <div class="promo-form-grid">
+                    <div class="form-group">
+                        <label for="modal-vm-sort-order">Sort Priority Order</label>
+                        <input type="number" id="modal-vm-sort-order" class="search-input" style="padding: 0.6rem 1rem;" value="0">
+                    </div>
+                    <div class="form-group toggle-group" style="margin-top: 24px; display: flex; align-items: center; justify-content: space-between;">
+                        <div class="toggle-label-wrap">
+                            <label for="modal-vm-active" style="font-weight: 700; margin-bottom: 0;">Active / Available to Drivers</label>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="modal-vm-active" checked>
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer promo-modal-footer">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-save"></i> <span id="vehicle-model-modal-save-label">Save Model</span>
                     </button>
                 </div>
             </form>

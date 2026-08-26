@@ -141,6 +141,29 @@ class Vehicle(Base):
     )
 
 
+class VehicleModel(Base):
+    """
+    Table: vehicle_models (បញ្ជីម៉ូដែលរថយន្ត)
+    Managed list of vehicle makes and models customizable from Admin dashboard.
+    """
+    __tablename__ = "vehicle_models"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    brand: Mapped[str] = mapped_column(String(50), nullable=False, index=True)  # e.g., Toyota, Hyundai
+    model_name: Mapped[str] = mapped_column(String(50), nullable=False)        # e.g., Prius, Starex
+    display_name: Mapped[str] = mapped_column(String(100), nullable=False)      # e.g., Toyota Prius
+    vehicle_type: Mapped[str | None] = mapped_column(String(50), nullable=True) # e.g., SUV, VAN, SEDAN
+    seat_count: Mapped[int | None] = mapped_column(Integer, nullable=True)     # default recommended seat count
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, onupdate=phnom_penh_now)
+
+    __table_args__ = (
+        Index("idx_vehicle_models_active_sort", "is_active", "sort_order"),
+    )
+
+
 class Trip(Base):
     """
     Table: trips (ជើងដំណើរអន្តរខេត្ត)
