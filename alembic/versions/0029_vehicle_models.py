@@ -1,7 +1,7 @@
 """Create vehicle_models table and seed default popular vehicle models
 
-Revision ID: 0027_vehicle_models
-Revises: 0026_vehicle_images_and_flexible_seat_count
+Revision ID: 0029_vehicle_models
+Revises: 0028_add_user_push_tokens
 Create Date: 2026-08-26 00:00:00.000000
 
 """
@@ -11,8 +11,8 @@ from sqlalchemy.dialects import postgresql
 import uuid
 from datetime import datetime
 
-revision = "0027_vehicle_models"
-down_revision = "0026_vehicle_images_and_flexible_seat_count"
+revision = "0029_vehicle_models"
+down_revision = "0028_add_user_push_tokens"
 branch_labels = None
 depends_on = None
 
