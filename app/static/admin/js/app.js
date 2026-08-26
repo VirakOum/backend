@@ -484,6 +484,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const departureDropdownList = document.getElementById('departure-dropdown-list');
     const tripDestinationFilter = document.getElementById('trip-destination-filter');
     const destinationDropdownList = document.getElementById('destination-dropdown-list');
+    const tripVehicleFilter = document.getElementById('trip-vehicle-filter');
     const btnClearDateFilter = document.getElementById('btn-clear-date-filter');
     const tripsByDayList = document.getElementById('trips-by-day-list');
 
@@ -853,6 +854,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const statusVal = tripStatusFilter.value;
         const departureVal = tripDepartureFilter.value.trim().toLowerCase();
         const destinationVal = tripDestinationFilter.value.trim().toLowerCase();
+        const vehicleVal = tripVehicleFilter ? tripVehicleFilter.value.trim().toLowerCase() : '';
 
         // 1. Filter trips
         const filteredTrips = currentTrips.filter(trip => {
@@ -860,6 +862,11 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (dateVal && dateKey !== dateVal) return false;
             if (statusVal && trip.status !== statusVal) return false;
+            if (vehicleVal) {
+                const tripVeh = (trip.vehicle_model || '').toLowerCase();
+                const tripPlate = (trip.vehicle_plate || '').toLowerCase();
+                if (!tripVeh.includes(vehicleVal) && !tripPlate.includes(vehicleVal)) return false;
+            }
             
             // Check departure province matching either English or Khmer name
             if (departureVal) {
@@ -1442,12 +1449,14 @@ document.addEventListener('DOMContentLoaded', () => {
     tripStatusFilter.addEventListener('change', renderTrips);
     tripDepartureFilter.addEventListener('input', renderTrips);
     tripDestinationFilter.addEventListener('input', renderTrips);
+    if (tripVehicleFilter) tripVehicleFilter.addEventListener('input', renderTrips);
 
     btnClearDateFilter.addEventListener('click', () => {
         tripDateFilter.value = '';
         tripStatusFilter.value = '';
         tripDepartureFilter.value = '';
         tripDestinationFilter.value = '';
+        if (tripVehicleFilter) tripVehicleFilter.value = '';
         renderTrips();
     });
 
@@ -2687,16 +2696,177 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Vehicle Models Management ---
     let currentVehicleModels = [];
+    let vmCurrentPage = 1;
+    let vmPageSize = 50;
+    let vmSortColumn = 'sort_order';
+    let vmSortDirection = 'asc';
+
     const searchVehicleModelsInput = document.getElementById('search-vehicle-models');
+    const filterVmBrandSelect = document.getElementById('filter-vm-brand');
+    const filterVmTypeSelect = document.getElementById('filter-vm-type');
+    const filterVmStatusSelect = document.getElementById('filter-vm-status');
+    const sortVmSelect = document.getElementById('sort-vm-select');
+    const btnClearVmFilters = document.getElementById('btn-clear-vm-filters');
+    const vmCountText = document.getElementById('vm-count-text');
+    const vmPaginationInfo = document.getElementById('vm-pagination-info');
+    const vmPaginationControls = document.getElementById('vm-pagination-controls');
+    const vmPageSizeSelect = document.getElementById('vm-page-size-select');
     const btnAddVehicleModel = document.getElementById('btn-add-vehicle-model');
     const btnCloseVehicleModelModal = document.getElementById('btn-close-vehicle-model-modal');
     const vehicleModelModal = document.getElementById('vehicle-model-modal');
     const formModalVehicleModel = document.getElementById('form-modal-vehicle-model');
     const vehicleModelsTableBody = document.getElementById('vehicle-models-table-body');
+    const sortableHeaders = document.querySelectorAll('#tab-vehicle-models .sortable-th');
 
+    // Populate Brand Filter Dropdown with model counts
+    function populateBrandFilterOptions() {
+        if (!filterVmBrandSelect) return;
+        const previousVal = filterVmBrandSelect.value;
+        const brandCounts = {};
+        currentVehicleModels.forEach(m => {
+            if (m.brand) {
+                brandCounts[m.brand] = (brandCounts[m.brand] || 0) + 1;
+            }
+        });
+
+        const sortedBrands = Object.keys(brandCounts).sort((a, b) => a.localeCompare(b));
+        filterVmBrandSelect.innerHTML = `<option value="">All Brands (${currentVehicleModels.length})</option>`;
+        sortedBrands.forEach(brand => {
+            const opt = document.createElement('option');
+            opt.value = brand;
+            opt.textContent = `${brand} (${brandCounts[brand]})`;
+            filterVmBrandSelect.appendChild(opt);
+        });
+
+        if (previousVal && sortedBrands.includes(previousVal)) {
+            filterVmBrandSelect.value = previousVal;
+        }
+    }
+
+    // Update Header Sort Icons and Active Classes
+    function updateHeaderSortIcons() {
+        sortableHeaders.forEach(th => {
+            const col = th.getAttribute('data-sort-col');
+            const icon = th.querySelector('.sort-icon');
+            if (col === vmSortColumn) {
+                th.classList.add('sort-active');
+                if (icon) {
+                    icon.className = vmSortDirection === 'asc' ? 'fa-solid fa-sort-up sort-icon' : 'fa-solid fa-sort-down sort-icon';
+                }
+            } else {
+                th.classList.remove('sort-active');
+                if (icon) {
+                    icon.className = 'fa-solid fa-sort sort-icon';
+                }
+            }
+        });
+
+        // Sync quick sort dropdown if applicable
+        if (sortVmSelect) {
+            const pair = `${vmSortColumn}-${vmSortDirection}`;
+            const matchingOpt = Array.from(sortVmSelect.options).find(o => {
+                if (vmSortColumn === 'sort_order' && o.value === 'priority-asc') return true;
+                if (vmSortColumn === 'model_name' && o.value === `model-${vmSortDirection}`) return true;
+                if (vmSortColumn === 'brand' && o.value === `brand-${vmSortDirection}`) return true;
+                if (vmSortColumn === 'seat_count' && o.value === `seats-${vmSortDirection}`) return true;
+                if (vmSortColumn === 'vehicle_type' && o.value === `type-${vmSortDirection}`) return true;
+                if (vmSortColumn === 'is_active' && o.value === `status-${vmSortDirection}`) return true;
+                return false;
+            });
+            if (matchingOpt) {
+                sortVmSelect.value = matchingOpt.value;
+            }
+        }
+    }
+
+    // Set Sort Column & Direction
+    function setVehicleModelSort(column, direction = null) {
+        if (vmSortColumn === column) {
+            vmSortDirection = direction !== null ? direction : (vmSortDirection === 'asc' ? 'desc' : 'asc');
+        } else {
+            vmSortColumn = column;
+            vmSortDirection = direction !== null ? direction : (column === 'seat_count' ? 'desc' : 'asc');
+        }
+        vmCurrentPage = 1;
+        updateHeaderSortIcons();
+        renderVehicleModelsTable();
+    }
+
+    // Sortable Header Click Listeners
+    sortableHeaders.forEach(th => {
+        th.addEventListener('click', () => {
+            const col = th.getAttribute('data-sort-col');
+            if (col) {
+                setVehicleModelSort(col);
+            }
+        });
+    });
+
+    // Quick Sort Select Listener
+    if (sortVmSelect) {
+        sortVmSelect.addEventListener('change', () => {
+            const val = sortVmSelect.value;
+            switch (val) {
+                case 'priority-asc': setVehicleModelSort('sort_order', 'asc'); break;
+                case 'model-asc': setVehicleModelSort('model_name', 'asc'); break;
+                case 'model-desc': setVehicleModelSort('model_name', 'desc'); break;
+                case 'brand-asc': setVehicleModelSort('brand', 'asc'); break;
+                case 'brand-desc': setVehicleModelSort('brand', 'desc'); break;
+                case 'display-asc': setVehicleModelSort('display_name', 'asc'); break;
+                case 'display-desc': setVehicleModelSort('display_name', 'desc'); break;
+                case 'seats-desc': setVehicleModelSort('seat_count', 'desc'); break;
+                case 'seats-asc': setVehicleModelSort('seat_count', 'asc'); break;
+                case 'type-asc': setVehicleModelSort('vehicle_type', 'asc'); break;
+                case 'status-desc': setVehicleModelSort('is_active', 'desc'); break;
+                default: setVehicleModelSort('sort_order', 'asc');
+            }
+        });
+    }
+
+    // Search and Filter Listeners
     if (searchVehicleModelsInput) {
         searchVehicleModelsInput.addEventListener('input', () => {
-            renderVehicleModelsTable(searchVehicleModelsInput.value.trim());
+            vmCurrentPage = 1;
+            renderVehicleModelsTable();
+        });
+    }
+
+    if (filterVmBrandSelect) {
+        filterVmBrandSelect.addEventListener('change', () => {
+            vmCurrentPage = 1;
+            renderVehicleModelsTable();
+        });
+    }
+
+    if (filterVmTypeSelect) {
+        filterVmTypeSelect.addEventListener('change', () => {
+            vmCurrentPage = 1;
+            renderVehicleModelsTable();
+        });
+    }
+
+    if (filterVmStatusSelect) {
+        filterVmStatusSelect.addEventListener('change', () => {
+            vmCurrentPage = 1;
+            renderVehicleModelsTable();
+        });
+    }
+
+    if (btnClearVmFilters) {
+        btnClearVmFilters.addEventListener('click', () => {
+            if (searchVehicleModelsInput) searchVehicleModelsInput.value = '';
+            if (filterVmBrandSelect) filterVmBrandSelect.value = '';
+            if (filterVmTypeSelect) filterVmTypeSelect.value = '';
+            if (filterVmStatusSelect) filterVmStatusSelect.value = '';
+            setVehicleModelSort('sort_order', 'asc');
+        });
+    }
+
+    if (vmPageSizeSelect) {
+        vmPageSizeSelect.addEventListener('change', () => {
+            vmPageSize = parseInt(vmPageSizeSelect.value) || 50;
+            vmCurrentPage = 1;
+            renderVehicleModelsTable();
         });
     }
 
@@ -2709,7 +2879,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('modal-vm-display-name').value = '';
             document.getElementById('modal-vm-vehicle-type').value = '';
             document.getElementById('modal-vm-seat-count').value = '';
-            document.getElementById('modal-vm-sort-order').value = '0';
+            document.getElementById('modal-vm-sort-order').value = (currentVehicleModels.length + 1).toString();
             document.getElementById('modal-vm-active').checked = true;
             document.getElementById('vehicle-model-modal-save-label').textContent = 'Save Model';
             vehicleModelModal.classList.add('active');
@@ -2730,43 +2900,151 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (!res.ok) throw new Error('Failed to fetch vehicle models');
             currentVehicleModels = await res.json();
+            populateBrandFilterOptions();
+            updateHeaderSortIcons();
             renderVehicleModelsTable();
         } catch (err) {
             console.error('Error loading vehicle models:', err);
         }
     }
 
-    function renderVehicleModelsTable(filterQuery = '') {
+    function renderVehicleModelsTable() {
         if (!vehicleModelsTableBody) return;
         vehicleModelsTableBody.innerHTML = '';
 
-        let list = currentVehicleModels;
-        if (filterQuery) {
-            const q = filterQuery.toLowerCase();
-            list = list.filter(m =>
-                (m.brand && m.brand.toLowerCase().includes(q)) ||
-                (m.model_name && m.model_name.toLowerCase().includes(q)) ||
-                (m.display_name && m.display_name.toLowerCase().includes(q))
-            );
+        const searchQuery = searchVehicleModelsInput ? searchVehicleModelsInput.value.trim().toLowerCase() : '';
+        const brandFilter = filterVmBrandSelect ? filterVmBrandSelect.value.trim().toLowerCase() : '';
+        const typeFilter = filterVmTypeSelect ? filterVmTypeSelect.value.trim().toLowerCase() : '';
+        const statusFilter = filterVmStatusSelect ? filterVmStatusSelect.value : '';
+
+        // 1. Filter
+        let list = currentVehicleModels.filter(m => {
+            if (searchQuery) {
+                const b = (m.brand || '').toLowerCase();
+                const mn = (m.model_name || '').toLowerCase();
+                const dn = (m.display_name || '').toLowerCase();
+                const vt = (m.vehicle_type || '').toLowerCase();
+                if (!b.includes(searchQuery) && !mn.includes(searchQuery) && !dn.includes(searchQuery) && !vt.includes(searchQuery)) {
+                    return false;
+                }
+            }
+
+            if (brandFilter) {
+                if ((m.brand || '').toLowerCase() !== brandFilter) return false;
+            }
+
+            if (typeFilter) {
+                const vt = (m.vehicle_type || '').toLowerCase();
+                if (!vt.includes(typeFilter)) return false;
+            }
+
+            if (statusFilter === 'active' && !m.is_active) return false;
+            if (statusFilter === 'inactive' && m.is_active) return false;
+
+            return true;
+        });
+
+        // 2. Sort
+        list.sort((a, b) => {
+            let valA, valB;
+            switch (vmSortColumn) {
+                case 'model_name':
+                    valA = (a.model_name || '').toLowerCase();
+                    valB = (b.model_name || '').toLowerCase();
+                    break;
+                case 'brand':
+                    valA = (a.brand || '').toLowerCase();
+                    valB = (b.brand || '').toLowerCase();
+                    break;
+                case 'display_name':
+                    valA = (a.display_name || '').toLowerCase();
+                    valB = (b.display_name || '').toLowerCase();
+                    break;
+                case 'vehicle_type':
+                    valA = (a.vehicle_type || '').toLowerCase();
+                    valB = (b.vehicle_type || '').toLowerCase();
+                    break;
+                case 'seat_count':
+                    valA = a.seat_count !== null ? a.seat_count : 0;
+                    valB = b.seat_count !== null ? b.seat_count : 0;
+                    break;
+                case 'is_active':
+                    valA = a.is_active ? 1 : 0;
+                    valB = b.is_active ? 1 : 0;
+                    break;
+                case 'sort_order':
+                default:
+                    valA = a.sort_order !== null ? a.sort_order : 99999;
+                    valB = b.sort_order !== null ? b.sort_order : 99999;
+                    break;
+            }
+
+            let cmp = 0;
+            if (typeof valA === 'string') {
+                cmp = valA.localeCompare(valB);
+            } else {
+                cmp = valA < valB ? -1 : (valA > valB ? 1 : 0);
+            }
+
+            if (cmp !== 0) {
+                return vmSortDirection === 'asc' ? cmp : -cmp;
+            }
+
+            // Secondary tie-breaker by brand then model_name
+            const bCmp = (a.brand || '').localeCompare(b.brand || '');
+            if (bCmp !== 0) return bCmp;
+            return (a.model_name || '').localeCompare(b.model_name || '');
+        });
+
+        // Update Count Badges
+        if (vmCountText) {
+            if (brandFilter) {
+                vmCountText.textContent = `${list.length} ${filterVmBrandSelect.value} Models`;
+            } else {
+                vmCountText.textContent = `${list.length} Models`;
+            }
         }
 
-        if (list.length === 0) {
-            vehicleModelsTableBody.innerHTML = `<tr><td colspan="7" class="text-center text-muted" style="padding: 2rem;">No vehicle models found. Click "Add Car Model" to create one.</td></tr>`;
+        // 3. Paginate
+        const totalItems = list.length;
+        const totalPages = Math.ceil(totalItems / vmPageSize) || 1;
+        if (vmCurrentPage > totalPages) vmCurrentPage = totalPages;
+        if (vmCurrentPage < 1) vmCurrentPage = 1;
+
+        const startIdx = (vmCurrentPage - 1) * vmPageSize;
+        const endIdx = Math.min(startIdx + vmPageSize, totalItems);
+        const paginatedList = list.slice(startIdx, endIdx);
+
+        // Update Pagination Info & Controls
+        if (vmPaginationInfo) {
+            if (totalItems === 0) {
+                vmPaginationInfo.textContent = 'Showing 0 of 0 models';
+            } else {
+                const filterNote = totalItems < currentVehicleModels.length ? ` (filtered from ${currentVehicleModels.length} total)` : '';
+                vmPaginationInfo.textContent = `Showing ${startIdx + 1}–${endIdx} of ${totalItems} models${filterNote}`;
+            }
+        }
+
+        renderVehicleModelPaginationControls(totalPages);
+
+        if (totalItems === 0) {
+            vehicleModelsTableBody.innerHTML = `<tr><td colspan="8" class="text-center text-muted" style="padding: 3rem;">No vehicle models found matching filter criteria.</td></tr>`;
             return;
         }
 
-        list.forEach(m => {
+        paginatedList.forEach(m => {
             const tr = document.createElement('tr');
             const statusBadge = m.is_active
-                ? `<span class="badge badge-success" style="cursor:pointer;" onclick="window.toggleVehicleModelActive('${m.id}')"><i class="fa-solid fa-check"></i> Active</span>`
-                : `<span class="badge badge-secondary" style="cursor:pointer;" onclick="window.toggleVehicleModelActive('${m.id}')"><i class="fa-solid fa-ban"></i> Inactive</span>`;
+                ? `<span class="badge badge-success" style="cursor:pointer;" onclick="window.toggleVehicleModelActive('${m.id}')" title="Click to Deactivate"><i class="fa-solid fa-check"></i> Active</span>`
+                : `<span class="badge badge-secondary" style="cursor:pointer;" onclick="window.toggleVehicleModelActive('${m.id}')" title="Click to Activate"><i class="fa-solid fa-ban"></i> Inactive</span>`;
 
             tr.innerHTML = `
                 <td><strong>${escapeHtml(m.brand)}</strong></td>
-                <td>${escapeHtml(m.model_name)}</td>
-                <td><span style="font-weight: 600;">${escapeHtml(m.display_name)}</span></td>
-                <td>${m.vehicle_type ? escapeHtml(m.vehicle_type) : '<span class="text-muted">-</span>'}</td>
-                <td>${m.seat_count ? m.seat_count + ' seats' : '<span class="text-muted">-</span>'}</td>
+                <td><span style="font-weight: 600; color: var(--color-primary);">${escapeHtml(m.model_name)}</span></td>
+                <td><span>${escapeHtml(m.display_name)}</span></td>
+                <td>${m.vehicle_type ? `<span class="badge badge-outline" style="font-size:0.75rem; border-color: var(--color-outline-variant);">${escapeHtml(m.vehicle_type)}</span>` : '<span class="text-muted">-</span>'}</td>
+                <td>${m.seat_count ? `<span style="font-weight: 700;">${m.seat_count}</span> <span class="text-muted" style="font-size:0.75rem;">seats</span>` : '<span class="text-muted">-</span>'}</td>
+                <td><span class="text-muted" style="font-size: 0.8rem;">#${m.sort_order || 0}</span></td>
                 <td>${statusBadge}</td>
                 <td class="text-right">
                     <button class="btn btn-secondary btn-sm" onclick="window.editVehicleModel('${m.id}')" title="Edit Model" style="padding: 0.3rem 0.6rem;">
@@ -2779,6 +3057,71 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             vehicleModelsTableBody.appendChild(tr);
         });
+    }
+
+    function renderVehicleModelPaginationControls(totalPages) {
+        if (!vmPaginationControls) return;
+        vmPaginationControls.innerHTML = '';
+        if (totalPages <= 1) return;
+
+        // Prev Button
+        const prevBtn = document.createElement('button');
+        prevBtn.className = 'btn-page';
+        prevBtn.innerHTML = '<i class="fa-solid fa-chevron-left"></i>';
+        prevBtn.disabled = vmCurrentPage === 1;
+        prevBtn.addEventListener('click', () => {
+            if (vmCurrentPage > 1) {
+                vmCurrentPage--;
+                renderVehicleModelsTable();
+            }
+        });
+        vmPaginationControls.appendChild(prevBtn);
+
+        // Compute Page Numbers
+        let pageNumbers = [];
+        if (totalPages <= 7) {
+            for (let i = 1; i <= totalPages; i++) pageNumbers.push(i);
+        } else {
+            pageNumbers.push(1);
+            if (vmCurrentPage > 3) pageNumbers.push('...');
+            const start = Math.max(2, vmCurrentPage - 1);
+            const end = Math.min(totalPages - 1, vmCurrentPage + 1);
+            for (let i = start; i <= end; i++) pageNumbers.push(i);
+            if (vmCurrentPage < totalPages - 2) pageNumbers.push('...');
+            pageNumbers.push(totalPages);
+        }
+
+        pageNumbers.forEach(p => {
+            if (p === '...') {
+                const ellipsis = document.createElement('span');
+                ellipsis.style.padding = '0 6px';
+                ellipsis.style.color = 'var(--color-on-surface-variant)';
+                ellipsis.textContent = '…';
+                vmPaginationControls.appendChild(ellipsis);
+            } else {
+                const btn = document.createElement('button');
+                btn.className = `btn-page ${p === vmCurrentPage ? 'active' : ''}`;
+                btn.textContent = p;
+                btn.addEventListener('click', () => {
+                    vmCurrentPage = p;
+                    renderVehicleModelsTable();
+                });
+                vmPaginationControls.appendChild(btn);
+            }
+        });
+
+        // Next Button
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'btn-page';
+        nextBtn.innerHTML = '<i class="fa-solid fa-chevron-right"></i>';
+        nextBtn.disabled = vmCurrentPage === totalPages;
+        nextBtn.addEventListener('click', () => {
+            if (vmCurrentPage < totalPages) {
+                vmCurrentPage++;
+                renderVehicleModelsTable();
+            }
+        });
+        vmPaginationControls.appendChild(nextBtn);
     }
 
     if (formModalVehicleModel) {

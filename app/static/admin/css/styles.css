@@ -2228,6 +2228,140 @@ input:checked + .slider:before {
     font-size: 0.85rem;
 }
 
+/* Sortable Table Headers */
+.sortable-th {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.15s ease, color 0.15s ease;
+    white-space: nowrap;
+}
+
+.sortable-th:hover {
+    background-color: var(--color-surface-container-high) !important;
+    color: var(--color-primary);
+}
+
+.sortable-th .th-content {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.sortable-th .sort-icon {
+    font-size: 0.75rem;
+    color: var(--color-on-surface-variant);
+    opacity: 0.6;
+    transition: all 0.2s ease;
+}
+
+.sortable-th.sort-active {
+    color: var(--color-primary);
+    font-weight: 800;
+}
+
+.sortable-th.sort-active .sort-icon {
+    color: var(--color-primary);
+    opacity: 1;
+}
+
+/* Vehicle Models Filter Toolbar */
+.vm-filter-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+    background: var(--color-surface-container-lowest);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-surface-container);
+}
+
+.vm-filter-select {
+    padding: 0.45rem 0.8rem;
+    font-size: 0.85rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-outline-variant);
+    background-color: var(--color-surface-container-low);
+    color: var(--color-on-surface);
+    cursor: pointer;
+    font-family: inherit;
+    transition: border-color 0.2s;
+}
+
+.vm-filter-select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.vm-count-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background-color: var(--color-primary-fixed);
+    color: var(--color-on-primary-fixed-variant);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+/* Pagination Bar */
+.data-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md) 0 0 0;
+    margin-top: var(--spacing-sm);
+    border-top: 1px solid var(--color-surface-container);
+    font-size: 0.85rem;
+    color: var(--color-on-surface-variant);
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-page {
+    min-width: 32px;
+    height: 32px;
+    padding: 0 8px;
+    border-radius: 8px;
+    border: 1px solid var(--color-surface-container);
+    background-color: var(--color-surface-container-lowest);
+    color: var(--color-on-surface);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+
+.btn-page:hover:not(:disabled) {
+    background-color: var(--color-surface-container-high);
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.btn-page.active {
+    background-color: var(--color-primary);
+    color: #ffffff;
+    border-color: var(--color-primary);
+    font-weight: 700;
+}
+
+.btn-page:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+
 
 
 

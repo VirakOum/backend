@@ -993,6 +993,11 @@ def delete_admin_message(message_id: uuid.UUID, db: Session = Depends(get_db)) -
 @router.get("/vehicle-models", response_model=List[VehicleModelRead])
 def list_admin_vehicle_models(
     query: Optional[str] = Query(None, description="Search by brand or model name"),
+    brand: Optional[str] = Query(None, description="Filter by brand"),
+    vehicle_type: Optional[str] = Query(None, description="Filter by vehicle type"),
+    is_active: Optional[bool] = Query(None, description="Filter by active status"),
+    sort_by: Optional[str] = Query(None, description="Column to sort by: model_name, brand, display_name, vehicle_type, seat_count, sort_order, is_active, created_at"),
+    order: Optional[str] = Query("asc", description="Sort order: asc or desc"),
     db: Session = Depends(get_db)
 ) -> Any:
     ensure_default_vehicle_models(db)
@@ -1006,7 +1011,33 @@ def list_admin_vehicle_models(
                 VehicleModel.display_name.ilike(pattern),
             )
         )
-    stmt = stmt.order_by(VehicleModel.sort_order.asc(), VehicleModel.brand.asc(), VehicleModel.model_name.asc())
+    if brand:
+        stmt = stmt.where(VehicleModel.brand.ilike(brand.strip()))
+    if vehicle_type:
+        stmt = stmt.where(VehicleModel.vehicle_type.ilike(f"%{vehicle_type.strip()}%"))
+    if is_active is not None:
+        stmt = stmt.where(VehicleModel.is_active == is_active)
+
+    sort_column_map = {
+        "model_name": VehicleModel.model_name,
+        "brand": VehicleModel.brand,
+        "display_name": VehicleModel.display_name,
+        "vehicle_type": VehicleModel.vehicle_type,
+        "seat_count": VehicleModel.seat_count,
+        "sort_order": VehicleModel.sort_order,
+        "is_active": VehicleModel.is_active,
+        "created_at": VehicleModel.created_at,
+    }
+
+    if sort_by and sort_by in sort_column_map:
+        col = sort_column_map[sort_by]
+        if order and order.lower() == "desc":
+            stmt = stmt.order_by(col.desc().nullslast(), VehicleModel.brand.asc(), VehicleModel.model_name.asc())
+        else:
+            stmt = stmt.order_by(col.asc().nullsfirst(), VehicleModel.brand.asc(), VehicleModel.model_name.asc())
+    else:
+        stmt = stmt.order_by(VehicleModel.sort_order.asc(), VehicleModel.brand.asc(), VehicleModel.model_name.asc())
+
     return db.scalars(stmt).all()
 
 

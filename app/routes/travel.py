@@ -1547,14 +1547,39 @@ def delete_vehicle(
 
 
 @router.get("/vehicle-models", response_model=list[VehicleModelRead])
-def get_public_vehicle_models(db: Session = Depends(get_db)) -> list[VehicleModelRead]:
+def get_public_vehicle_models(
+	brand: str | None = None,
+	vehicle_type: str | None = None,
+	sort_by: str | None = None,
+	order: str = "asc",
+	db: Session = Depends(get_db),
+) -> list[VehicleModelRead]:
 	ensure_default_vehicle_models(db)
-	stmt = (
-		select(VehicleModel)
-		.where(VehicleModel.is_active == True)
-		.order_by(VehicleModel.sort_order.asc(), VehicleModel.brand.asc(), VehicleModel.model_name.asc())
-	)
-	return db.scalars(stmt).all()
+	stmt = select(VehicleModel).where(VehicleModel.is_active == True)
+	if brand:
+		stmt = stmt.where(VehicleModel.brand.ilike(brand.strip()))
+	if vehicle_type:
+		stmt = stmt.where(VehicleModel.vehicle_type.ilike(f"%{vehicle_type.strip()}%"))
+
+	sort_column_map = {
+		"model_name": VehicleModel.model_name,
+		"brand": VehicleModel.brand,
+		"display_name": VehicleModel.display_name,
+		"vehicle_type": VehicleModel.vehicle_type,
+		"seat_count": VehicleModel.seat_count,
+		"sort_order": VehicleModel.sort_order,
+	}
+
+	if sort_by and sort_by in sort_column_map:
+		col = sort_column_map[sort_by]
+		if order and order.lower() == "desc":
+			stmt = stmt.order_by(col.desc().nullslast(), VehicleModel.brand.asc(), VehicleModel.model_name.asc())
+		else:
+			stmt = stmt.order_by(col.asc().nullsfirst(), VehicleModel.brand.asc(), VehicleModel.model_name.asc())
+	else:
+		stmt = stmt.order_by(VehicleModel.sort_order.asc(), VehicleModel.brand.asc(), VehicleModel.model_name.asc())
+
+	return list(db.scalars(stmt).all())
 
 
 @router.post("/trips", response_model=TripRead, status_code=status.HTTP_201_CREATED)

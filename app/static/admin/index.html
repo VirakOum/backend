@@ -352,6 +352,10 @@
                         <input type="text" id="trip-destination-filter" class="search-input select-search-input" placeholder="Destination..." data-i18n-placeholder="filter_dest_placeholder" autocomplete="off">
                         <div id="destination-dropdown-list" class="custom-dropdown-list"></div>
                     </div>
+                    <div class="search-input-wrap" style="max-width: 170px; margin-bottom: 0;">
+                        <i class="fa-solid fa-car search-icon"></i>
+                        <input type="text" id="trip-vehicle-filter" class="search-input" placeholder="Vehicle Model..." data-i18n-placeholder="filter_vehicle_placeholder">
+                    </div>
                     <button class="btn btn-secondary" id="btn-clear-date-filter" style="margin-left: auto;">
                         <i class="fa-solid fa-filter-circle-xmark"></i> <span data-i18n="trip_clear_filter">Clear Filters</span>
                     </button>
@@ -864,32 +868,132 @@
             <!-- Tab: Vehicle Models -->
             <section id="tab-vehicle-models" class="tab-pane">
                 <div class="content-card" style="padding: var(--spacing-lg);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md); flex-wrap: wrap; gap: 10px;">
-                        <div>
-                            <h2 class="headline-sm" data-i18n="title_vehicle_models">Car & Vehicle Models</h2>
-                            <p class="header-subtitle" data-i18n="subtitle_vehicle_models">Manage available vehicle makes, models, and default seating configurations</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md); flex-wrap: wrap; gap: var(--spacing-md);">
+                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                            <div>
+                                <h2 class="headline-sm" data-i18n="title_vehicle_models" style="margin-bottom: 2px;">Car & Vehicle Models</h2>
+                                <p class="header-subtitle" data-i18n="subtitle_vehicle_models" style="margin-bottom: 0;">Manage available vehicle makes, models, and default seating configurations</p>
+                            </div>
+                            <span id="vm-count-badge" class="vm-count-chip">
+                                <i class="fa-solid fa-car"></i> <span id="vm-count-text">500 Models</span>
+                            </span>
                         </div>
                         <div style="display: flex; gap: 10px; align-items: center;">
-                            <div class="search-input-wrap" style="width: 260px;">
-                                <i class="fa-solid fa-magnifying-glass search-icon"></i>
-                                <input type="text" id="search-vehicle-models" class="search-input" placeholder="Search brand or model..." style="padding: 0.5rem 0.8rem 0.5rem 2.2rem;">
-                            </div>
                             <button class="btn btn-primary" id="btn-add-vehicle-model">
                                 <i class="fa-solid fa-plus"></i> <span data-i18n="btn_add_vehicle_model">Add Car Model</span>
                             </button>
                         </div>
                     </div>
 
+                    <!-- Enhanced Filter Toolbar -->
+                    <div class="vm-filter-toolbar">
+                        <div class="search-input-wrap" style="flex: 1; min-width: 220px; max-width: 320px; margin-bottom: 0;">
+                            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                            <input type="text" id="search-vehicle-models" class="search-input" placeholder="Search brand or model..." style="padding: 0.55rem 0.8rem 0.55rem 2.2rem; font-size: 0.85rem;">
+                        </div>
+
+                        <!-- Brand Filter -->
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <label for="filter-vm-brand" style="font-size: 0.8rem; font-weight: 700; color: var(--color-on-surface-variant); white-space: nowrap;"><i class="fa-solid fa-copyright"></i> Brand:</label>
+                            <select id="filter-vm-brand" class="vm-filter-select">
+                                <option value="">All Brands</option>
+                            </select>
+                        </div>
+
+                        <!-- Vehicle Type Filter -->
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <label for="filter-vm-type" style="font-size: 0.8rem; font-weight: 700; color: var(--color-on-surface-variant); white-space: nowrap;"><i class="fa-solid fa-shapes"></i> Body Type:</label>
+                            <select id="filter-vm-type" class="vm-filter-select">
+                                <option value="">All Types</option>
+                                <option value="Sedan">Sedan</option>
+                                <option value="SUV">SUV</option>
+                                <option value="MPV">MPV / Minivan</option>
+                                <option value="Van">Van / Minibus</option>
+                                <option value="Bus">Bus</option>
+                                <option value="Electric">Electric / EV</option>
+                                <option value="Hybrid">Hybrid / PHEV</option>
+                                <option value="Pickup">Pickup</option>
+                                <option value="Hatchback">Hatchback / City Car</option>
+                            </select>
+                        </div>
+
+                        <!-- Status Filter -->
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <label for="filter-vm-status" style="font-size: 0.8rem; font-weight: 700; color: var(--color-on-surface-variant); white-space: nowrap;"><i class="fa-solid fa-toggle-on"></i> Status:</label>
+                            <select id="filter-vm-status" class="vm-filter-select">
+                                <option value="">All Statuses</option>
+                                <option value="active">Active Only</option>
+                                <option value="inactive">Inactive Only</option>
+                            </select>
+                        </div>
+
+                        <!-- Quick Sort Dropdown -->
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <label for="sort-vm-select" style="font-size: 0.8rem; font-weight: 700; color: var(--color-on-surface-variant); white-space: nowrap;"><i class="fa-solid fa-arrow-down-a-z"></i> Sort By:</label>
+                            <select id="sort-vm-select" class="vm-filter-select">
+                                <option value="priority-asc">Priority Order (Default)</option>
+                                <option value="model-asc">Model Name (A → Z)</option>
+                                <option value="model-desc">Model Name (Z → A)</option>
+                                <option value="brand-asc">Make / Brand (A → Z)</option>
+                                <option value="brand-desc">Make / Brand (Z → A)</option>
+                                <option value="seats-desc">Default Seats (High → Low)</option>
+                                <option value="seats-asc">Default Seats (Low → High)</option>
+                                <option value="type-asc">Body Type (A → Z)</option>
+                                <option value="status-desc">Status (Active First)</option>
+                            </select>
+                        </div>
+
+                        <button class="btn btn-secondary btn-sm" id="btn-clear-vm-filters" title="Reset all filters" style="padding: 0.45rem 0.75rem;">
+                            <i class="fa-solid fa-rotate-left"></i> Reset
+                        </button>
+                    </div>
+
                     <div class="table-responsive">
                         <table class="data-table">
                             <thead>
                                 <tr>
-                                    <th data-i18n="table_brand">Make / Brand</th>
-                                    <th data-i18n="table_model_name">Model Name</th>
-                                    <th data-i18n="table_display_name">Display Name</th>
-                                    <th data-i18n="table_vehicle_type">Body / Type</th>
-                                    <th data-i18n="table_seat_count">Default Seats</th>
-                                    <th data-i18n="table_status">Status</th>
+                                    <th class="sortable-th" data-sort-col="brand" title="Sort by Brand">
+                                        <div class="th-content">
+                                            <span data-i18n="table_brand">Make / Brand</span>
+                                            <i class="fa-solid fa-sort sort-icon" id="sort-icon-brand"></i>
+                                        </div>
+                                    </th>
+                                    <th class="sortable-th" data-sort-col="model_name" title="Sort by Model Name">
+                                        <div class="th-content">
+                                            <span data-i18n="table_model_name">Model Name</span>
+                                            <i class="fa-solid fa-sort sort-icon" id="sort-icon-model_name"></i>
+                                        </div>
+                                    </th>
+                                    <th class="sortable-th" data-sort-col="display_name" title="Sort by Full Display Name">
+                                        <div class="th-content">
+                                            <span data-i18n="table_display_name">Display Name</span>
+                                            <i class="fa-solid fa-sort sort-icon" id="sort-icon-display_name"></i>
+                                        </div>
+                                    </th>
+                                    <th class="sortable-th" data-sort-col="vehicle_type" title="Sort by Body / Type">
+                                        <div class="th-content">
+                                            <span data-i18n="table_vehicle_type">Body / Type</span>
+                                            <i class="fa-solid fa-sort sort-icon" id="sort-icon-vehicle_type"></i>
+                                        </div>
+                                    </th>
+                                    <th class="sortable-th" data-sort-col="seat_count" title="Sort by Default Seats">
+                                        <div class="th-content">
+                                            <span data-i18n="table_seat_count">Default Seats</span>
+                                            <i class="fa-solid fa-sort sort-icon" id="sort-icon-seat_count"></i>
+                                        </div>
+                                    </th>
+                                    <th class="sortable-th" data-sort-col="sort_order" title="Sort by Sort Priority">
+                                        <div class="th-content">
+                                            <span>Priority</span>
+                                            <i class="fa-solid fa-sort sort-icon" id="sort-icon-sort_order"></i>
+                                        </div>
+                                    </th>
+                                    <th class="sortable-th" data-sort-col="is_active" title="Sort by Active Status">
+                                        <div class="th-content">
+                                            <span data-i18n="table_status">Status</span>
+                                            <i class="fa-solid fa-sort sort-icon" id="sort-icon-is_active"></i>
+                                        </div>
+                                    </th>
                                     <th class="text-right" data-i18n="table_actions">Actions</th>
                                 </tr>
                             </thead>
@@ -897,6 +1001,26 @@
                                 <!-- Populated dynamically by JS -->
                             </tbody>
                         </table>
+                    </div>
+
+                    <!-- Pagination Bar -->
+                    <div class="data-pagination" id="vm-pagination-bar">
+                        <div id="vm-pagination-info">Showing 0 of 0 models</div>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <label for="vm-page-size-select" style="font-size: 0.8rem;">Per page:</label>
+                                <select id="vm-page-size-select" class="vm-filter-select" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">
+                                    <option value="25">25</option>
+                                    <option value="50" selected>50</option>
+                                    <option value="100">100</option>
+                                    <option value="250">250</option>
+                                    <option value="500">All (500)</option>
+                                </select>
+                            </div>
+                            <div class="pagination-controls" id="vm-pagination-controls">
+                                <!-- Generated by JS -->
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>

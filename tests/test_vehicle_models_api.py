@@ -70,11 +70,34 @@ def setup_function():
 
 
 def test_vehicle_models_admin_and_public_crud():
-    # 1. Initially auto-seeds default popular global & Cambodian vehicle models (200 items)
+    # 1. Initially auto-seeds curated taxi & transport vehicle models (500 items)
     response = client.get("/v1/api/travel/admin/vehicle-models")
     assert response.status_code == 200
     initial_models = response.json()
-    assert len(initial_models) == 200
+    assert len(initial_models) == 500
+
+    # Test BYD models presence
+    byd_res = client.get("/v1/api/travel/admin/vehicle-models?brand=BYD")
+    assert byd_res.status_code == 200
+    byd_models = byd_res.json()
+    assert len(byd_models) == 59
+    assert all(m["brand"] == "BYD" for m in byd_models)
+
+    # Test Sorting by model_name ASC and DESC
+    sort_asc_res = client.get("/v1/api/travel/admin/vehicle-models?sort_by=model_name&order=asc")
+    assert sort_asc_res.status_code == 200
+    asc_models = sort_asc_res.json()
+    assert asc_models[0]["model_name"].lower() <= asc_models[1]["model_name"].lower()
+
+    sort_desc_res = client.get("/v1/api/travel/admin/vehicle-models?sort_by=model_name&order=desc")
+    assert sort_desc_res.status_code == 200
+    desc_models = sort_desc_res.json()
+    assert desc_models[0]["model_name"].lower() >= desc_models[1]["model_name"].lower()
+
+    # Test Public API sorting and filtering
+    pub_byd = client.get("/v1/api/travel/vehicle-models?brand=BYD&sort_by=model_name&order=asc")
+    assert pub_byd.status_code == 200
+    assert len(pub_byd.json()) == 59
 
     # 2. Create custom vehicle model
     create_payload = {
@@ -104,7 +127,7 @@ def test_vehicle_models_admin_and_public_crud():
     # 4. List models via Public API (GET /v1/api/travel/vehicle-models)
     public_res = client.get("/v1/api/travel/vehicle-models")
     assert public_res.status_code == 200
-    assert len(public_res.json()) == 201
+    assert len(public_res.json()) == 501
 
     # 5. Update vehicle model
     update_res = client.put(
@@ -120,17 +143,17 @@ def test_vehicle_models_admin_and_public_crud():
     assert toggle_res.status_code == 200
     assert toggle_res.json()["is_active"] is False
 
-    # 7. Public API should now return 200 active models (excluding inactive CustomBrand)
+    # 7. Public API should now return 500 active models (excluding inactive CustomBrand)
     public_active_res = client.get("/v1/api/travel/vehicle-models")
     assert public_active_res.status_code == 200
-    assert len(public_active_res.json()) == 200
+    assert len(public_active_res.json()) == 500
 
     # 8. Delete vehicle model
     del_res = client.delete(f"/v1/api/travel/admin/vehicle-models/{model_id}")
     assert del_res.status_code == 204
 
-    # 9. Admin list has 200 models left
+    # 9. Admin list has 500 models left
     admin_after_del = client.get("/v1/api/travel/admin/vehicle-models")
     assert admin_after_del.status_code == 200
-    assert len(admin_after_del.json()) == 200
+    assert len(admin_after_del.json()) == 500
 
