@@ -2563,6 +2563,15 @@ document.addEventListener('DOMContentLoaded', () => {
         return true;
     }
 
+    function getAuthHeaders() {
+        const token = localStorage.getItem('admin_token');
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        return headers;
+    }
+
     // Password visibility toggle handler
     if (btnTogglePass && adminPassInput) {
         btnTogglePass.addEventListener('click', () => {
@@ -2848,6 +2857,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadSummary().then(() => {
             loadDrivers();
             loadPassengers();
+            loadVehicleModels();
         });
     }
 });
