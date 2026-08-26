@@ -119,6 +119,7 @@ def api_v1_root():
 
 for r in [meta_router, travel_router, passenger_router, addresses_router, driver_fee_router, admin_router, live_ws_router, items_router]:
     api_v1_router.include_router(r)
+    app.include_router(r)
 
 def custom_openapi():
     if app.openapi_schema:
@@ -130,6 +131,9 @@ def custom_openapi():
         routes=app.routes,
         servers=app.servers,
     )
+    v1_paths = {path: op for path, op in openapi_schema.get("paths", {}).items() if path.startswith("/v1/api")}
+    if v1_paths:
+        openapi_schema["paths"] = v1_paths
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 

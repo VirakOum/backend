@@ -44,14 +44,10 @@ def test_v1_api_and_direct_api_endpoints():
     assert response_direct.json() == {"status": "ok"}
 
 
-def test_no_unprefixed_api_duplicate_routes():
-    # Unprefixed routes must return 404 Not Found
-    assert client.get("/travel/auth/me").status_code == 404
-    assert client.get("/passenger/trips").status_code == 404
-    assert client.get("/addresses/provinces").status_code == 404
-    assert client.get("/travel/wallet/driver-fee-summary").status_code == 404
-
-    # Proper /v1/api/ routes must exist
+def test_both_prefixed_and_unprefixed_api_routes():
+    # Both unprefixed and prefixed routes should be accessible for maximum reverse-proxy compatibility
+    assert client.get("/addresses/provinces").status_code == 200
+    assert client.get("/travel/app-config").status_code == 200
     assert client.get("/v1/api/addresses/provinces").status_code == 200
     assert client.get("/v1/api/travel/app-config").status_code == 200
 
