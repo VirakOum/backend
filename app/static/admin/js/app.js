@@ -2713,7 +2713,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadVehicleModels() {
         try {
-            const res = await fetch(`${API_BASE}/vehicle-models`, { headers: getAuthHeaders() });
+            let res = await fetch(`${API_BASE}/vehicle-models`, { headers: getAuthHeaders() });
+            if (!res.ok) {
+                res = await fetch(`${API_V1_BASE}/travel/vehicle-models`);
+            }
             if (!res.ok) throw new Error('Failed to fetch vehicle models');
             currentVehicleModels = await res.json();
             renderVehicleModelsTable();
