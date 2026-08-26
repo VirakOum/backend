@@ -4,6 +4,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const API_BASE = '/v1/api/travel/admin';
     const API_V1_BASE = '/v1/api';
 
+    // HTML Escape Helper
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     // Cambodia 25 Provinces list for searchable select components
     const CAMBODIA_PROVINCES = [
         { kh: "ភ្នំពេញ", en: "Phnom Penh" },
