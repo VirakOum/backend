@@ -2491,14 +2491,34 @@ document.addEventListener('DOMContentLoaded', () => {
     if (formCreateMessage) {
         formCreateMessage.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const title = document.getElementById('msg-title').value.trim();
-            const body = document.getElementById('msg-body').value.trim();
-            const target_role = document.getElementById('msg-target').value;
-            const message_type = document.getElementById('msg-type').value;
-            const is_pinned = document.getElementById('msg-pinned').checked;
-            const broadcast_to_notifications = document.getElementById('msg-broadcast').checked;
+            const btnSubmit = formCreateMessage.querySelector('button[type="submit"]');
+            const originalBtnHtml = btnSubmit ? btnSubmit.innerHTML : '';
+            if (btnSubmit) {
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right: 6px;"></i> Broadcasting...';
+            }
 
-            if (!title || !body) return;
+            const titleInput = document.getElementById('msg-title');
+            const bodyInput = document.getElementById('msg-body');
+            const targetInput = document.getElementById('msg-target');
+            const typeInput = document.getElementById('msg-type');
+            const pinnedInput = document.getElementById('msg-pinned');
+            const broadcastInput = document.getElementById('msg-broadcast');
+
+            const title = titleInput.value.trim();
+            const body = bodyInput.value.trim();
+            const target_role = targetInput.value;
+            const message_type = typeInput.value;
+            const is_pinned = pinnedInput.checked;
+            const broadcast_to_notifications = broadcastInput.checked;
+
+            if (!title || !body) {
+                if (btnSubmit) {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = originalBtnHtml;
+                }
+                return;
+            }
 
             try {
                 const response = await fetch(`${API_BASE}/messages`, {
@@ -2516,9 +2536,54 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 if (response.ok) {
-                    showToast(currentLanguage === 'en' ? 'System message broadcasted successfully.' : 'បានផ្ញើសារប្រព័ន្ធដោយជោគជ័យ។');
+                    // 1. Success feedback alert and toast
+                    const isEn = currentLanguage === 'en';
+                    const successToast = isEn
+                        ? '🎉 Broadcast Message & Push Notifications Dispatched Successfully!'
+                        : '🎉 បានផ្សព្វផ្សាយសារប្រព័ន្ធ និងផ្ញើការជូនដំណឹងដោយជោគជ័យ!';
+                    showToast(successToast);
+
+                    // Show prominent in-page success alert banner
+                    let successAlert = document.getElementById('msg-broadcast-success-alert');
+                    if (!successAlert) {
+                        successAlert = document.createElement('div');
+                        successAlert.id = 'msg-broadcast-success-alert';
+                        formCreateMessage.parentNode.insertBefore(successAlert, formCreateMessage);
+                    }
+                    successAlert.innerHTML = `
+                        <div style="background: #ECFDF5; border: 1.5px solid #10B981; border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; display: flex; align-items: flex-start; gap: 12px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15); animation: fadeIn 0.3s ease;">
+                            <div style="width: 32px; height: 32px; border-radius: 50%; background: #10B981; color: white; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;">
+                                <i class="fa-solid fa-check"></i>
+                            </div>
+                            <div style="flex: 1;">
+                                <h4 style="margin: 0 0 4px 0; color: #065F46; font-size: 0.95rem; font-weight: 800;">
+                                    ${isEn ? 'Broadcast Message Sent Successfully!' : 'បានផ្សព្វផ្សាយសារប្រព័ន្ធដោយជោគជ័យ!'}
+                                </h4>
+                                <p style="margin: 0; color: #047857; font-size: 0.82rem; line-height: 1.4;">
+                                    ${isEn
+                                        ? `Message "<strong>${escapeHtml(title)}</strong>" was published to <strong>${target_role.toUpperCase()}</strong> users${broadcast_to_notifications ? ' with live Push Notifications' : ''}.`
+                                        : `សារ "<strong>${escapeHtml(title)}</strong>" ត្រូវបានផ្សាយទៅកាន់អ្នកប្រើប្រាស់ <strong>${target_role}</strong>${broadcast_to_notifications ? ' ជាមួយការជូនដំណឹងផ្ទាល់' : ''}។`
+                                    }
+                                </p>
+                            </div>
+                            <button type="button" onclick="document.getElementById('msg-broadcast-success-alert').style.display='none'" style="background: none; border: none; color: #047857; cursor: pointer; font-size: 14px; padding: 2px;">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                    `;
+                    successAlert.style.display = 'block';
+
+                    // 2. Clear all input fields completely
+                    titleInput.value = '';
+                    bodyInput.value = '';
+                    targetInput.value = 'all';
+                    typeInput.value = 'info';
+                    pinnedInput.checked = false;
+                    broadcastInput.checked = true;
                     formCreateMessage.reset();
-                    document.getElementById('msg-broadcast').checked = true;
+                    broadcastInput.checked = true;
+
+                    // 3. Refresh admin messages table
                     loadAdminMessages();
                 } else {
                     const err = await response.json();
@@ -2526,6 +2591,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch (error) {
                 console.error('Error creating system message:', error);
+                showToast(currentLanguage === 'en' ? 'Network error broadcasting message' : 'កំហុសបណ្តាញក្នុងការផ្ញើសារ', true);
+            } finally {
+                if (btnSubmit) {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = originalBtnHtml;
+                }
             }
         });
     }
