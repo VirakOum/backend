@@ -697,3 +697,12 @@ class SystemAd(Base):
     description_kh: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, nullable=False)
+
+
+class Item(Base):
+    __tablename__ = "items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str | None] = mapped_column(String(300), nullable=True)
+

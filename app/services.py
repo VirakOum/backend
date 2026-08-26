@@ -2,7 +2,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 from uuid import UUID
 
-from .models import User, Vehicle, VehicleModel, Trip, Booking, Payment
+from .models import User, Vehicle, VehicleModel, Trip, Booking, Payment, Item
 from .schemas import ItemCreate, ItemRead, ItemUpdate
 
 
@@ -11,22 +11,36 @@ class ItemNotFoundError(Exception):
 
 
 class ItemService:
-    """Legacy ItemService - preserved for existing routes"""
-    def list_items(self, db: Session) -> list[ItemRead]:
-        # Returning empty list as Item model no longer exists
-        return []
+    def list_items(self, db: Session) -> list[Item]:
+        return list(db.execute(select(Item).order_by(Item.id.asc())).scalars().all())
 
-    def get_item(self, db: Session, item_id: int) -> ItemRead:
-        raise ItemNotFoundError
+    def get_item(self, db: Session, item_id: int) -> Item:
+        item = db.get(Item, item_id)
+        if not item:
+            raise ItemNotFoundError
+        return item
 
-    def create_item(self, db: Session, item: ItemCreate) -> ItemRead:
-        raise ItemNotFoundError
+    def create_item(self, db: Session, item: ItemCreate) -> Item:
+        db_item = Item(name=item.name, description=item.description)
+        db.add(db_item)
+        db.commit()
+        db.refresh(db_item)
+        return db_item
 
-    def update_item(self, db: Session, item_id: int, item: ItemUpdate) -> ItemRead:
-        raise ItemNotFoundError
+    def update_item(self, db: Session, item_id: int, item: ItemUpdate) -> Item:
+        db_item = self.get_item(db, item_id)
+        if item.name is not None:
+            db_item.name = item.name
+        if item.description is not None:
+            db_item.description = item.description
+        db.commit()
+        db.refresh(db_item)
+        return db_item
 
     def delete_item(self, db: Session, item_id: int) -> None:
-        raise ItemNotFoundError
+        db_item = self.get_item(db, item_id)
+        db.delete(db_item)
+        db.commit()
 
 
 # Legacy service instance for backwards compatibility
