@@ -199,6 +199,7 @@ class Trip(Base):
     promotion_label: Mapped[str | None] = mapped_column(String(50), nullable=True)
     promotion_discount_percent: Mapped[int | None] = mapped_column(Integer, nullable=True)
     price_per_seat: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    currency: Mapped[str] = mapped_column(String(10), default="KHR")
     total_seats: Mapped[int] = mapped_column(Integer, nullable=False)
     available_seats: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(String(20), default='scheduled')  # 'scheduled', 'active', 'completed', 'cancelled'
@@ -243,6 +244,7 @@ class Booking(Base):
     passenger_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     seat_numbers: Mapped[list[int]] = mapped_column(ARRAY(Integer), nullable=False)  # e.g., [1, 2, 3]
     total_price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    currency: Mapped[str] = mapped_column(String(10), default="KHR")
     payment_method: Mapped[str] = mapped_column(String(20), default="cash")
     payment_status: Mapped[str] = mapped_column(String(20), default="pending")
     pickup_status: Mapped[str] = mapped_column(String(30), default="pending")

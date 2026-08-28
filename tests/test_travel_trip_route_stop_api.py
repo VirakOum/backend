@@ -83,6 +83,7 @@ def _create_bookings_table() -> None:
                 passenger_id TEXT NOT NULL,
                 seat_numbers TEXT NOT NULL,
                 total_price NUMERIC NOT NULL,
+                currency TEXT DEFAULT 'KHR',
                 payment_method TEXT,
                 payment_status TEXT,
                 pickup_status TEXT,
@@ -2263,3 +2264,47 @@ def test_update_current_user_profile_can_clear_avatar() -> None:
 
     assert response.status_code == 200
     assert response.json()["avatar_url"] is None
+
+
+def test_create_trip_validates_promo_discount_percent_cannot_exceed_100() -> None:
+    token = _signup_driver()
+    vehicle_id = _create_vehicle(token)
+
+    # Test > 100% (e.g. 120%)
+    response = client.post(
+        "/v1/api/travel/trips",
+        headers=_auth_headers(token),
+        json={
+            "vehicle_id": vehicle_id,
+            "departure_province": "Phnom Penh",
+            "destination_province": "Siem Reap",
+            "departure_time": "2026-06-25T07:30:00",
+            "price_per_seat": 10,
+            "currency": "USD",
+            "total_seats": 4,
+            "available_seats": 4,
+            "promotion_label": "Super Discount",
+            "promotion_discount_percent": 120,
+        },
+    )
+    assert response.status_code in (400, 422)
+
+    # Test <= 100% (e.g. 20%)
+    valid_response = client.post(
+        "/v1/api/travel/trips",
+        headers=_auth_headers(token),
+        json={
+            "vehicle_id": vehicle_id,
+            "departure_province": "Phnom Penh",
+            "destination_province": "Siem Reap",
+            "departure_time": "2026-06-25T07:30:00",
+            "price_per_seat": 10,
+            "currency": "USD",
+            "total_seats": 4,
+            "available_seats": 4,
+            "promotion_label": "Super Discount",
+            "promotion_discount_percent": 20,
+        },
+    )
+    assert valid_response.status_code == 201
+    assert valid_response.json()["promotion"]["discount_percent"] == 20

@@ -27,7 +27,7 @@ from ..config import (
 	get_google_places_api_key_ios,
 )
 from ..db import get_db
-from ..models import Address, Booking, BookingLiveLocation, BookingPaymentInstruction, DriverWalletEntry, NotificationPreference, Payment, SupportTicket, SystemMessage, Trip, User, UserNotification, UserPushToken, Vehicle, VehicleModel, phnom_penh_now
+from ..models import Address, Booking, BookingLiveLocation, BookingPaymentInstruction, DriverMembership, DriverWalletEntry, NotificationPreference, Payment, SupportTicket, SystemMessage, Trip, User, UserNotification, UserPushToken, Vehicle, VehicleModel, phnom_penh_now
 from .driver_fee import (
     evaluate_driver_wallet_lock,
     get_or_create_driver_wallet,
@@ -490,6 +490,15 @@ def _final_price_per_seat(trip: Trip) -> Decimal:
 	return _money(price * discount_multiplier)
 
 
+def _normalize_currency(val: str | None) -> str:
+	if not val:
+		return DEFAULT_CURRENCY
+	v = val.strip().upper()
+	if v in ("USD", "$"):
+		return "USD"
+	return "KHR"
+
+
 def _build_promotion(trip: Trip) -> TripPromotionInfo | None:
 	discount_percent = trip.promotion_discount_percent or 0
 	if not trip.promotion_label or discount_percent <= 0:
@@ -499,7 +508,7 @@ def _build_promotion(trip: Trip) -> TripPromotionInfo | None:
 		discount_percent=discount_percent,
 		original_price_per_seat=float(_money(Decimal(str(trip.price_per_seat)))),
 		final_price_per_seat=float(_final_price_per_seat(trip)),
-		currency=DEFAULT_CURRENCY,
+		currency=getattr(trip, "currency", DEFAULT_CURRENCY) or DEFAULT_CURRENCY,
 	)
 
 
@@ -765,7 +774,7 @@ def _build_booking_with_trip_read(booking: Booking) -> BookingWithTripRead:
 		passenger_id=booking.passenger_id,
 		seat_numbers=booking.seat_numbers,
 		total_price=float(booking.total_price),
-		currency=DEFAULT_CURRENCY,
+		currency=getattr(booking, "currency", None) or (getattr(booking.trip, "currency", DEFAULT_CURRENCY) if booking.trip else DEFAULT_CURRENCY) or DEFAULT_CURRENCY,
 		payment_method=_normalized_payment_method(booking.payment_method),
 		payment_status=_normalized_payment_status(_booking_payment_status(booking)),
 		pickup_status=booking.pickup_status,
@@ -1017,6 +1026,7 @@ def _sync_return_trip(db: Session, trip: Trip) -> None:
         "promotion_label": trip.promotion_label,
         "promotion_discount_percent": trip.promotion_discount_percent,
         "price_per_seat": trip.price_per_seat,
+        "currency": getattr(trip, "currency", DEFAULT_CURRENCY) or DEFAULT_CURRENCY,
         "total_seats": trip.total_seats,
         "available_seats": trip.total_seats,
         "status": trip.status,
@@ -1077,6 +1087,11 @@ def _apply_trip_update(db: Session, trip: Trip, payload: TripUpdate, current_use
             update_data[field] = normalized[field]
     if update_data.get("has_return_schedule") and update_data.get("return_departure_time") is None:
         raise HTTPException(status_code=422, detail="return_departure_time is required when has_return_schedule is true")
+    if "promotion_discount_percent" in update_data and update_data["promotion_discount_percent"] is not None:
+        if update_data["promotion_discount_percent"] <= 0 or update_data["promotion_discount_percent"] > 100:
+            raise HTTPException(status_code=400, detail="Promotion discount must be between 1% and 100%")
+    if "currency" in update_data and update_data["currency"] is not None:
+        update_data["currency"] = _normalize_currency(update_data["currency"])
     for field, value in update_data.items():
         setattr(trip, field, value)
     if trip.available_seats > trip.total_seats:
@@ -1606,7 +1621,11 @@ def create_trip(
 	if payload.available_seats > payload.total_seats:
 		raise HTTPException(status_code=400, detail="available_seats cannot exceed total_seats")
 
+	if payload.promotion_discount_percent is not None and (payload.promotion_discount_percent <= 0 or payload.promotion_discount_percent > 100):
+		raise HTTPException(status_code=400, detail="Promotion discount must be between 1% and 100%")
+
 	trip_data = _normalize_trip_schedule_data(payload.model_dump())
+	trip_data["currency"] = _normalize_currency(trip_data.get("currency"))
 	_validate_trip_route_stop_payload(trip_data)
 	if trip_data["has_return_schedule"] and trip_data.get("return_departure_time") is None:
 		raise HTTPException(status_code=422, detail="return_departure_time is required when has_return_schedule is true")
@@ -1967,8 +1986,35 @@ def find_trips_now(
         )
     )
     trips = db.execute(base_query).scalars().all()
-    
-    matched_trips: list[tuple[Trip, int, float, datetime]] = []
+
+    driver_ids = list({trip.driver_id for trip in trips if trip.driver_id})
+    memberships: dict[UUID, DriverMembership] = {}
+    if driver_ids:
+        active_mems = db.execute(
+            select(DriverMembership)
+            .where(DriverMembership.driver_id.in_(driver_ids), DriverMembership.status == "active")
+            .order_by(DriverMembership.started_at.desc())
+        ).scalars().all()
+        for mem in active_mems:
+            if mem.driver_id not in memberships:
+                memberships[mem.driver_id] = mem
+
+    def _tier_rank(trip: Trip) -> int:
+        mem = memberships.get(trip.driver_id)
+        if mem:
+            if mem.code == "vip":
+                return 0
+            if mem.code == "pro":
+                return 1
+        if trip.promotion_label:
+            lbl = trip.promotion_label.lower()
+            if "vip" in lbl:
+                return 0
+            if "pro" in lbl:
+                return 1
+        return 2
+
+    matched_trips: list[tuple[Trip, int, int, float, datetime]] = []
     for trip in trips:
         if not _trip_overlaps_window(trip, window_start, window_end, strict_start=False):
             continue
@@ -1998,13 +2044,30 @@ def find_trips_now(
                 (
                     trip,
                     0 if trip.status == "active" else 1,
+                    _tier_rank(trip),
                     proximity_distance_km,
                     _trip_departure_local(trip) or datetime.max,
                 )
             )
+
+    # If no destination province was selected and no direct route/proximity matches were found,
+    # show all available trips across Cambodia so passenger sees cars on map.
+    if not destination_province and not matched_trips:
+        for trip in trips:
+            if not _trip_overlaps_window(trip, window_start, window_end, strict_start=False):
+                continue
+            matched_trips.append(
+                (
+                    trip,
+                    0 if trip.status == "active" else 1,
+                    _tier_rank(trip),
+                    float("inf"),
+                    _trip_departure_local(trip) or datetime.max,
+                )
+            )
             
-    # Active trips with live positions should surface closest-first for instant pickup.
-    matched_trips.sort(key=lambda item: (item[1], item[2], item[3]))
+    # VIP & Pro active trips surface first, followed by proximity and departure time.
+    matched_trips.sort(key=lambda item: (item[1], item[2], item[3], item[4]))
     
     return FindTripsNowResponse(
         passenger_address=passenger_address,
@@ -2152,6 +2215,7 @@ def create_booking(
 		passenger_id=current_user.id,
 		seat_numbers=payload.seat_numbers,
 		total_price=total_price,
+		currency=getattr(trip, "currency", DEFAULT_CURRENCY) or DEFAULT_CURRENCY,
 		payment_method=payment_method,
 		status="confirmed",
 		payment_status="pending",
@@ -2941,7 +3005,7 @@ def list_wallet_transactions(
 					transaction_id=payment.transaction_id,
 					type="payment",
 					amount=float(payment.amount),
-					currency=DEFAULT_CURRENCY,
+					currency=getattr(payment, "currency", None) or getattr(booking, "currency", DEFAULT_CURRENCY) or DEFAULT_CURRENCY,
 					status=payment.status,
 					payment_method=payment.payment_method,
 					booking_id=booking.id,
@@ -2955,7 +3019,7 @@ def list_wallet_transactions(
 					transaction_id=f"BOOKING-{booking.id}",
 					type="booking",
 					amount=float(booking.total_price),
-					currency=DEFAULT_CURRENCY,
+					currency=getattr(booking, "currency", DEFAULT_CURRENCY) or DEFAULT_CURRENCY,
 					status=booking.status,
 					payment_method=booking.payment_method,
 					booking_id=booking.id,

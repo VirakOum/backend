@@ -267,6 +267,7 @@ class TripCreate(BaseModel):
     promotion_label: str | None = Field(default=None, max_length=50)
     promotion_discount_percent: int | None = Field(default=None, ge=0, le=100)
     price_per_seat: Decimal = Field(gt=0)
+    currency: str = Field(default="KHR", pattern="^(KHR|USD|៛|\\$)$")
     total_seats: int = Field(gt=0)
     available_seats: int = Field(ge=0)
     status: str = Field(default="scheduled", pattern="^(scheduled|active|completed|cancelled)$")
@@ -293,6 +294,7 @@ class TripUpdate(BaseModel):
     promotion_label: str | None = Field(default=None, max_length=50)
     promotion_discount_percent: int | None = Field(default=None, ge=0, le=100)
     price_per_seat: Decimal | None = Field(default=None, gt=0)
+    currency: str | None = Field(default=None, pattern="^(KHR|USD|៛|\\$)$")
     total_seats: int | None = Field(default=None, gt=0)
     available_seats: int | None = Field(default=None, ge=0)
     status: str | None = Field(default=None, pattern="^(scheduled|active|completed|cancelled)$")
@@ -394,6 +396,7 @@ class BookingCreate(BaseModel):
     seat_numbers: list[int] = Field(min_length=1)
     payment_method: BookingPaymentMethod = "cash"
     total_price: Decimal | None = Field(default=None, gt=0)
+    currency: str | None = Field(default=None, pattern="^(KHR|USD|៛|\\$)$")
     status: str = Field(default="pending", pattern="^(pending|confirmed|cancelled)$")
 
 
