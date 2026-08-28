@@ -701,6 +701,25 @@ class SystemAd(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, nullable=False)
 
 
+class NewsArticle(Base):
+    __tablename__ = "news_articles"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    title_kh: Mapped[str] = mapped_column(String(255), nullable=False)
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    summary_kh: Mapped[str | None] = mapped_column(Text, nullable=True)
+    content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    image_url: Mapped[str] = mapped_column(String(500), nullable=False)
+    source_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    source_name: Mapped[str] = mapped_column(String(100), default="Fresh News", nullable=False)
+    category: Mapped[str] = mapped_column(String(50), default="Breaking News", nullable=False)
+    is_breaking: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
+    published_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, nullable=False)
+
+
 class Item(Base):
     __tablename__ = "items"
 

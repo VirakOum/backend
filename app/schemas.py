@@ -910,3 +910,54 @@ class PushTokenRegisterResponse(BaseModel):
     registered: bool = True
     push_token: str
 
+
+class NewsArticleCreate(BaseModel):
+    title: str = Field(..., max_length=255)
+    title_kh: str = Field(..., max_length=255)
+    summary: str | None = None
+    summary_kh: str | None = None
+    content: str | None = None
+    image_url: str = Field(..., max_length=500)
+    source_url: str | None = Field(None, max_length=500)
+    source_name: str = Field(default="Fresh News", max_length=100)
+    category: str = Field(default="Breaking News", max_length=50)
+    is_breaking: bool = False
+    is_active: bool = True
+
+
+class NewsArticleUpdate(BaseModel):
+    title: str | None = Field(None, max_length=255)
+    title_kh: str | None = Field(None, max_length=255)
+    summary: str | None = None
+    summary_kh: str | None = None
+    content: str | None = None
+    image_url: str | None = Field(None, max_length=500)
+    source_url: str | None = Field(None, max_length=500)
+    source_name: str | None = Field(None, max_length=100)
+    category: str | None = Field(None, max_length=50)
+    is_breaking: bool | None = None
+    is_active: bool | None = None
+
+
+class NewsArticleRead(BaseModel):
+    id: UUID
+    title: str
+    title_kh: str
+    summary: str | None = None
+    summary_kh: str | None = None
+    content: str | None = None
+    image_url: str
+    source_url: str | None = None
+    source_name: str
+    category: str
+    is_breaking: bool
+    is_active: bool
+    published_at: datetime
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class NewsArticleListResponse(BaseModel):
+    articles: list[NewsArticleRead]
+

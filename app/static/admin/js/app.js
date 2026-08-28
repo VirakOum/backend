@@ -81,6 +81,13 @@ document.addEventListener('DOMContentLoaded', () => {
             nav_messages: "System Messages",
             title_messages: "System Messages & Announcements",
             subtitle_messages: "Broadcast informational messages and alerts to app users",
+            nav_news: "News & Media",
+            title_news: "News & Media Articles",
+            subtitle_news: "Publish live breaking news, traffic alerts, and fresh media articles with image thumbnails",
+            news_post_title: "Post News Article",
+            news_post_desc: "Publish fresh news, traffic alerts, and media updates with image thumbnails.",
+            news_feed_title: "Published News Articles",
+            btn_post_news: "Publish News Article",
             nav_vehicle_models: "Vehicle Models",
             title_vehicle_models: "Car & Vehicle Models",
             subtitle_vehicle_models: "Manage available vehicle makes, models, and default seating configurations",
@@ -235,6 +242,13 @@ document.addEventListener('DOMContentLoaded', () => {
             nav_messages: "សារប្រព័ន្ធ",
             title_messages: "សារប្រព័ន្ធ និងការប្រកាសដំណឹង",
             subtitle_messages: "ផ្សព្វផ្សាយសារព័ត៌មាន និងការព្រមានដល់អ្នកប្រើប្រាស់កម្មវិធី",
+            nav_news: "ព័ត៌មាន និងសារព័ត៌មាន",
+            title_news: "ព័ត៌មាន និងសារព័ត៌មានទាន់ហេតុការណ៍",
+            subtitle_news: "ចុះផ្សាយព័ត៌មានទាន់ហេតុការណ៍ ការជូនដំណឹងចរាចរណ៍ និងអត្ថបទសារព័ត៌មានជាមួយរូបភាពតូចៗ",
+            news_post_title: "ចុះផ្សាយព័ត៌មាន",
+            news_post_desc: "ចុះផ្សាយព័ត៌មានថ្មីៗ ការជូនដំណឹងចរាចរណ៍ និងព័ត៌មានប្រព័ន្ធជាមួយរូបភាពតូចៗ។",
+            news_feed_title: "ព័ត៌មានដែលបានចុះផ្សាយ",
+            btn_post_news: "ចុះផ្សាយព័ត៌មាន",
             nav_vehicle_models: "ម៉ូដែលរថយន្ត",
             title_vehicle_models: "ម៉ូដែលរថយន្ត និងយានយន្ត",
             subtitle_vehicle_models: "គ្រប់គ្រងម៉ាក ម៉ូដែល និងចំនួនកៅអីតាមលំនាំដើមរបស់រថយន្ត",
@@ -692,6 +706,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // Trigger messages load
             if (activeTabId === 'messages') {
                 loadAdminMessages();
+            }
+
+            // Trigger news load
+            if (activeTabId === 'news') {
+                loadNewsArticles();
             }
 
             // Trigger vehicle models load
@@ -2027,6 +2046,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activeTabId === 'discounts') loadDiscountsData();
         if (activeTabId === 'ads') loadAdsData();
         if (activeTabId === 'promotions') loadPromotionsData();
+        if (activeTabId === 'messages') loadAdminMessages();
+        if (activeTabId === 'news') loadNewsArticles();
+        if (activeTabId === 'vehicle-models') loadVehicleModels();
         showToast(TRANSLATIONS[currentLanguage].toast_refresh);
     });
     
@@ -2628,6 +2650,213 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error('Error deleting system message:', error);
+        }
+    };
+
+    // News & Media Articles Management
+    const newsImageUrlInput = document.getElementById('news-image-url');
+    const newsImgPreviewContainer = document.getElementById('news-img-preview-container');
+    const newsImagePreview = document.getElementById('news-image-preview');
+
+    if (newsImageUrlInput && newsImagePreview) {
+        const updateNewsPreview = () => {
+            const url = newsImageUrlInput.value.trim();
+            if (url) {
+                newsImagePreview.src = url;
+                newsImgPreviewContainer.style.display = 'block';
+            } else {
+                newsImgPreviewContainer.style.display = 'none';
+            }
+        };
+        newsImageUrlInput.addEventListener('input', updateNewsPreview);
+        newsImageUrlInput.addEventListener('change', updateNewsPreview);
+    }
+
+    async function loadNewsArticles() {
+        try {
+            const response = await fetch(`${API_BASE}/news`);
+            if (!response.ok) return;
+            const articles = await response.json();
+            const tableBody = document.getElementById('news-table-body');
+            if (!tableBody) return;
+            tableBody.innerHTML = '';
+
+            if (!articles || articles.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 2rem; color: var(--color-text-secondary);">
+                            No news articles posted yet. Publish an article using the form.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            articles.forEach(article => {
+                const tr = document.createElement('tr');
+                const categoryColorMap = {
+                    'Breaking News': '#dc2626',
+                    'Traffic & Transit': '#2563eb',
+                    'National': '#059669',
+                    'Safety Alert': '#d97706',
+                    'Tourism & Travel': '#7c3aed',
+                };
+                const catColor = categoryColorMap[article.category] || '#2563eb';
+
+                const breakingBadge = article.is_breaking 
+                    ? '<span style="font-size:10px; background:#ffe4e6; color:#e11d48; padding:2px 6px; border-radius:4px; font-weight:800; margin-left:6px;"><i class="fa-solid fa-bolt"></i> BREAKING</span>' 
+                    : '';
+
+                const statusClass = article.is_active ? 'active' : 'inactive';
+                const statusText = article.is_active ? 'Active' : 'Hidden';
+
+                const pubDate = new Date(article.published_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+                const linkBtn = article.source_url 
+                    ? `<a href="${escapeHtml(article.source_url)}" target="_blank" rel="noopener noreferrer" class="btn btn-chip" style="margin-right: 4px; text-decoration: none; color: #2563eb;" title="Open Source Link"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>` 
+                    : '';
+
+                tr.innerHTML = `
+                    <td style="width: 80px;">
+                        <img src="${escapeHtml(article.image_url)}" alt="Thumbnail" style="width: 72px; height: 50px; object-fit: cover; border-radius: 8px; border: 1px solid #e5e7eb; display: block;" onerror="this.src='https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=200';">
+                    </td>
+                    <td>
+                        <div style="font-weight: 700; color: var(--color-primary); font-size: 0.9rem; line-height: 1.3;">
+                            ${escapeHtml(article.title_kh)} ${breakingBadge}
+                        </div>
+                        <div style="font-size: 0.8rem; color: #4b5563; margin-top: 2px;">
+                            ${escapeHtml(article.title)}
+                        </div>
+                        <div style="font-size: 0.72rem; color: #9ca3af; margin-top: 4px; display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: 600; color: #6b7280;"><i class="fa-solid fa-newspaper"></i> ${escapeHtml(article.source_name)}</span>
+                            <span>&bull;</span>
+                            <span>${pubDate}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <span style="font-weight: 700; font-size: 0.78rem; color: ${catColor}; background: ${catColor}15; padding: 3px 8px; border-radius: 6px; white-space: nowrap;">
+                            ${escapeHtml(article.category)}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="ticket-status-badge ${statusClass}">${statusText}</span>
+                    </td>
+                    <td class="text-right" style="white-space: nowrap;">
+                        ${linkBtn}
+                        <button class="btn btn-chip" onclick="toggleNewsActive('${article.id}')" style="margin-right: 4px;" title="Toggle Visibility">
+                            <i class="fa-solid ${article.is_active ? 'fa-eye-slash' : 'fa-eye'}"></i>
+                        </button>
+                        <button class="btn btn-chip danger" onclick="deleteNewsArticle('${article.id}')" title="Delete Article">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        } catch (error) {
+            console.error('Error loading news articles:', error);
+        }
+    }
+
+    const formCreateNews = document.getElementById('form-create-news');
+    if (formCreateNews) {
+        formCreateNews.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btnSubmit = formCreateNews.querySelector('button[type="submit"]');
+            const originalBtnHtml = btnSubmit ? btnSubmit.innerHTML : '';
+            if (btnSubmit) {
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right: 6px;"></i> Publishing...';
+            }
+
+            const titleKh = document.getElementById('news-title-kh').value.trim();
+            const title = document.getElementById('news-title').value.trim();
+            const imageUrl = document.getElementById('news-image-url').value.trim();
+            const sourceName = document.getElementById('news-source-name').value.trim() || 'Fresh News';
+            const category = document.getElementById('news-category').value;
+            const sourceUrl = document.getElementById('news-source-url').value.trim() || null;
+            const summaryKh = document.getElementById('news-summary-kh').value.trim() || null;
+            const summary = document.getElementById('news-summary').value.trim() || null;
+            const isBreaking = document.getElementById('news-is-breaking').checked;
+            const isActive = document.getElementById('news-is-active').checked;
+
+            if (!titleKh || !title || !imageUrl) {
+                if (btnSubmit) {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = originalBtnHtml;
+                }
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/news`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title,
+                        title_kh: titleKh,
+                        image_url: imageUrl,
+                        source_name: sourceName,
+                        category,
+                        source_url: sourceUrl,
+                        summary,
+                        summary_kh: summaryKh,
+                        is_breaking: isBreaking,
+                        is_active: isActive,
+                    })
+                });
+
+                if (response.ok) {
+                    const isEn = currentLanguage === 'en';
+                    showToast(isEn ? '🎉 News article published successfully!' : '🎉 បានចុះផ្សាយព័ត៌មានដោយជោគជ័យ!');
+                    formCreateNews.reset();
+                    document.getElementById('news-source-name').value = 'Fresh News';
+                    document.getElementById('news-is-active').checked = true;
+                    if (newsImgPreviewContainer) newsImgPreviewContainer.style.display = 'none';
+                    loadNewsArticles();
+                } else {
+                    const err = await response.json();
+                    alert(err.detail || 'Could not publish article.');
+                }
+            } catch (error) {
+                console.error('Error creating news article:', error);
+                showToast(currentLanguage === 'en' ? 'Network error publishing article' : 'កំហុសបណ្តាញក្នុងការចុះផ្សាយព័ត៌មាន', true);
+            } finally {
+                if (btnSubmit) {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = originalBtnHtml;
+                }
+            }
+        });
+    }
+
+    const btnRefreshNews = document.getElementById('btn-refresh-news');
+    if (btnRefreshNews) {
+        btnRefreshNews.addEventListener('click', loadNewsArticles);
+    }
+
+    window.toggleNewsActive = async (id) => {
+        try {
+            const response = await fetch(`${API_BASE}/news/${id}/toggle-active`, { method: 'POST' });
+            if (response.ok) {
+                showToast(currentLanguage === 'en' ? 'Article visibility updated.' : 'បានបច្ចុប្បន្នភាពការបង្ហាញព័ត៌មាន។');
+                loadNewsArticles();
+            }
+        } catch (error) {
+            console.error('Error toggling news status:', error);
+        }
+    };
+
+    window.deleteNewsArticle = async (id) => {
+        if (!confirm(currentLanguage === 'en' ? 'Delete this news article?' : 'តើអ្នកពិតជាចង់លុបព័ត៌មាននេះមែនទេ?')) return;
+        try {
+            const response = await fetch(`${API_BASE}/news/${id}`, { method: 'DELETE' });
+            if (response.ok) {
+                showToast(currentLanguage === 'en' ? 'Article deleted.' : 'បានលុបព័ត៌មាន។');
+                loadNewsArticles();
+            }
+        } catch (error) {
+            console.error('Error deleting news article:', error);
         }
     };
 
@@ -3286,6 +3515,7 @@ document.addEventListener('DOMContentLoaded', () => {
             loadDrivers();
             loadPassengers();
             loadVehicleModels();
+            loadNewsArticles();
         });
     }
 });

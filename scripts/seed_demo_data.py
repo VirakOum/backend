@@ -31,6 +31,7 @@ from app.models import (
     Vehicle,
     SystemDiscountTicket,
     SystemAd,
+    NewsArticle,
 )
 
 PROVINCES = [
@@ -572,6 +573,42 @@ def upsert_system_discount_ticket(
     ticket.expires_at = expires_at
     db.flush()
     return ticket
+
+
+def upsert_news_article(
+    db,
+    *,
+    title: str,
+    title_kh: str,
+    summary: str | None,
+    summary_kh: str | None,
+    image_url: str,
+    source_url: str | None,
+    source_name: str = "Fresh News",
+    category: str = "Breaking News",
+    is_breaking: bool = False,
+    is_active: bool = True,
+) -> NewsArticle:
+    article = db.execute(select(NewsArticle).where(NewsArticle.title == title)).scalars().first()
+    if article is None:
+        article = NewsArticle(
+            title=title,
+            title_kh=title_kh,
+            image_url=image_url,
+            published_at=datetime.now(ZoneInfo("Asia/Phnom_Penh")).replace(tzinfo=None),
+        )
+        db.add(article)
+    article.title_kh = title_kh
+    article.summary = summary
+    article.summary_kh = summary_kh
+    article.image_url = image_url
+    article.source_url = source_url
+    article.source_name = source_name
+    article.category = category
+    article.is_breaking = is_breaking
+    article.is_active = is_active
+    db.flush()
+    return article
 
 
 def split_seat_numbers(seat_numbers: list[int]) -> list[list[int]]:
@@ -1216,6 +1253,60 @@ def seed() -> None:
             description_kh="ប័ណ្ណបញ្ចុះតម្លៃពិសេស ២៥% សម្រាប់ការធ្វើដំណើរជាលក្ខណៈគ្រួសារ",
             is_active=True,
             expires_at=now + timedelta(days=120),
+        )
+
+        # Seed realistic Cambodia Fresh News / Breaking Travel News articles.
+        upsert_news_article(
+            db,
+            title="Phnom Penh - Sihanoukville Expressway Traffic Flow Smooth Ahead of Holiday Weekend",
+            title_kh="ចរាចរណ៍លើផ្លូវល្បឿនលឿន ភ្នំពេញ-ព្រះសីហនុ មានសភាពរលូនល្អ ត្រៀមស្វាគមន៍ចុងសប្តាហ៍",
+            summary="Authorities report normal flow of transit vehicles with enhanced safety patrol teams deployed across key expressway interchanges.",
+            summary_kh="អាជ្ញាធររាយការណ៍ថាចរាចរណ៍យានយន្តមានដំណើរការល្អធម្មតា ជាមួយនឹងការដាក់ពង្រាយក្រុមល្បាតសុវត្ថិភាពនៅតាមចំណុចប្រសព្វសំខាន់ៗ។",
+            image_url="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=800&auto=format&fit=crop",
+            source_url="https://m.freshnews.com.kh",
+            source_name="Fresh News",
+            category="Breaking News",
+            is_breaking=True,
+            is_active=True,
+        )
+        upsert_news_article(
+            db,
+            title="National Road 4 Rehabilitation Enhances Safety for Inter-Provincial Taxi and Bus Fleets",
+            title_kh="ការកែលម្អផ្លូវជាតិលេខ ៤ បង្កើនសុវត្ថិភាពខ្ពស់សម្រាប់រថយន្តតាក់ស៊ី និងរថយន្តក្រុងដឹកអ្នកដំណើរ",
+            summary="Ministry of Public Works completes new road surface enhancements and street lighting along Kampong Speu - Sihanoukville corridor.",
+            summary_kh="ក្រសួងសាធារណការបានបញ្ចប់ការកែលម្អគុណភាពកម្រាលផ្លូវ និងភ្លើងបំភ្លឺសាធារណៈតាមបណ្តោយខេត្តកំពង់ស្ពឺ-ព្រះសីហនុ។",
+            image_url="https://images.unsplash.com/photo-1519817650390-64a93db51149?q=80&w=800&auto=format&fit=crop",
+            source_url="https://m.freshnews.com.kh",
+            source_name="Fresh News",
+            category="Traffic & Transit",
+            is_breaking=False,
+            is_active=True,
+        )
+        upsert_news_article(
+            db,
+            title="Angkor Tourism Surges with Eco-Friendly Electric Transit Options in Siem Reap",
+            title_kh="វិស័យទេសចរណ៍តំបន់អង្គរកើនឡើងខ្លាំង ជាមួយជម្រើសសេវាកម្មដឹកជញ្ជូនបៃតងនៅសៀមរាប",
+            summary="Siem Reap welcomes higher domestic and international passenger volume with modern ride-sharing and taxi booking platforms.",
+            summary_kh="ខេត្តសៀមរាបទទួលបានកំណើនភ្ញៀវទេសចរជាតិ និងអន្តរជាតិកើនឡើងខ្ពស់ ជាមួយប្រព័ន្ធកក់រថយន្ត និងតាក់ស៊ីទំនើប។",
+            image_url="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=800&auto=format&fit=crop",
+            source_url="https://m.freshnews.com.kh",
+            source_name="Fresh News",
+            category="Tourism & Travel",
+            is_breaking=False,
+            is_active=True,
+        )
+        upsert_news_article(
+            db,
+            title="Weather & Road Safety Alert: Heavy Rain Advisory for Coastal & Mountainous Routes",
+            title_kh="ការជូនដំណឹងពីអាកាសធាតុ និងសុវត្ថិភាពផ្លូវថ្នល់: ការប្រុងប្រយ័ត្នភ្លៀងធ្លាក់ខ្លាំងនៅតំបន់ឆ្នេរ និងតំបន់ភ្នំ",
+            summary="Drivers are advised to check tyre pressure, maintain safe braking distances, and use dipped headlights during night transit.",
+            summary_kh="អ្នកបើកបរត្រូវបានណែនាំឱ្យពិនិត្យសម្ពាធកង់ រក្សាគម្លាតសុវត្ថិភាព និងបើកភ្លើងកូដអំឡុងពេលធ្វើដំណើរពេលយប់។",
+            image_url="https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?q=80&w=800&auto=format&fit=crop",
+            source_url="https://m.freshnews.com.kh",
+            source_name="Fresh News",
+            category="Safety Alert",
+            is_breaking=False,
+            is_active=True,
         )
 
         ensure_default_vehicle_models(db)

@@ -22,6 +22,7 @@ from ..models import (
     SystemDiscountTicket,
     SystemAd,
     SystemMessage,
+    NewsArticle,
     UserNotification,
     phnom_penh_now
 )
@@ -35,7 +36,10 @@ from ..schemas import (
     SystemMessageUpdate,
     VehicleModelCreate,
     VehicleModelUpdate,
-    VehicleModelRead
+    VehicleModelRead,
+    NewsArticleCreate,
+    NewsArticleUpdate,
+    NewsArticleRead,
 )
 from ..auth import hash_password, verify_password, issue_token
 from .driver_fee import evaluate_driver_wallet_lock, get_runtime_settings, MEMBERSHIP_CATALOG
@@ -1110,4 +1114,98 @@ def delete_admin_vehicle_model(model_id: uuid.UUID, db: Session = Depends(get_db
     if not v_model:
         raise HTTPException(status_code=404, detail="Vehicle model not found")
     db.delete(v_model)
+    db.commit()
+
+
+# --- News & Media Articles Endpoints ---
+
+@router.get("/news", response_model=List[NewsArticleRead])
+def list_admin_news(
+    category: Optional[str] = Query(None, description="Filter by category"),
+    is_active: Optional[bool] = Query(None, description="Filter by active status"),
+    db: Session = Depends(get_db)
+) -> Any:
+    stmt = select(NewsArticle)
+    if category:
+        stmt = stmt.where(NewsArticle.category == category)
+    if is_active is not None:
+        stmt = stmt.where(NewsArticle.is_active == is_active)
+    stmt = stmt.order_by(NewsArticle.is_breaking.desc(), NewsArticle.published_at.desc())
+    return db.scalars(stmt).all()
+
+
+@router.post("/news", response_model=NewsArticleRead, status_code=201)
+def create_admin_news(payload: NewsArticleCreate, db: Session = Depends(get_db)) -> Any:
+    article = NewsArticle(
+        id=uuid.uuid4(),
+        title=payload.title.strip(),
+        title_kh=payload.title_kh.strip(),
+        summary=payload.summary.strip() if payload.summary else None,
+        summary_kh=payload.summary_kh.strip() if payload.summary_kh else None,
+        content=payload.content.strip() if payload.content else None,
+        image_url=payload.image_url.strip(),
+        source_url=payload.source_url.strip() if payload.source_url else None,
+        source_name=payload.source_name.strip() if payload.source_name else "Fresh News",
+        category=payload.category.strip() if payload.category else "Breaking News",
+        is_breaking=payload.is_breaking,
+        is_active=payload.is_active,
+        published_at=phnom_penh_now(),
+        created_at=phnom_penh_now(),
+    )
+    db.add(article)
+    db.commit()
+    db.refresh(article)
+    return article
+
+
+@router.put("/news/{article_id}", response_model=NewsArticleRead)
+def update_admin_news(article_id: uuid.UUID, payload: NewsArticleUpdate, db: Session = Depends(get_db)) -> Any:
+    article = db.get(NewsArticle, article_id)
+    if not article:
+        raise HTTPException(status_code=404, detail="News article not found")
+    if payload.title is not None:
+        article.title = payload.title.strip()
+    if payload.title_kh is not None:
+        article.title_kh = payload.title_kh.strip()
+    if payload.summary is not None:
+        article.summary = payload.summary.strip() if payload.summary else None
+    if payload.summary_kh is not None:
+        article.summary_kh = payload.summary_kh.strip() if payload.summary_kh else None
+    if payload.content is not None:
+        article.content = payload.content.strip() if payload.content else None
+    if payload.image_url is not None:
+        article.image_url = payload.image_url.strip()
+    if payload.source_url is not None:
+        article.source_url = payload.source_url.strip() if payload.source_url else None
+    if payload.source_name is not None:
+        article.source_name = payload.source_name.strip()
+    if payload.category is not None:
+        article.category = payload.category.strip()
+    if payload.is_breaking is not None:
+        article.is_breaking = payload.is_breaking
+    if payload.is_active is not None:
+        article.is_active = payload.is_active
+
+    db.commit()
+    db.refresh(article)
+    return article
+
+
+@router.post("/news/{article_id}/toggle-active", response_model=NewsArticleRead)
+def toggle_admin_news_active(article_id: uuid.UUID, db: Session = Depends(get_db)) -> Any:
+    article = db.get(NewsArticle, article_id)
+    if not article:
+        raise HTTPException(status_code=404, detail="News article not found")
+    article.is_active = not article.is_active
+    db.commit()
+    db.refresh(article)
+    return article
+
+
+@router.delete("/news/{article_id}", status_code=204)
+def delete_admin_news(article_id: uuid.UUID, db: Session = Depends(get_db)) -> None:
+    article = db.get(NewsArticle, article_id)
+    if not article:
+        raise HTTPException(status_code=404, detail="News article not found")
+    db.delete(article)
     db.commit()

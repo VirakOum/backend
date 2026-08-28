@@ -156,6 +156,10 @@
                     <i class="fa-solid fa-bullhorn nav-icon"></i>
                     <span data-i18n="nav_messages">System Messages</span>
                 </a>
+                <a href="#news" class="nav-item" data-tab="news">
+                    <i class="fa-solid fa-newspaper nav-icon"></i>
+                    <span data-i18n="nav_news">News & Media</span>
+                </a>
                 <a href="#vehicle-models" class="nav-item" data-tab="vehicle-models">
                     <i class="fa-solid fa-car-side nav-icon"></i>
                     <span data-i18n="nav_vehicle_models">Vehicle Models</span>
@@ -856,6 +860,122 @@
                                     </tr>
                                 </thead>
                                 <tbody id="messages-table-body">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                </div>
+            </section>
+
+            <!-- News & Media Articles Tab -->
+            <section id="tab-news" class="tab-pane">
+                <div style="display: grid; grid-template-columns: 1fr 1.3fr; gap: var(--spacing-lg); align-items: start;">
+                    
+                    <!-- Left Column: Post News & Media Form -->
+                    <div class="content-card" style="padding: var(--spacing-lg);">
+                        <div style="margin-bottom: var(--spacing-md);">
+                            <h3 style="font-family: var(--font-display); font-weight:800; color: var(--color-primary); margin:0;">
+                                <i class="fa-solid fa-newspaper" style="margin-right: 6px;"></i> <span data-i18n="news_post_title">Post News Article</span>
+                            </h3>
+                            <p style="font-size: 0.85rem; color: var(--color-text-secondary); margin-top: 4px;" data-i18n="news_post_desc">Publish fresh news, traffic alerts, and media updates with image thumbnails.</p>
+                        </div>
+                        
+                        <form id="form-create-news">
+                            <div style="margin-bottom: var(--spacing-sm);">
+                                <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px;">Headline (Khmer / ភាសាខ្មែរ)</label>
+                                <input type="text" id="news-title-kh" class="form-control" placeholder="e.g. ព័ត៌មានទាន់ហេតុការណ៍: ស្ថានភាពចរាចរណ៍..." required style="width: 100%; padding: 0.5rem; border-radius: 8px; border: 1px solid #d1d5db;">
+                            </div>
+
+                            <div style="margin-bottom: var(--spacing-sm);">
+                                <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px;">Headline (English)</label>
+                                <input type="text" id="news-title" class="form-control" placeholder="e.g. Breaking News: Expressway Traffic Flow Update..." required style="width: 100%; padding: 0.5rem; border-radius: 8px; border: 1px solid #d1d5db;">
+                            </div>
+
+                            <div style="margin-bottom: var(--spacing-sm);">
+                                <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px;">Featured Image Thumbnail URL</label>
+                                <input type="url" id="news-image-url" class="form-control" placeholder="https://images.unsplash.com/... or Fresh News image URL" required style="width: 100%; padding: 0.5rem; border-radius: 8px; border: 1px solid #d1d5db;">
+                                <div id="news-img-preview-container" style="margin-top: 6px; display: none;">
+                                    <img id="news-image-preview" src="" alt="Thumbnail Preview" style="width: 100%; max-height: 140px; object-fit: cover; border-radius: 8px; border: 1px solid #e5e7eb;">
+                                </div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-sm); margin-bottom: var(--spacing-sm);">
+                                <div>
+                                    <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px;">Media Source</label>
+                                    <input type="text" id="news-source-name" class="form-control" value="Fresh News" placeholder="Fresh News, Khmer Times, etc." style="width: 100%; padding: 0.5rem; border-radius: 8px; border: 1px solid #d1d5db;">
+                                </div>
+                                <div>
+                                    <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px;">Category / Tag</label>
+                                    <select id="news-category" class="form-control" style="width: 100%; padding: 0.5rem; border-radius: 8px; border: 1px solid #d1d5db;">
+                                        <option value="Breaking News">🔴 Breaking News</option>
+                                        <option value="Traffic & Transit">🚗 Traffic & Transit</option>
+                                        <option value="National">🇰🇭 National</option>
+                                        <option value="Tourism & Travel">✈️ Tourism & Travel</option>
+                                        <option value="Safety Alert">⚠️ Safety Alert</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div style="margin-bottom: var(--spacing-sm);">
+                                <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px;">Article Link / Source URL (Optional)</label>
+                                <input type="url" id="news-source-url" class="form-control" placeholder="e.g. https://m.freshnews.com.kh/article/123" style="width: 100%; padding: 0.5rem; border-radius: 8px; border: 1px solid #d1d5db;">
+                            </div>
+                            
+                            <div style="margin-bottom: var(--spacing-sm);">
+                                <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px;">Short Summary (Khmer)</label>
+                                <textarea id="news-summary-kh" class="form-control" rows="2" placeholder="សេចក្តីសង្ខេបព័ត៌មាន..." style="width: 100%; padding: 0.5rem; border-radius: 8px; border: 1px solid #d1d5db; font-family: inherit;"></textarea>
+                            </div>
+
+                            <div style="margin-bottom: var(--spacing-sm);">
+                                <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px;">Short Summary (English)</label>
+                                <textarea id="news-summary" class="form-control" rows="2" placeholder="Brief summary of the article..." style="width: 100%; padding: 0.5rem; border-radius: 8px; border: 1px solid #d1d5db; font-family: inherit;"></textarea>
+                            </div>
+                            
+                            <div style="margin-bottom: var(--spacing-md); display: flex; flex-direction: column; gap: 8px;">
+                                <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
+                                    <input type="checkbox" id="news-is-breaking" style="width: 16px; height: 16px;">
+                                    <span><strong style="color: #e11d48;">⭐ Mark as Breaking News</strong> (Highlights with red badge and top placement)</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
+                                    <input type="checkbox" id="news-is-active" style="width: 16px; height: 16px;" checked>
+                                    <span><strong>Active & Visible</strong> (Appears in driver & passenger feeds)</span>
+                                </label>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.65rem;">
+                                <i class="fa-solid fa-paper-plane" style="margin-right: 6px;"></i> <span data-i18n="btn_post_news">Publish News Article</span>
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <!-- Right Column: Published News & Media Table -->
+                    <div class="content-card" style="padding: var(--spacing-lg);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md); flex-wrap: wrap; gap: 8px;">
+                            <div>
+                                <h3 style="font-family: var(--font-display); font-weight:800; color: var(--color-primary); margin:0;">
+                                    <i class="fa-solid fa-list-check" style="margin-right: 6px;"></i> <span data-i18n="news_feed_title">Published News Articles</span>
+                                </h3>
+                                <p style="font-size: 0.85rem; color: var(--color-text-secondary); margin-top: 2px;">Shown to both drivers and passengers on home screen.</p>
+                            </div>
+                            <button class="btn btn-secondary" id="btn-refresh-news" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">
+                                <i class="fa-solid fa-rotate"></i> Refresh
+                            </button>
+                        </div>
+                        
+                        <div class="table-responsive" style="max-height: 560px; overflow-y: auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Thumbnail</th>
+                                        <th>Headline & Source</th>
+                                        <th>Category</th>
+                                        <th>Status</th>
+                                        <th class="text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="news-table-body">
                                     <!-- Populated by JS -->
                                 </tbody>
                             </table>

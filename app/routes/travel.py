@@ -27,7 +27,7 @@ from ..config import (
 	get_google_places_api_key_ios,
 )
 from ..db import get_db
-from ..models import Address, Booking, BookingLiveLocation, BookingPaymentInstruction, DriverMembership, DriverWalletEntry, NotificationPreference, Payment, SupportTicket, SystemMessage, Trip, User, UserNotification, UserPushToken, Vehicle, VehicleModel, phnom_penh_now
+from ..models import Address, Booking, BookingLiveLocation, BookingPaymentInstruction, DriverMembership, DriverWalletEntry, NewsArticle, NotificationPreference, Payment, SupportTicket, SystemMessage, Trip, User, UserNotification, UserPushToken, Vehicle, VehicleModel, phnom_penh_now
 from .driver_fee import (
     evaluate_driver_wallet_lock,
     get_or_create_driver_wallet,
@@ -68,6 +68,8 @@ from ..schemas import (
 	SupportTicketRead,
 	SystemMessageListResponse,
 	SystemMessageRead,
+	NewsArticleListResponse,
+	NewsArticleRead,
 	TrustedDeviceAuthRead,
 	TrustedDeviceLoginRequest,
 	TripCreate,
@@ -3247,6 +3249,38 @@ def get_active_system_messages(
 		for item in items
 	]
 	return SystemMessageListResponse(messages=messages)
+
+
+@router.get("/news", response_model=NewsArticleListResponse)
+def get_travel_news(
+	category: str | None = Query(None, description="Filter by category"),
+	db: Session = Depends(get_db),
+) -> NewsArticleListResponse:
+	stmt = select(NewsArticle).where(NewsArticle.is_active == True)
+	if category:
+		stmt = stmt.where(NewsArticle.category == category)
+	stmt = stmt.order_by(NewsArticle.is_breaking.desc(), NewsArticle.published_at.desc())
+	items = db.execute(stmt).scalars().all()
+	articles = [
+		NewsArticleRead(
+			id=item.id,
+			title=item.title,
+			title_kh=item.title_kh,
+			summary=item.summary,
+			summary_kh=item.summary_kh,
+			content=item.content,
+			image_url=item.image_url,
+			source_url=item.source_url,
+			source_name=item.source_name,
+			category=item.category,
+			is_breaking=item.is_breaking,
+			is_active=item.is_active,
+			published_at=item.published_at,
+			created_at=item.created_at,
+		)
+		for item in items
+	]
+	return NewsArticleListResponse(articles=articles)
 
 
 @router.post("/payments", response_model=PaymentRead, status_code=status.HTTP_201_CREATED)
