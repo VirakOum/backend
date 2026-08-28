@@ -2772,7 +2772,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const titleKh = document.getElementById('news-title-kh').value.trim();
             const title = document.getElementById('news-title').value.trim();
             const imageUrl = document.getElementById('news-image-url').value.trim();
-            const sourceName = document.getElementById('news-source-name').value.trim() || 'Fresh News';
+            const sourceName = document.getElementById('news-source-name').value.trim() || 'News';
             const category = document.getElementById('news-category').value;
             const sourceUrl = document.getElementById('news-source-url').value.trim() || null;
             const summaryKh = document.getElementById('news-summary-kh').value.trim() || null;
@@ -2810,7 +2810,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const isEn = currentLanguage === 'en';
                     showToast(isEn ? '🎉 News article published successfully!' : '🎉 បានចុះផ្សាយព័ត៌មានដោយជោគជ័យ!');
                     formCreateNews.reset();
-                    document.getElementById('news-source-name').value = 'Fresh News';
+                    document.getElementById('news-source-name').value = 'News';
                     document.getElementById('news-is-active').checked = true;
                     if (newsImgPreviewContainer) newsImgPreviewContainer.style.display = 'none';
                     loadNewsArticles();
