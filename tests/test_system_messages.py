@@ -151,3 +151,34 @@ def test_register_push_token():
     assert data["status"] == "ok"
     assert data["registered"] is True
     assert data["push_token"] == "fcm_test_token_abcdef1234567890"
+
+
+def test_system_message_broadcast_notifications():
+    # 1. Signup a user to receive notifications
+    phone = "012777888"
+    client.post(
+        "/v1/api/travel/auth/signup",
+        json={
+            "phone": phone,
+            "full_name": "Broadcasting Test User",
+            "role": "passenger",
+            "password": "Password123!",
+        },
+    )
+
+    # 2. Create system message with broadcast_to_notifications = True
+    create_payload = {
+        "title": "System Announcement Broadcast",
+        "body": "This is an important broadcast message.",
+        "target_role": "all",
+        "message_type": "announcement",
+        "is_active": True,
+        "is_pinned": False,
+        "broadcast_to_notifications": True,
+    }
+    resp = client.post("/v1/api/travel/admin/messages", json=create_payload)
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["title"] == "System Announcement Broadcast"
+    assert data["broadcast_to_notifications"] is True
+

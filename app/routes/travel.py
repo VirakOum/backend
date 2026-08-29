@@ -3147,6 +3147,39 @@ def list_user_notifications(
 	if not _has_user_notifications_table(db):
 		return UserNotificationListResponse(unread_count=0, notifications=[])
 
+	bind = db.get_bind()
+	if inspect(bind).has_table("system_messages"):
+		now = phnom_penh_now()
+		active_messages = db.execute(
+			select(SystemMessage).where(
+				SystemMessage.is_active == True,
+				or_(SystemMessage.target_role == "all", SystemMessage.target_role == current_user.role),
+				or_(SystemMessage.expires_at.is_(None), SystemMessage.expires_at > now),
+			)
+		).scalars().all()
+
+		for msg in active_messages:
+			exists = db.execute(
+				select(UserNotification).where(
+					UserNotification.user_id == current_user.id,
+					UserNotification.title == msg.title,
+					UserNotification.body == msg.body,
+				)
+			).scalar_one_or_none()
+			if not exists:
+				notif_type = "system_announcement" if msg.message_type in ("announcement", "warning") else "system_info"
+				db.add(
+					UserNotification(
+						user_id=current_user.id,
+						type=notif_type,
+						title=msg.title,
+						body=msg.body,
+						is_read=False,
+						created_at=msg.created_at or now,
+					)
+				)
+		db.commit()
+
 	rows = db.execute(
 		select(UserNotification)
 		.where(UserNotification.user_id == current_user.id)
