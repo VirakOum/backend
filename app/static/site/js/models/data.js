@@ -173,6 +173,57 @@ window.MyTravelData = {
         }
     ],
 
+    // Default Featured News Articles (Matching backend API news data)
+    NEWS: [
+        {
+            id: "news-kan-ben-2026",
+            title: "Kan Ben Festival 2026 Season Begins September 28: Special Transit & Pagoda Trip Services Available",
+            title_kh: "រដូវកាលបុណ្យកាន់បិណ្ឌ ឆ្នាំ២០២៦ ចាប់ផ្តើមពីថ្ងៃទី២៨ ខែកញ្ញា: សេវាកម្មធ្វើដំណើរទៅកាន់វត្តអារាមពិសេស",
+            summary: "MyTravel activates special holiday shuttle routes and inter-provincial taxi services to assist passengers traveling to pagodas for Kan Ben (September 28, 2026).",
+            summary_kh: "MyTravel រៀបចំខ្សែរត់ពិសេស និងសេវាកម្មតាក់ស៊ីអន្តរខេត្ត សម្រួលដល់ការធ្វើដំណើររបស់ប្រជាពលរដ្ឋទៅកាន់វត្តអារាមនានាក្នុងឱកាសបុណ្យកាន់បិណ្ឌ ចាប់ពីថ្ងៃទី២៨ ខែកញ្ញា ឆ្នាំ២០២៦។",
+            image_url: "https://images.unsplash.com/photo-1599571234909-29ed5d1321d6?q=80&w=800&auto=format&fit=crop",
+            source_url: "https://mytravel.taxi",
+            source_name: "National News",
+            category: "Culture & Travel",
+            is_breaking: true,
+            published_at: "2026-08-29T10:00:00"
+        },
+        {
+            id: "news-pchum-ben-2026",
+            title: "Grand Pchum Ben Festival 2026 Scheduled for October 10: Early Seat & Taxi Pre-Booking Now Open",
+            title_kh: "ពិធីបុណ្យភ្ជុំបិណ្ឌប្រពៃណីជាតិ ថ្ងៃទី១០ ខែតុលា ឆ្នាំ២០២៦: បើកទទួលការកក់សំបុត្រ និងតាក់ស៊ីជាមុនឥឡូវនេះ",
+            summary: "Reserve your seats early on MyTravel app for Pchum Ben Festival 2026 (October 10, 2026) to guarantee safe and timely family reunions across all 25 provinces.",
+            summary_kh: "សូមកក់សំបុត្ររថយន្ត និងតាក់ស៊ីធ្វើដំណើរជាមុនតាមកម្មវិធី MyTravel សម្រាប់បុណ្យភ្ជុំបិណ្ឌ (១០ តុលា ២០២៦) ដើម្បីជួបជុំគ្រួសារនៅគ្រប់ខេត្តក្រុងប្រកបដោយសុវត្ថិភាព។",
+            image_url="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=800&auto=format&fit=crop",
+            source_url: "https://mytravel.taxi",
+            source_name: "Holiday Advisory",
+            category: "Festival & Holiday",
+            is_breaking: true,
+            published_at: "2026-08-29T09:30:00"
+        },
+        {
+            id: "news-system-release-2026",
+            title: "Official Launch: MyTravel Next-Generation Transport Platform Releasing September 2026 Soon",
+            title_kh: "ការប្រកាសផ្លូវការ: ប្រព័ន្ធបច្ចេកវិទ្យាដឹកជញ្ជូន MyTravel នឹងដាក់ឱ្យប្រើប្រាស់ពេញលេញក្នុងខែកញ្ញា ឆ្នាំ២០២៦ ឆាប់ៗនេះ!",
+            summary: "MyTravel platform will officially release in September 2026 featuring live driver dispatching, smart seat selection, instant digital wallet, and passenger tracking across Cambodia.",
+            summary_kh: "ប្រព័ន្ធ MyTravel នឹងបង្ហាញខ្លួនជាផ្លូវការក្នុងខែកញ្ញា ឆ្នាំ២០២៦ ជាមួយមុខងារបញ្ជាចរាចរណ៍រហ័ស ការកក់កៅអីឆ្លាតវៃ កាបូបលុយឌីជីថល និងប្រព័ន្ធតាមដានទីតាំងផ្ទាល់។",
+            image_url: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?q=80&w=800&auto=format&fit=crop",
+            source_url: "https://mytravel.taxi",
+            source_name: "Official Announcement",
+            category: "System Release",
+            is_breaking: true,
+            published_at: "2026-08-29T08:00:00"
+        }
+    ],
+
+    // App Download Links
+    DOWNLOAD_LINKS: {
+        passenger_apk: "https://mytravel.taxi/download/mytravel-passenger.apk",
+        driver_apk: "https://mytravel.taxi/download/mytravel-driver.apk",
+        google_play: "https://play.google.com/store/apps/details?id=com.mytravel.taxi",
+        app_store: "https://apps.apple.com/app/mytravel-taxi/id123456789"
+    },
+
     // Localization Translations (English / Khmer)
     I18N: {
         en: {
@@ -181,6 +232,8 @@ window.MyTravelData = {
             nav_about: "About",
             nav_features: "Features",
             nav_estimator: "Fare Estimator",
+            nav_news: "News & Media",
+            nav_download: "Download App",
             nav_safety: "Safety",
             nav_faq: "FAQ",
             nav_account: "How to Register",
@@ -241,6 +294,14 @@ window.MyTravelData = {
             feat_d2_desc: "Real-time trip progress, route status tracking, and proximity arrival alerts.",
             feat_d3_title: "Trusted Device Security",
             feat_d3_desc: "Hardware-backed device token identity prevents unauthorized session hijacking.",
+            news_section_title: "News & Media Announcements",
+            news_section_subtitle: "Stay updated with live holiday notices, traffic alerts, and official platform releases.",
+            download_section_title: "Download MyTravel Mobile App",
+            download_section_subtitle: "Get the passenger or driver app for instant inter-city travel booking and live route tracking.",
+            btn_passenger_download: "Download Passenger App (APK)",
+            btn_driver_download: "Download Driver Partner App",
+            btn_view_news: "View All News & Updates",
+            tag_breaking: "BREAKING NEWS",
             safety_title: "Safety First Architecture",
             safety_desc: "Proximity arrival enforcement & direct national emergency hotlines.",
             safety_card1_title: "National Emergency Integration",
@@ -261,6 +322,8 @@ window.MyTravelData = {
             nav_about: "អំពីយើង",
             nav_features: "មុខងារពិសេស",
             nav_estimator: "គណនាតម្លៃ",
+            nav_news: "ព័ត៌មាន & ព្រឹត្តិការណ៍",
+            nav_download: "ទាញយក App",
             nav_safety: "សុវត្ថិភាព",
             nav_faq: "សំណួរញឹកញាប់",
             nav_account: "របៀបចុះឈ្មោះ",
@@ -321,6 +384,14 @@ window.MyTravelData = {
             feat_d2_desc: "តាមដានស្ថានភាពជើងដំណើរ ផ្លូវធ្វើដំណើរ និងការជូនដំណឹងចម្ងាយមកដល់ផ្ទាល់។",
             feat_d3_title: "សុវត្ថិភាព ឧបករណ៍ជឿជាក់",
             feat_d3_desc: "ការផ្ទៀងផ្ទាត់ឧបករណ៍កម្រិត hardware ការពារការលួចប្រើប្រាស់គណនី។",
+            news_section_title: "ព័ត៌មាន និងព្រឹត្តិការណ៍បច្ចុប្បន្នភាព",
+            news_section_subtitle: "តាមដានព័ត៌មានទាន់ហេតុការណ៍ ការជូនដំណឹងបុណ្យប្រពៃណី និងការប្រកាសផ្លូវការ។",
+            download_section_title: "ទាញយកកម្មវិធី MyTravel លើទូរស័ព្ទដៃ",
+            download_section_subtitle: "ទាញយកកម្មវិធីអ្នកធ្វើដំណើរ ឬអ្នកបើកបរ សម្រាប់ការកក់ដំណើររហ័ស និងតាមដានទីតាំងផ្ទាល់។",
+            btn_passenger_download: "ទាញយក APK កម្មវិធីអ្នកជិះ",
+            btn_driver_download: "ទាញយក កម្មវិធីអ្នកបើកបរ",
+            btn_view_news: "មើលព័ត៌មានទាំងអស់",
+            tag_breaking: "ព័ត៌មានទាន់ហេតុការណ៍",
             safety_title: "ប្រព័ន្ធសុវត្ថិភាពជាចម្បង",
             safety_desc: "ការផ្ទៀងផ្ទាត់ចម្ងាយមកដល់ & ការភ្ជាប់ទូរស័ព្ទបន្ទាន់ជាតិ។",
             safety_card1_title: "ភ្ជាប់ប្រព័ន្ធសង្គ្រោះបន្ទាន់ជាតិ",
@@ -333,7 +404,7 @@ window.MyTravelData = {
             footer_phone_label: "ខ្សែទូរស័ព្ទផ្ទាល់៖",
             footer_email_label: "អ៊ីមែលទំនាក់ទំនង៖",
             footer_telegram_label: "ឆាត Telegram៖",
-            footer_copyright: "© ២០២៦ ប្រព័ន្ធដឹកជញ្ជូន MyTravel។ រក្សាសិទ្ធិគ្រប់យ៉ាង។ ព្រះរាជាណាចក្រកម្ពុជា voyage."
+            footer_copyright: "© ២០២៦ ប្រព័ន្ធដឹកជញ្ជូន MyTravel។ រក្សាសិទ្ធិគ្រប់យ៉ាង។ ព្រះរាជាណាចក្រកម្ពុជា។"
         }
     }
 };

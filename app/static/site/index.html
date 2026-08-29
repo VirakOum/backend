@@ -38,6 +38,8 @@
                 <li><a href="#about" class="nav-link" data-i18n="nav_about">About</a></li>
                 <li><a href="#account-creation" class="nav-link" data-i18n="nav_account">How to Register</a></li>
                 <li><a href="#estimator" class="nav-link" data-i18n="nav_estimator">Fare Estimator</a></li>
+                <li><a href="#news" class="nav-link" data-i18n="nav_news">News & Media</a></li>
+                <li><a href="#download" class="nav-link" data-i18n="nav_download">Download App</a></li>
                 <li><a href="#features" class="nav-link" data-i18n="nav_features">Features</a></li>
                 <li><a href="#safety" class="nav-link" data-i18n="nav_safety">Safety</a></li>
                 <li><a href="#faq" class="nav-link" data-i18n="nav_faq">FAQ</a></li>
@@ -71,13 +73,13 @@
                     Experience seamless inter-city rides, real-time live location tracking, seat selection, and bilingual support. Travel with confidence everywhere in Cambodia.
                 </p>
                 <div class="hero-buttons">
-                    <a href="#estimator" class="btn-primary">
-                        <i class="fa-solid fa-calculator"></i>
+                    <a href="#download" class="btn-primary">
+                        <i class="fa-solid fa-mobile-screen-button"></i>
                         <span data-i18n="btn_passenger_app">Get Passenger App</span>
                     </a>
-                    <a href="#account-creation" class="btn-secondary">
-                        <i class="fa-solid fa-user-plus"></i>
-                        <span data-i18n="btn_how_to_start">How to Create Account</span>
+                    <a href="#news" class="btn-secondary">
+                        <i class="fa-solid fa-newspaper"></i>
+                        <span data-i18n="nav_news">News & Media</span>
                     </a>
                 </div>
             </div>
@@ -264,6 +266,74 @@
                         <i class="fa-solid fa-calendar-check" style="margin-right: 0.5rem;"></i>
                         <span data-i18n="btn_book_route">Book This Route Now</span>
                     </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- News & Media Articles Showcase Section -->
+    <section class="section" id="news">
+        <div class="section-header">
+            <h2 class="section-title" data-i18n="news_section_title">News & Media Announcements</h2>
+            <p class="section-subtitle" data-i18n="news_section_subtitle">Stay updated with live holiday notices, traffic alerts, and official platform releases.</p>
+        </div>
+        <div class="news-grid" id="news-grid">
+            <!-- News Cards dynamically populated via JS -->
+        </div>
+    </section>
+
+    <!-- Mobile App Download Section -->
+    <section class="section" id="download">
+        <div class="download-banner">
+            <div class="download-content">
+                <div class="download-badge">
+                    <i class="fa-solid fa-cloud-arrow-down"></i>
+                    <span>Official Mobile App</span>
+                </div>
+                <h2 class="download-title" data-i18n="download_section_title">Download MyTravel Mobile App</h2>
+                <p class="download-subtitle" data-i18n="download_section_subtitle">Get the passenger or driver app for instant inter-city travel booking and live route tracking.</p>
+                <div class="download-btn-group">
+                    <a href="https://mytravel.taxi/download/mytravel-passenger.apk" class="btn-download primary" id="link-passenger-apk">
+                        <i class="fa-brands fa-android download-icon"></i>
+                        <div>
+                            <div class="btn-subtext">Direct Android APK</div>
+                            <div class="btn-maintext" data-i18n="btn_passenger_download">Passenger App (APK)</div>
+                        </div>
+                    </a>
+                    <a href="https://mytravel.taxi/download/mytravel-driver.apk" class="btn-download secondary" id="link-driver-apk">
+                        <i class="fa-solid fa-taxi download-icon"></i>
+                        <div>
+                            <div class="btn-subtext">Driver Partner APK</div>
+                            <div class="btn-maintext" data-i18n="btn_driver_download">Driver Partner App</div>
+                        </div>
+                    </a>
+                    <a href="https://play.google.com/store/apps/details?id=com.mytravel.taxi" target="_blank" rel="noopener noreferrer" class="btn-download store">
+                        <i class="fa-brands fa-google-play download-icon"></i>
+                        <div>
+                            <div class="btn-subtext">GET IT ON</div>
+                            <div class="btn-maintext">Google Play</div>
+                        </div>
+                    </a>
+                    <a href="https://apps.apple.com/app/mytravel-taxi/id123456789" target="_blank" rel="noopener noreferrer" class="btn-download store">
+                        <i class="fa-brands fa-apple download-icon"></i>
+                        <div>
+                            <div class="btn-subtext">Download on the</div>
+                            <div class="btn-maintext">App Store</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+            <div class="download-visual">
+                <div class="qr-card">
+                    <div style="font-weight: 800; font-size: 1rem; color: var(--accent-dark); margin-bottom: 0.5rem; text-align: center;">
+                        <i class="fa-solid fa-qrcode" style="color: var(--accent-taxi); margin-right: 0.35rem;"></i> Scan to Install
+                    </div>
+                    <div class="qr-frame">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https://mytravel.taxi/download/mytravel-passenger.apk" alt="Scan QR Code to Download MyTravel App" style="width: 100%; border-radius: 12px;">
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 0.5rem;">
+                        Scan with your phone camera to download instantly
+                    </div>
                 </div>
             </div>
         </div>

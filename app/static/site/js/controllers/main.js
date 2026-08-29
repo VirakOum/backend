@@ -34,9 +34,89 @@ document.addEventListener('DOMContentLoaded', () => {
         renderVehicleCards();
         renderStats();
         renderFAQs();
+        loadAndRenderNews();
         updateLanguage('en');
         calculateEstimate();
         bindEvents();
+    }
+
+    const newsGrid = document.getElementById('news-grid');
+
+    // Fetch and Render Live News Articles
+    async function loadAndRenderNews() {
+        if (!newsGrid) return;
+        let articles = data.NEWS || [];
+
+        try {
+            const response = await fetch('/v1/api/travel/news');
+            if (response.ok) {
+                const resData = await response.json();
+                if (resData.articles && resData.articles.length > 0) {
+                    articles = resData.articles;
+                }
+            }
+        } catch (err) {
+            console.log('Using static news data fallback');
+        }
+
+        renderNewsCards(articles);
+    }
+
+    function renderNewsCards(articles) {
+        if (!newsGrid) return;
+        newsGrid.innerHTML = '';
+
+        if (!articles || articles.length === 0) {
+            newsGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 2rem;">No news articles available.</div>';
+            return;
+        }
+
+        articles.forEach(art => {
+            const card = document.createElement('div');
+            card.className = 'news-card';
+
+            const titleText = currentLang === 'km' ? (art.title_kh || art.title) : art.title;
+            const summaryText = currentLang === 'km' ? (art.summary_kh || art.summary || '') : (art.summary || '');
+            const categoryText = art.category || 'News';
+            const breakingText = currentLang === 'km' ? 'ព័ត៌មានទាន់ហេតុការណ៍' : 'BREAKING NEWS';
+
+            const breakingBadgeHtml = art.is_breaking ? `
+                <div class="news-breaking-badge">
+                    <span class="pulse-dot"></span> ${breakingText}
+                </div>
+            ` : '';
+
+            card.innerHTML = `
+                <div class="news-thumb-wrapper">
+                    <img src="${art.image_url}" alt="${escapeHtml(titleText)}" class="news-thumb-img" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=800&auto=format&fit=crop'">
+                    ${breakingBadgeHtml}
+                    <div class="news-category-chip">${escapeHtml(categoryText)}</div>
+                </div>
+                <div class="news-body">
+                    <h3 class="news-title">${escapeHtml(titleText)}</h3>
+                    <p class="news-summary">${escapeHtml(summaryText)}</p>
+                    <div class="news-footer">
+                        <span class="news-source"><i class="fa-solid fa-newspaper" style="color: var(--accent-taxi); margin-right: 0.35rem;"></i> ${escapeHtml(art.source_name || 'MyTravel')}</span>
+                        <a href="#download" class="news-link-btn">
+                            <span>${currentLang === 'km' ? 'កក់សំបុត្រ' : 'Book Ride'}</span>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            `;
+
+            newsGrid.appendChild(card);
+        });
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     }
 
     // Populate Province Select Dropdowns
@@ -200,6 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderVehicleCards();
         renderStats();
         renderFAQs();
+        loadAndRenderNews();
         calculateEstimate();
     }
 
