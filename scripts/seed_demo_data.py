@@ -1297,6 +1297,45 @@ def seed() -> None:
         )
         upsert_news_article(
             db,
+            title="Kan Ben Festival 2026 Season Begins September 28: Special Transit & Pagoda Trip Services Available",
+            title_kh="រដូវកាលបុណ្យកាន់បិណ្ឌ ឆ្នាំ២០២៦ ចាប់ផ្តើមពីថ្ងៃទី២៨ ខែកញ្ញា: សេវាកម្មធ្វើដំណើរទៅកាន់វត្តអារាមពិសេស",
+            summary="MyTravel activates special holiday shuttle routes and inter-provincial taxi services to assist passengers traveling to pagodas for Kan Ben (September 28, 2026).",
+            summary_kh="MyTravel រៀបចំខ្សែរត់ពិសេស និងសេវាកម្មតាក់ស៊ីអន្តរខេត្ត សម្រួលដល់ការធ្វើដំណើររបស់ប្រជាពលរដ្ឋទៅកាន់វត្តអារាមនានាក្នុងឱកាសបុណ្យកាន់បិណ្ឌ ចាប់ពីថ្ងៃទី២៨ ខែកញ្ញា ឆ្នាំ២០២៦។",
+            image_url="https://images.unsplash.com/photo-1599571234909-29ed5d1321d6?q=80&w=800&auto=format&fit=crop",
+            source_url="https://mytravel.taxi",
+            source_name="National News",
+            category="Culture & Travel",
+            is_breaking=True,
+            is_active=True,
+        )
+        upsert_news_article(
+            db,
+            title="Grand Pchum Ben Festival 2026 Scheduled for October 10: Early Seat & Taxi Pre-Booking Now Open",
+            title_kh="ពិធីបុណ្យភ្ជុំបិណ្ឌប្រពៃណីជាតិ ថ្ងៃទី១០ ខែតុលា ឆ្នាំ២០២៦: បើកទទួលការកក់សំបុត្រ និងតាក់ស៊ីជាមុនឥឡូវនេះ",
+            summary="Reserve your seats early on MyTravel app for Pchum Ben Festival 2026 (October 10, 2026) to guarantee safe and timely family reunions across all 25 provinces.",
+            summary_kh="សូមកក់សំបុត្ររថយន្ត និងតាក់ស៊ីធ្វើដំណើរជាមុនតាមកម្មវិធី MyTravel សម្រាប់បុណ្យភ្ជុំបិណ្ឌ (១០ តុលា ២០២៦) ដើម្បីជួបជុំគ្រួសារនៅគ្រប់ខេត្តក្រុងប្រកបដោយសុវត្ថិភាព។",
+            image_url="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=800&auto=format&fit=crop",
+            source_url="https://mytravel.taxi",
+            source_name="Holiday Advisory",
+            category="Festival & Holiday",
+            is_breaking=True,
+            is_active=True,
+        )
+        upsert_news_article(
+            db,
+            title="Official Launch: MyTravel Next-Generation Transport Platform Releasing September 2026 Soon",
+            title_kh="ការប្រកាសផ្លូវការ: ប្រព័ន្ធបច្ចេកវិទ្យាដឹកជញ្ជូន MyTravel នឹងដាក់ឱ្យប្រើប្រាស់ពេញលេញក្នុងខែកញ្ញា ឆ្នាំ២០២៦ ឆាប់ៗនេះ!",
+            summary="MyTravel platform will officially release in September 2026 featuring live driver dispatching, smart seat selection, instant digital wallet, and passenger tracking across Cambodia.",
+            summary_kh="ប្រព័ន្ធ MyTravel នឹងបង្ហាញខ្លួនជាផ្លូវការក្នុងខែកញ្ញា ឆ្នាំ២០២៦ ជាមួយមុខងារបញ្ជាចរាចរណ៍រហ័ស ការកក់កៅអីឆ្លាតវៃ កាបូបលុយឌីជីថល និងប្រព័ន្ធតាមដានទីតាំងផ្ទាល់។",
+            image_url="https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?q=80&w=800&auto=format&fit=crop",
+            source_url="https://mytravel.taxi",
+            source_name="Official Announcement",
+            category="System Release",
+            is_breaking=True,
+            is_active=True,
+        )
+        upsert_news_article(
+            db,
             title="Weather & Road Safety Alert: Heavy Rain Advisory for Coastal & Mountainous Routes",
             title_kh="ការជូនដំណឹងពីអាកាសធាតុ និងសុវត្ថិភាពផ្លូវថ្នល់: ការប្រុងប្រយ័ត្នភ្លៀងធ្លាក់ខ្លាំងនៅតំបន់ឆ្នេរ និងតំបន់ភ្នំ",
             summary="Drivers are advised to check tyre pressure, maintain safe braking distances, and use dipped headlights during night transit.",

@@ -1176,6 +1176,9 @@ def _create_driver_arrived_notification(db: Session, booking: Booking) -> None:
 	if not _has_user_notifications_table(db):
 		return
 
+	title = "Driver Arrived"
+	body = "Your driver has arrived at the pickup location. Please prepare to board."
+
 	existing = db.execute(
 		select(UserNotification).where(
 			UserNotification.user_id == booking.passenger_id,
@@ -1184,8 +1187,8 @@ def _create_driver_arrived_notification(db: Session, booking: Booking) -> None:
 		)
 	).scalar_one_or_none()
 	if existing is not None:
-		existing.title = "Driver arrived"
-		existing.body = "Your driver has arrived. Please prepare to board."
+		existing.title = title
+		existing.body = body
 		existing.trip_id = booking.trip_id
 		existing.is_read = False
 		existing.created_at = phnom_penh_now()
@@ -1194,8 +1197,8 @@ def _create_driver_arrived_notification(db: Session, booking: Booking) -> None:
 			UserNotification(
 				user_id=booking.passenger_id,
 				type="driver_arrived",
-				title="Driver arrived",
-				body="Your driver has arrived. Please prepare to board.",
+				title=title,
+				body=body,
 				trip_id=booking.trip_id,
 				booking_id=booking.id,
 				is_read=False,
@@ -1205,8 +1208,8 @@ def _create_driver_arrived_notification(db: Session, booking: Booking) -> None:
 	send_push_notification_to_user(
 		db=db,
 		user_id=booking.passenger_id,
-		title="Driver arrived",
-		body="Your driver has arrived. Please prepare to board.",
+		title=title,
+		body=body,
 		data={
 			"type": "driver_arrived",
 			"trip_id": str(booking.trip_id),
@@ -1236,9 +1239,12 @@ def _create_driver_booking_notification(
 
 	seat_count = len(booking.seat_numbers or [])
 	seat_label = "seat" if seat_count == 1 else "seats"
-	passenger_name = passenger.full_name.strip() or "A passenger"
-	title = "New passenger booking"
-	body = f"{passenger_name} booked {seat_count} {seat_label} on your trip."
+	passenger_name = passenger.full_name.strip() if passenger.full_name else "A passenger"
+	route_info = ""
+	if trip.departure_province and trip.destination_province:
+		route_info = f" ({trip.departure_province} → {trip.destination_province})"
+	title = "New Passenger Booking"
+	body = f"{passenger_name} booked {seat_count} {seat_label} on your trip{route_info}."
 
 	db.add(
 		UserNotification(
@@ -1269,8 +1275,8 @@ def _create_boarding_requested_notification(db: Session, booking: Booking) -> No
 	if not _has_user_notifications_table(db):
 		return
 
-	title = "Driver arrived"
-	body = "Your driver has arrived. Please prepare to board."
+	title = "Boarding Ready"
+	body = "Your driver has arrived and is ready for boarding. Please confirm your boarding."
 
 	db.add(
 		UserNotification(
@@ -1311,8 +1317,10 @@ def _create_boarding_confirmed_notification(db: Session, booking: Booking) -> No
 	if existing is not None:
 		return
 
-	title = "Passenger boarded"
-	body = "The passenger has confirmed boarding."
+	passenger = booking.passenger
+	passenger_name = passenger.full_name.strip() if (passenger and passenger.full_name) else "The passenger"
+	title = "Passenger Boarded"
+	body = f"{passenger_name} has confirmed boarding. Ready for departure."
 
 	db.add(
 		UserNotification(
