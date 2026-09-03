@@ -112,6 +112,7 @@ LEGACY_PAYMENT_STATUS_MAP = {
 
 PROVINCE_ALIAS_KEY_MAP = {
 	"ភ្នំពេញ": "phnom_penh",
+	"រាជធានីភ្នំពេញ": "phnom_penh",
 	"phnom penh": "phnom_penh",
 	"phnom penh capital": "phnom_penh",
 	"បន្ទាយមានជ័យ": "banteay_meanchey",
@@ -135,14 +136,27 @@ PROVINCE_ALIAS_KEY_MAP = {
 	"koh kong": "koh_kong",
 	"ក្រចេះ": "kratie",
 	"kratie": "kratie",
+	"kracheh": "kratie",
 	"មណ្ឌលគិរី": "mondulkiri",
 	"mondulkiri": "mondulkiri",
+	"mondul kiri": "mondulkiri",
+	"mondol kiri": "mondulkiri",
+	"mondul kiri province": "mondulkiri",
+	"mondulkiri province": "mondulkiri",
 	"ឧត្តរមានជ័យ": "oddar_meanchey",
+	"ឧត្ដរមានជ័យ": "oddar_meanchey",
+	"ឧត្តរមានជយ័": "oddar_meanchey",
 	"oddar meanchey": "oddar_meanchey",
+	"otdor meanchey": "oddar_meanchey",
+	"oddar meanchey province": "oddar_meanchey",
 	"ប៉ៃលិន": "pailin",
 	"pailin": "pailin",
 	"ព្រះសីហនុ": "preah_sihanouk",
 	"preah sihanouk": "preah_sihanouk",
+	"sihanoukville": "preah_sihanouk",
+	"sihanouk": "preah_sihanouk",
+	"kampong som": "preah_sihanouk",
+	"kompong som": "preah_sihanouk",
 	"ព្រះវិហារ": "preah_vihear",
 	"preah vihear": "preah_vihear",
 	"ពោធិ៍សាត់": "pursat",
@@ -151,6 +165,10 @@ PROVINCE_ALIAS_KEY_MAP = {
 	"prey veng": "prey_veng",
 	"រតនគិរី": "ratanakiri",
 	"ratanakiri": "ratanakiri",
+	"ratanak kiri": "ratanakiri",
+	"rotanak kiri": "ratanakiri",
+	"ratanak kiri province": "ratanakiri",
+	"ratanakiri province": "ratanakiri",
 	"សៀមរាប": "siem_reap",
 	"siem reap": "siem_reap",
 	"siem reap province": "siem_reap",
@@ -221,6 +239,7 @@ def _province_alias_key(value: str | None) -> str:
 	text = re.sub(r"\s+", " ", text).strip()
 	if text in PROVINCE_ALIAS_KEY_MAP:
 		return PROVINCE_ALIAS_KEY_MAP[text]
+	text = re.sub(r"^(រាជធានី|ខេត្ត|ក្រុង)\s*", "", text)
 	text = re.sub(r"\b(province|capital)\b", "", text)
 	text = re.sub(r"\s+", " ", text).strip()
 	return PROVINCE_ALIAS_KEY_MAP.get(text, text)

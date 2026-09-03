@@ -111,12 +111,19 @@ def _resolve_stop_from_coordinates(
     google_landmark_note: str | None,
     db: Session,
 ) -> AddressStopResolveResponse:
+    diff_lat = Address.latitude - latitude
+    diff_lng = Address.longitude - longitude
+    dist_sq = diff_lat * diff_lat + diff_lng * diff_lng
+
     villages = db.execute(
-        _ordered_addresses_query(
+        select(Address)
+        .where(
             Address.type == "village",
             Address.latitude.is_not(None),
             Address.longitude.is_not(None),
         )
+        .order_by(dist_sq)
+        .limit(50)
     ).scalars().all()
     if not villages:
         raise HTTPException(status_code=404, detail="No stop candidates available")

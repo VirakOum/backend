@@ -199,3 +199,27 @@ def test_get_commune_stops_returns_empty_list_when_no_catalog_stops_exist() -> N
 
     assert response.status_code == 200
     assert response.json() == []
+
+
+def test_resolve_stop_by_coordinates() -> None:
+    response = client.post(
+        "/v1/api/addresses/resolve-stop",
+        json={
+            "latitude": 12.345,
+            "longitude": 104.987,
+            "google_label": "Central Market",
+            "google_landmark_note": "Near station",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["province"]["code"] == "06"
+    assert body["province"]["name"] == "Kampong Thom Province"
+    assert body["district"]["code"] == "601"
+    assert body["commune"]["code"] == "60101"
+    assert body["stop"]["label"] == "ភូមិ A"
+    assert body["stop"]["commune_code"] == "60101"
+    assert body["stop"]["district_code"] == "601"
+    assert body["stop"]["province_code"] == "06"
+

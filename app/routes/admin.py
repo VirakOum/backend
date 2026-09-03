@@ -151,6 +151,8 @@ class TripAdminUpdate(BaseModel):
     available_seats: Optional[int] = None
     total_seats: Optional[int] = None
     status: Optional[str] = None
+    departure_province: Optional[str] = None
+    destination_province: Optional[str] = None
 
 class BookingAdminRead(BaseModel):
     id: uuid.UUID
@@ -710,6 +712,10 @@ def update_admin_trip(
         if payload.status not in ["scheduled", "active", "completed", "cancelled"]:
             raise HTTPException(status_code=400, detail="Invalid status")
         trip.status = payload.status
+    if payload.departure_province is not None:
+        trip.departure_province = payload.departure_province.strip()
+    if payload.destination_province is not None:
+        trip.destination_province = payload.destination_province.strip()
         
     db.commit()
     db.refresh(trip)
