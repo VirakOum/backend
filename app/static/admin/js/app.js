@@ -435,6 +435,16 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentLanguage = localStorage.getItem('lang') || 'en';
     let map = null;
     let tripMarkers = [];
+    let googleFleetMap = null;
+    let googleTripMarkers = [];
+    let googleActiveInfoWindow = null;
+    let googlePageDetailMap = null;
+    let googlePageDetailMarker = null;
+
+    function isGoogleMapsReady() {
+        return typeof google !== 'undefined' && typeof google.maps !== 'undefined' && typeof google.maps.Map === 'function';
+    }
+
     let currentDrivers = [];
     let currentPassengers = [];
     let currentTrips = [];
@@ -758,35 +768,171 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Initialize Leaflet Map (Cambodia / Phnom Penh focus)
+    // Initialize Live Tracking Map (Google Maps API with Leaflet fallback, Cambodia / Phnom Penh focus)
     function initMap() {
-        if (map) {
+        if (isGoogleMapsReady()) {
+            if (googleFleetMap) {
+                google.maps.event.trigger(googleFleetMap, 'resize');
+                loadMapTrips();
+                return;
+            }
+
+            const phnomPenh = { lat: 11.5564, lng: 104.9282 };
+            const mapOptions = {
+                center: phnomPenh,
+                zoom: 8,
+                mapTypeId: google.maps.MapTypeId.ROADMAP,
+                mapTypeControl: true,
+                mapTypeControlOptions: {
+                    style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
+                    position: google.maps.ControlPosition.TOP_LEFT
+                },
+                zoomControl: true,
+                zoomControlOptions: {
+                    position: google.maps.ControlPosition.RIGHT_BOTTOM
+                },
+                streetViewControl: true,
+                streetViewControlOptions: {
+                    position: google.maps.ControlPosition.RIGHT_BOTTOM
+                },
+                fullscreenControl: true,
+                fullscreenControlOptions: {
+                    position: google.maps.ControlPosition.RIGHT_BOTTOM
+                },
+                styles: [
+                    {
+                        featureType: "poi",
+                        elementType: "labels",
+                        stylers: [{ visibility: "off" }]
+                    }
+                ]
+            };
+
+            googleFleetMap = new google.maps.Map(document.getElementById('fleet-map'), mapOptions);
+            map = googleFleetMap;
+            loadMapTrips();
+            return;
+        }
+
+        // Fallback: Leaflet Map
+        if (map && typeof map.invalidateSize === 'function') {
             map.invalidateSize();
             loadMapTrips();
             return;
         }
 
-        // Phnom Penh Coordinates
         const phnomPenh = [11.5564, 104.9282];
-        
-        // Initialize Map
-        map = L.map('fleet-map', {
-            zoomControl: true
-        }).setView(phnomPenh, 8);
+        if (typeof L !== 'undefined' && L.map) {
+            map = L.map('fleet-map', {
+                zoomControl: true
+            }).setView(phnomPenh, 8);
 
-        // CartoDB Positron Tile Layer (Premium light style matching water #fbf9f8 / land #dbd9d9)
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-            subdomains: 'abcd',
-            maxZoom: 20
-        }).addTo(map);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                subdomains: 'abcd',
+                maxZoom: 20
+            }).addTo(map);
 
-        loadMapTrips();
+            loadMapTrips();
+        }
     }
 
     // Load active driver tracking locations onto the map
     async function loadMapTrips() {
-        if (!map) return;
+        if (isGoogleMapsReady() && googleFleetMap) {
+            // Clear existing Google markers
+            googleTripMarkers.forEach(m => m.setMap(null));
+            googleTripMarkers = [];
+            if (googleActiveInfoWindow) {
+                googleActiveInfoWindow.close();
+                googleActiveInfoWindow = null;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/trips`);
+                const trips = await response.json();
+                const dict = TRANSLATIONS[currentLanguage] || TRANSLATIONS.en;
+
+                trips.forEach(trip => {
+                    let lat = trip.live_lat;
+                    let lng = trip.live_lng;
+
+                    if (lat === null || lng === null) {
+                        const provinceCoords = PROVINCE_COORDINATES[trip.departure_province];
+                        if (provinceCoords) {
+                            lat = provinceCoords[0];
+                            lng = provinceCoords[1];
+                        } else {
+                            lat = 11.5564;
+                            lng = 104.9282;
+                        }
+                    }
+
+                    // Marker color based on driver status
+                    let markerColor = '#fbbc00'; // Warning (amber yellow) for scheduled
+                    if (trip.status === 'active') {
+                        markerColor = '#006d43'; // Emerald green for active/live tracking
+                    } else if (trip.status === 'locked' || trip.status === 'cancelled') {
+                        markerColor = '#ba1a1a'; // Red
+                    }
+
+                    const marker = new google.maps.Marker({
+                        position: { lat: Number(lat), lng: Number(lng) },
+                        map: googleFleetMap,
+                        title: `${trip.driver_name || 'Driver'} - ${trip.departure_province} to ${trip.destination_province}`,
+                        icon: {
+                            path: google.maps.SymbolPath.CIRCLE,
+                            scale: 10,
+                            fillColor: markerColor,
+                            fillOpacity: 0.92,
+                            strokeColor: '#ffffff',
+                            strokeWeight: 2.5
+                        }
+                    });
+
+                    const speedText = trip.live_speed_kph ? `${trip.live_speed_kph} km/h` : '0 km/h';
+                    const headingText = trip.live_heading ? `${trip.live_heading}°` : 'N/A';
+
+                    const popupContent = `
+                        <div style="min-width: 220px; font-family: 'Inter', sans-serif; color: #111b35; padding: 4px 2px;">
+                            <h4 style="margin: 0 0 6px 0; font-family: 'Manrope', sans-serif; font-size: 0.95rem; color: #001b44; font-weight: 800;">
+                                ${escapeHtml(trip.departure_province || '')} <i class="fa-solid fa-arrow-right" style="font-size: 0.75rem; margin: 0 4px; color: #f59e0b;"></i> ${escapeHtml(trip.destination_province || '')}
+                            </h4>
+                            <div style="font-size: 0.78rem; line-height: 1.5; color: #434750;">
+                                <div><strong>${dict.txt_driver}:</strong> ${escapeHtml(trip.driver_name || '—')} (${escapeHtml(trip.driver_phone || '—')})</div>
+                                <div><strong>${dict.txt_vehicle}:</strong> ${escapeHtml(trip.vehicle_model || '—')} (${escapeHtml(trip.vehicle_plate || '—')})</div>
+                                <div><strong>${dict.txt_seats}:</strong> ${trip.available_seats || 0} / ${trip.total_seats || 4}</div>
+                                <div style="margin-top: 6px; border-top: 1px solid rgba(0,0,0,0.08); padding-top: 5px;">
+                                    <strong>${dict.txt_status}:</strong> <span style="text-transform: uppercase; font-weight: 800; color: ${markerColor}">${escapeHtml(trip.status || '')}</span>
+                                </div>
+                                <div style="background: #f5f3f3; padding: 6px 10px; border-radius: 6px; margin-top: 6px; display: flex; justify-content: space-between;">
+                                    <div><i class="fa-solid fa-gauge" style="color: #0284c7;"></i> <strong>${dict.txt_speed}:</strong> ${speedText}</div>
+                                    <div><i class="fa-solid fa-compass" style="color: #0284c7;"></i> <strong>${dict.txt_heading}:</strong> ${headingText}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    const infoWindow = new google.maps.InfoWindow({
+                        content: popupContent
+                    });
+
+                    marker.addListener('click', () => {
+                        if (googleActiveInfoWindow) googleActiveInfoWindow.close();
+                        infoWindow.open(googleFleetMap, marker);
+                        googleActiveInfoWindow = infoWindow;
+                    });
+
+                    googleTripMarkers.push(marker);
+                });
+            } catch (error) {
+                console.error('Error loading driver Google map coordinates:', error);
+            }
+            return;
+        }
+
+        // Fallback: Leaflet Map
+        if (!map || typeof map.removeLayer !== 'function') return;
 
         // Clear existing markers
         tripMarkers.forEach(m => map.removeLayer(m));
@@ -795,10 +941,9 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch(`${API_BASE}/trips`);
             const trips = await response.json();
-            const dict = TRANSLATIONS[currentLanguage];
+            const dict = TRANSLATIONS[currentLanguage] || TRANSLATIONS.en;
 
             trips.forEach(trip => {
-                // Determine marker position: Use dynamic live location, fallback to mapped departure province coordinates
                 let lat = trip.live_lat;
                 let lng = trip.live_lng;
 
@@ -808,13 +953,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         lat = provinceCoords[0];
                         lng = provinceCoords[1];
                     } else {
-                        // National capital fallback
                         lat = 11.5564;
                         lng = 104.9282;
                     }
                 }
 
-                // Color code markers based on driver status
                 let markerColor = '#fbbc00'; // Warning (amber yellow) for scheduled
                 if (trip.status === 'active') {
                     markerColor = '#006d43'; // Emerald green for active/live tracking
@@ -822,7 +965,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     markerColor = '#ba1a1a'; // Red
                 }
 
-                // Create circular marker representing driver tracking point
                 const marker = L.circleMarker([lat, lng], {
                     radius: 10,
                     fillColor: markerColor,
@@ -835,18 +977,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const speedText = trip.live_speed_kph ? `${trip.live_speed_kph} km/h` : '0 km/h';
                 const headingText = trip.live_heading ? `${trip.live_heading}°` : 'N/A';
 
-                // Popup contents in active language
                 const popupContent = `
                     <div style="min-width: 210px;">
                         <h4 style="margin-bottom: 5px; font-family: 'Manrope', sans-serif; font-size: 0.9rem; color: #001b44;">
-                            ${trip.departure_province} <i class="fa-solid fa-arrow-right" style="font-size: 0.75rem; margin: 0 4px;"></i> ${trip.destination_province}
+                            ${escapeHtml(trip.departure_province || '')} <i class="fa-solid fa-arrow-right" style="font-size: 0.75rem; margin: 0 4px;"></i> ${escapeHtml(trip.destination_province || '')}
                         </h4>
                         <div style="font-size: 0.75rem; line-height: 1.4; color: #434750;">
-                            <div><strong>${dict.txt_driver}:</strong> ${trip.driver_name} (${trip.driver_phone})</div>
-                            <div><strong>${dict.txt_vehicle}:</strong> ${trip.vehicle_model} (${trip.vehicle_plate})</div>
-                            <div><strong>${dict.txt_seats}:</strong> ${trip.available_seats} / ${trip.total_seats}</div>
+                            <div><strong>${dict.txt_driver}:</strong> ${escapeHtml(trip.driver_name || '—')} (${escapeHtml(trip.driver_phone || '—')})</div>
+                            <div><strong>${dict.txt_vehicle}:</strong> ${escapeHtml(trip.vehicle_model || '—')} (${escapeHtml(trip.vehicle_plate || '—')})</div>
+                            <div><strong>${dict.txt_seats}:</strong> ${trip.available_seats || 0} / ${trip.total_seats || 4}</div>
                             <div style="margin-top: 5px; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 5px;">
-                                <strong>${dict.txt_status}:</strong> <span style="text-transform: uppercase; font-weight: 700; color: ${markerColor}">${trip.status}</span>
+                                <strong>${dict.txt_status}:</strong> <span style="text-transform: uppercase; font-weight: 700; color: ${markerColor}">${escapeHtml(trip.status || '')}</span>
                             </div>
                             <div style="background: #f5f3f3; padding: 4px 8px; border-radius: 4px; margin-top: 6px;">
                                 <div><i class="fa-solid fa-gauge"></i> <strong>${dict.txt_speed}:</strong> ${speedText}</div>
@@ -1294,6 +1435,71 @@ document.addEventListener('DOMContentLoaded', () => {
         const mapContainer = document.getElementById('page-trip-detail-map');
         if (!mapContainer) return;
 
+        const numLat = Number(lat);
+        const numLng = Number(lng);
+
+        if (isGoogleMapsReady()) {
+            const centerPos = { lat: numLat, lng: numLng };
+
+            if (googlePageDetailMap) {
+                googlePageDetailMap.setCenter(centerPos);
+                googlePageDetailMap.setZoom(12);
+                if (googlePageDetailMarker) {
+                    googlePageDetailMarker.setPosition(centerPos);
+                } else {
+                    googlePageDetailMarker = new google.maps.Marker({
+                        position: centerPos,
+                        map: googlePageDetailMap,
+                        icon: {
+                            path: google.maps.SymbolPath.CIRCLE,
+                            scale: 9,
+                            fillColor: '#006d43',
+                            fillOpacity: 0.95,
+                            strokeColor: '#ffffff',
+                            strokeWeight: 2.5
+                        }
+                    });
+                }
+                google.maps.event.trigger(googlePageDetailMap, 'resize');
+                return;
+            }
+
+            googlePageDetailMap = new google.maps.Map(mapContainer, {
+                center: centerPos,
+                zoom: 12,
+                mapTypeId: google.maps.MapTypeId.ROADMAP,
+                mapTypeControl: true,
+                mapTypeControlOptions: {
+                    style: google.maps.MapTypeControlStyle.DROPDOWN_MENU,
+                    position: google.maps.ControlPosition.TOP_RIGHT
+                },
+                zoomControl: true,
+                zoomControlOptions: {
+                    position: google.maps.ControlPosition.RIGHT_BOTTOM
+                },
+                streetViewControl: false,
+                fullscreenControl: true,
+                fullscreenControlOptions: {
+                    position: google.maps.ControlPosition.RIGHT_BOTTOM
+                }
+            });
+
+            googlePageDetailMarker = new google.maps.Marker({
+                position: centerPos,
+                map: googlePageDetailMap,
+                icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 9,
+                    fillColor: '#006d43',
+                    fillOpacity: 0.95,
+                    strokeColor: '#ffffff',
+                    strokeWeight: 2.5
+                }
+            });
+            return;
+        }
+
+        // Fallback: Leaflet Map
         if (pageDetailMap) {
             pageDetailMap.setView([lat, lng], 11);
             if (pageDetailMarker) {
@@ -1312,24 +1518,26 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        pageDetailMap = L.map('page-trip-detail-map', {
-            zoomControl: true
-        }).setView([lat, lng], 11);
+        if (typeof L !== 'undefined' && L.map) {
+            pageDetailMap = L.map('page-trip-detail-map', {
+                zoomControl: true
+            }).setView([lat, lng], 11);
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            maxZoom: 20
-        }).addTo(pageDetailMap);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                maxZoom: 20
+            }).addTo(pageDetailMap);
 
-        pageDetailMarker = L.circleMarker([lat, lng], {
-            radius: 9,
-            fillColor: '#006d43',
-            fillOpacity: 0.9,
-            stroke: true,
-            color: '#ffffff',
-            weight: 2
-        }).addTo(pageDetailMap);
+            pageDetailMarker = L.circleMarker([lat, lng], {
+                radius: 9,
+                fillColor: '#006d43',
+                fillOpacity: 0.9,
+                stroke: true,
+                color: '#ffffff',
+                weight: 2
+            }).addTo(pageDetailMap);
 
-        pageDetailMap.invalidateSize();
+            pageDetailMap.invalidateSize();
+        }
     }
 
     async function loadTripBookings(tripId) {

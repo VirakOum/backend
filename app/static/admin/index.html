@@ -16,7 +16,7 @@
     <!-- Chart.js for High-end Revenue Graphs -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="css/styles.css?v=1.7">
+    <link rel="stylesheet" href="css/styles.css?v=1.8">
 </head>
 <body>
     <!-- Admin Authentication Login Modal / Overlay -->
@@ -313,7 +313,12 @@
                 <div class="map-container-wrap">
                     <div id="fleet-map"></div>
                     <div class="map-overlay">
-                        <h3 data-i18n="map_overview_label">Fleet Overview</h3>
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0,0,0,0.06); padding-bottom: 6px;">
+                            <h3 data-i18n="map_overview_label" style="margin: 0;">Fleet Overview</h3>
+                            <span style="font-size: 0.68rem; font-weight: 700; color: #1a73e8; display: inline-flex; align-items: center; gap: 4px; background: rgba(26,115,232,0.1); padding: 2px 6px; border-radius: 4px;">
+                                <i class="fa-brands fa-google"></i> Google Maps
+                            </span>
+                        </div>
                         <div class="map-legend">
                             <div class="legend-item">
                                 <span class="legend-marker marker-active"></span>
@@ -1770,9 +1775,11 @@
     <!-- Sidebar Overlay for mobile/tablet drawer -->
     <div id="sidebar-overlay" class="sidebar-overlay"></div>
 
-    <!-- Leaflet JS -->
+    <!-- Google Maps JavaScript API -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDYkud0Ul72ok5DpRMLkGhPnZekJ1-7_P4&libraries=places,geometry"></script>
+    <!-- Leaflet JS (Fallback) -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <!-- Custom JS -->
-    <script src="js/app.js?v=1.7"></script>
+    <script src="js/app.js?v=1.9"></script>
 </body>
 </html>
