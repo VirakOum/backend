@@ -49,6 +49,9 @@ def get_google_places_api_key_ios() -> str:
     return _env_text("GOOGLE_PLACES_API_KEY_IOS") or get_google_places_api_key()
 
 
+DEFAULT_GOOGLE_MAPS_API_KEY = "AIzaSyDYkud0Ul72ok5DpRMLkGhPnZekJ1-7_P4"
+
+
 def get_google_maps_api_key() -> str:
-    return _env_text("GOOGLE_MAPS_API_KEY")
+    return _env_text("GOOGLE_MAPS_API_KEY") or DEFAULT_GOOGLE_MAPS_API_KEY
 

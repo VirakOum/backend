@@ -1090,27 +1090,38 @@ input:checked + .slider:before {
     min-height: 1.25rem;
 }
 
-/* Leaflet map styles */
-.leaflet-popup-content-value {
-    font-family: var(--font-display);
-    font-weight: 700;
+/* Google Maps Custom Styling */
+.gm-style .gm-style-iw-c {
+    border-radius: var(--radius-lg) !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 27, 68, 0.15), 0 8px 10px -6px rgba(0, 27, 68, 0.1) !important;
+    padding: 12px 14px !important;
+    font-family: var(--font-body) !important;
+    background: #ffffff !important;
+}
+
+.gm-style .gm-style-iw-d {
+    overflow: hidden !important;
+    padding: 0 !important;
+}
+
+.gm-style .gm-style-iw-t::after {
+    background: #ffffff !important;
+    box-shadow: -2px 2px 2px 0 rgba(0, 0, 0, 0.1) !important;
+}
+
+.map-loading-indicator,
+.map-error-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
     color: var(--color-primary);
-}
-
-.leaflet-popup-content {
     font-family: var(--font-body);
-    font-size: 0.75rem;
-}
-
-.leaflet-bar a {
-    background-color: var(--color-surface-container-lowest) !important;
-    color: var(--color-primary) !important;
-    border: none !important;
-}
-
-.leaflet-bar {
-    box-shadow: var(--shadow-ambient) !important;
-    border: none !important;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-align: center;
+    padding: 2rem;
 }
 
 /* Pagination Styling */
