@@ -1,3 +1,4 @@
+import os
 import uuid
 from datetime import datetime
 from decimal import Decimal
@@ -273,6 +274,16 @@ def get_admin_summary(db: Session = Depends(get_db)) -> Any:
         "total_bookings": total_bookings,
         "seat_occupancy_rate": seat_occupancy_rate,
         "settings": settings
+    }
+
+
+@router.get("/map-config")
+def get_map_config() -> Any:
+    """Safe runtime retrieval of Google Maps API key from environment variable."""
+    api_key = os.getenv("GOOGLE_MAPS_API_KEY", "")
+    return {
+        "google_maps_api_key": api_key,
+        "enabled": bool(api_key),
     }
 
 

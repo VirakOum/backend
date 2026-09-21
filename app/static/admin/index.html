@@ -282,6 +282,13 @@
                                     <input type="number" id="driver_cash_debt_limit_khr" required>
                                 </div>
                             </div>
+                            <div class="form-row">
+                                <div class="form-group" style="flex: 1;">
+                                    <label for="google_maps_api_key">Google Maps API Key (Optional)</label>
+                                    <input type="password" id="google_maps_api_key" placeholder="Enter Google Maps API key (leave blank to use Leaflet map)" autocomplete="off">
+                                    <p class="input-desc" style="font-size: 0.75rem; color: var(--color-text-secondary); margin-top: 4px;">Loaded securely from backend environment or saved locally without committing secrets to git.</p>
+                                </div>
+                            </div>
                             <div class="form-actions">
                                 <button type="submit" class="btn btn-primary" id="btn-save-settings">
                                     <i class="fa-solid fa-save"></i> <span data-i18n="config_save">Save Configuration</span>
@@ -1775,11 +1782,9 @@
     <!-- Sidebar Overlay for mobile/tablet drawer -->
     <div id="sidebar-overlay" class="sidebar-overlay"></div>
 
-    <!-- Google Maps JavaScript API -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDYkud0Ul72ok5DpRMLkGhPnZekJ1-7_P4&libraries=places,geometry"></script>
-    <!-- Leaflet JS (Fallback) -->
+    <!-- Leaflet JS (Default / Fallback Map Renderer) -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <!-- Custom JS -->
-    <script src="js/app.js?v=1.9"></script>
+    <script src="js/app.js?v=2.0"></script>
 </body>
 </html>

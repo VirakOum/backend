@@ -441,9 +441,78 @@ document.addEventListener('DOMContentLoaded', () => {
     let googlePageDetailMap = null;
     let googlePageDetailMarker = null;
 
+    let googleMapsScriptLoading = false;
+    let serverGoogleMapsApiKey = '';
+
+    function getActiveGoogleMapsKey() {
+        return serverGoogleMapsApiKey || localStorage.getItem('google_maps_api_key') || '';
+    }
+
     function isGoogleMapsReady() {
         return typeof google !== 'undefined' && typeof google.maps !== 'undefined' && typeof google.maps.Map === 'function';
     }
+
+    function ensureGoogleMapsLoaded(callback) {
+        if (isGoogleMapsReady()) {
+            if (callback) callback();
+            return;
+        }
+        const apiKey = getActiveGoogleMapsKey();
+        if (!apiKey) {
+            if (callback) callback();
+            return;
+        }
+        if (document.getElementById('google-maps-js-sdk')) {
+            if (googleMapsScriptLoading) {
+                setTimeout(() => {
+                    if (callback) callback();
+                }, 350);
+            } else if (callback) {
+                callback();
+            }
+            return;
+        }
+
+        googleMapsScriptLoading = true;
+        const script = document.createElement('script');
+        script.id = 'google-maps-js-sdk';
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places,geometry`;
+        script.async = true;
+        script.onload = () => {
+            googleMapsScriptLoading = false;
+            console.log('Google Maps JavaScript SDK loaded dynamically.');
+            if (callback) callback();
+        };
+        script.onerror = () => {
+            googleMapsScriptLoading = false;
+            console.warn('Google Maps script failed to load. Falling back to Leaflet.');
+            if (callback) callback();
+        };
+        document.head.appendChild(script);
+    }
+
+    // Fetch server map configuration at startup
+    async function initMapConfig() {
+        try {
+            const res = await fetch(`${API_BASE}/map-config`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.google_maps_api_key) {
+                    serverGoogleMapsApiKey = data.google_maps_api_key;
+                }
+            }
+        } catch (e) {
+            // Ignore offline errors
+        }
+        if (getActiveGoogleMapsKey()) {
+            ensureGoogleMapsLoaded(() => {
+                if (activeTabId === 'map') {
+                    initMap();
+                }
+            });
+        }
+    }
+    initMapConfig();
 
     let currentDrivers = [];
     let currentPassengers = [];
@@ -770,6 +839,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize Live Tracking Map (Google Maps API with Leaflet fallback, Cambodia / Phnom Penh focus)
     function initMap() {
+        if (!isGoogleMapsReady() && getActiveGoogleMapsKey() && !googleMapsScriptLoading) {
+            ensureGoogleMapsLoaded(() => {
+                initMap();
+            });
+        }
+
         if (isGoogleMapsReady()) {
             if (googleFleetMap) {
                 google.maps.event.trigger(googleFleetMap, 'resize');
@@ -1438,6 +1513,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const numLat = Number(lat);
         const numLng = Number(lng);
 
+        if (!isGoogleMapsReady() && getActiveGoogleMapsKey() && !googleMapsScriptLoading) {
+            ensureGoogleMapsLoaded(() => {
+                initPageDetailMap(lat, lng);
+            });
+        }
+
         if (isGoogleMapsReady()) {
             const centerPos = { lat: numLat, lng: numLng };
 
@@ -1724,6 +1805,11 @@ document.addEventListener('DOMContentLoaded', () => {
             autoLockOnLimitInput.checked = appSettings.auto_lock_on_limit;
             driverCashDebtLimitUsdInput.value = appSettings.driver_cash_debt_limit_usd;
             driverCashDebtLimitKhrInput.value = appSettings.driver_cash_debt_limit_khr;
+
+            const googleMapsApiKeyInput = document.getElementById('google_maps_api_key');
+            if (googleMapsApiKeyInput) {
+                googleMapsApiKeyInput.value = localStorage.getItem('google_maps_api_key') || serverGoogleMapsApiKey || '';
+            }
         } catch (error) {
             console.error('Error loading summary stats:', error);
         }
@@ -1749,6 +1835,19 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (response.ok) {
+                const googleMapsApiKeyInput = document.getElementById('google_maps_api_key');
+                if (googleMapsApiKeyInput) {
+                    const newKey = googleMapsApiKeyInput.value.trim();
+                    if (newKey) {
+                        localStorage.setItem('google_maps_api_key', newKey);
+                        ensureGoogleMapsLoaded(() => {
+                            if (activeTabId === 'map') initMap();
+                        });
+                    } else {
+                        localStorage.removeItem('google_maps_api_key');
+                    }
+                }
+
                 showToast(dict.toast_settings_saved);
                 loadSummary();
                 if (activeTabId === 'drivers') loadDrivers();
