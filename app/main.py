@@ -1,15 +1,18 @@
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, APIRouter, HTTPException
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import RedirectResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect, text
+from sqlalchemy.orm import Session
 
-from .db import engine
+from .db import engine, get_db
+from .version_control import check_version_response
+from .schemas import AppVersionCheckResponse
 from .routes.meta import router as meta_router
 from .routes.travel import router as travel_router
 from .routes.passenger import router as passenger_router
@@ -120,6 +123,16 @@ def api_v1_root():
 for r in [meta_router, travel_router, passenger_router, addresses_router, driver_fee_router, admin_router, live_ws_router, items_router]:
     api_v1_router.include_router(r)
     app.include_router(r)
+
+
+@app.get("/api/version", response_model=AppVersionCheckResponse, tags=["version-control"])
+@api_v1_router.get("/version", response_model=AppVersionCheckResponse, tags=["version-control"])
+def get_version_alias(
+    platform: str = Query("android", description="Platform: android or ios"),
+    current_version: str | None = Query(None, description="Current installed app version e.g. 1.0.0"),
+    db: Session = Depends(get_db),
+) -> AppVersionCheckResponse:
+    return check_version_response(db, platform=platform, current_version=current_version)
 
 def custom_openapi():
     if app.openapi_schema:

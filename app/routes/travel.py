@@ -35,11 +35,13 @@ from .driver_fee import (
     snapshot_booking_fees,
 )
 from ..services import send_push_notification_to_user, ensure_default_vehicle_models
+from ..version_control import check_version_response
 from math import asin, cos, radians, sin, sqrt
 
 from ..schemas import (
 	ActiveBookingResponse,
 	AppConfigResponse,
+	AppVersionCheckResponse,
 	AuthResponse,
 	BookingCreate,
 	BookingLiveLocationInfo,
@@ -296,7 +298,7 @@ def _trip_matches_now_window(trip: Trip, now_local: datetime) -> bool:
 	if trip.status == "active":
 		active_until_local = _trip_active_until_local(trip)
 		return active_until_local is not None and departure_local <= now_local <= active_until_local
-	return departure_local >= now_local
+	return departure_local >= (now_local - timedelta(hours=4))
 
 
 def _local_now(tz: ZoneInfo) -> datetime:
@@ -1792,11 +1794,11 @@ def search_trips(
 
 	# Time-aware filtering:
 	# - date-only journey_date => whole day window
-	# - datetime journey_date => strictly after that exact moment
+	# - datetime journey_date => allow up to 4 hours past scheduled departure
 	# - return_date provided => upper bound at that exact datetime (or end-of-day if date-only)
 	if journey_has_time:
-		window_start = journey_dt
-		strict_start = True
+		window_start = journey_dt - timedelta(hours=4)
+		strict_start = False
 	else:
 		window_start = datetime.combine(journey_dt.date(), time(0, 0, 0))
 		strict_start = False
@@ -2003,8 +2005,8 @@ def find_trips_now(
         
     # Query active/scheduled trips
     now_local = _local_now(tz)
-    # Search trips departing around current time window (e.g. from 2 hours ago up to 24 hours ahead)
-    window_start = now_local - timedelta(hours=2)
+    # Search trips departing around current time window (e.g. from 4 hours ago up to 24 hours ahead)
+    window_start = now_local - timedelta(hours=4)
     window_end = now_local + timedelta(hours=24)
     
     base_query = (
@@ -3118,6 +3120,15 @@ def get_app_config() -> AppConfigResponse:
 		google_places_api_key_android=google_places_api_key_android or None,
 		google_places_api_key_ios=google_places_api_key_ios or None,
 	)
+
+
+@router.get("/version", response_model=AppVersionCheckResponse)
+def get_app_version(
+	platform: str = Query("android", description="Platform: android or ios"),
+	current_version: str | None = Query(None, description="Current installed app version, e.g. 1.0.0"),
+	db: Session = Depends(get_db),
+) -> AppVersionCheckResponse:
+	return check_version_response(db, platform=platform, current_version=current_version)
 
 
 @router.get("/safety/config", response_model=SafetyConfigResponse)

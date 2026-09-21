@@ -92,6 +92,9 @@ document.addEventListener('DOMContentLoaded', () => {
             title_vehicle_models: "Car & Vehicle Models",
             subtitle_vehicle_models: "Manage available vehicle makes, models, and default seating configurations",
             btn_add_vehicle_model: "Add Car Model",
+            nav_app_versions: "App Version Control",
+            title_app_versions: "App Version Control",
+            subtitle_app_versions: "Control minimum and latest app versions, enforce updates, and publish release notes for Android & iOS",
             table_brand: "Make / Brand",
             table_model_name: "Model Name",
             table_display_name: "Display Name",
@@ -253,6 +256,9 @@ document.addEventListener('DOMContentLoaded', () => {
             title_vehicle_models: "ម៉ូដែលរថយន្ត និងយានយន្ត",
             subtitle_vehicle_models: "គ្រប់គ្រងម៉ាក ម៉ូដែល និងចំនួនកៅអីតាមលំនាំដើមរបស់រថយន្ត",
             btn_add_vehicle_model: "បន្ថែមម៉ូដែលរថយន្ត",
+            nav_app_versions: "ការគ្រប់គ្រងកំណែកម្មវិធី",
+            title_app_versions: "ការគ្រប់គ្រងកំណែកម្មវិធី",
+            subtitle_app_versions: "គ្រប់គ្រងកំណែអប្បបរមា និងចុងក្រោយ បង្ខំបច្ចុប្បន្នភាព និងកំណត់ចំណាំការចេញផ្សាយសម្រាប់ Android និង iOS",
             table_brand: "ម៉ាក / ផលិតករ",
             table_model_name: "ឈ្មោះម៉ូដែល",
             table_display_name: "ឈ្មោះបង្ហាញពេញ",
@@ -716,6 +722,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // Trigger vehicle models load
             if (activeTabId === 'vehicle-models') {
                 loadVehicleModels();
+            }
+
+            // Trigger app versions load
+            if (activeTabId === 'app-versions') {
+                loadAppVersions();
             }
         });
     });
@@ -2049,6 +2060,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activeTabId === 'messages') loadAdminMessages();
         if (activeTabId === 'news') loadNewsArticles();
         if (activeTabId === 'vehicle-models') loadVehicleModels();
+        if (activeTabId === 'app-versions') loadAppVersions();
         showToast(TRANSLATIONS[currentLanguage].toast_refresh);
     });
     
@@ -3509,6 +3521,254 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // ==========================================
+    // App Version Control & Flow Simulator Logic
+    // ==========================================
+    let cachedAppVersions = [];
+
+    async function loadAppVersions() {
+        try {
+            const res = await fetch(`${API_BASE}/app-versions`, {
+                headers: getAuthHeaders()
+            });
+            if (!res.ok) throw new Error('Failed to load version configs');
+            const data = await res.json();
+            cachedAppVersions = data;
+
+            const androidConfig = data.find(c => c.platform === 'android');
+            const iosConfig = data.find(c => c.platform === 'ios');
+
+            if (androidConfig) {
+                document.getElementById('android-latest-version').value = androidConfig.latest_version || '';
+                document.getElementById('android-min-version').value = androidConfig.min_version || '';
+                document.getElementById('android-force-update').checked = !!androidConfig.force_update;
+                document.getElementById('android-is-active').checked = !!androidConfig.is_active;
+                document.getElementById('android-update-url').value = androidConfig.update_url || '';
+                document.getElementById('btn-test-url-android').href = androidConfig.update_url || '#';
+                document.getElementById('android-title-en').value = androidConfig.title || '';
+                document.getElementById('android-title-km').value = androidConfig.title_km || '';
+                document.getElementById('android-notes-en').value = androidConfig.release_notes || '';
+                document.getElementById('android-notes-km').value = androidConfig.release_notes_km || '';
+
+                const kpiVer = document.getElementById('kpi-android-version');
+                const kpiMin = document.getElementById('kpi-android-min');
+                if (kpiVer) kpiVer.textContent = `v${androidConfig.latest_version}`;
+                if (kpiMin) kpiMin.textContent = `Min Req: v${androidConfig.min_version} ${androidConfig.force_update ? '(FORCED)' : ''}`;
+                
+                const badge = document.getElementById('badge-android-status');
+                if (badge) {
+                    badge.textContent = androidConfig.is_active ? (androidConfig.force_update ? 'Force Update' : 'Active') : 'Inactive';
+                    badge.style.background = androidConfig.is_active ? 'rgba(61, 220, 132, 0.2)' : 'rgba(239, 68, 68, 0.2)';
+                    badge.style.color = androidConfig.is_active ? '#3DDC84' : '#ef4444';
+                }
+            }
+
+            if (iosConfig) {
+                document.getElementById('ios-latest-version').value = iosConfig.latest_version || '';
+                document.getElementById('ios-min-version').value = iosConfig.min_version || '';
+                document.getElementById('ios-force-update').checked = !!iosConfig.force_update;
+                document.getElementById('ios-is-active').checked = !!iosConfig.is_active;
+                document.getElementById('ios-update-url').value = iosConfig.update_url || '';
+                document.getElementById('btn-test-url-ios').href = iosConfig.update_url || '#';
+                document.getElementById('ios-title-en').value = iosConfig.title || '';
+                document.getElementById('ios-title-km').value = iosConfig.title_km || '';
+                document.getElementById('ios-notes-en').value = iosConfig.release_notes || '';
+                document.getElementById('ios-notes-km').value = iosConfig.release_notes_km || '';
+
+                const kpiVer = document.getElementById('kpi-ios-version');
+                const kpiMin = document.getElementById('kpi-ios-min');
+                if (kpiVer) kpiVer.textContent = `v${iosConfig.latest_version}`;
+                if (kpiMin) kpiMin.textContent = `Min Req: v${iosConfig.min_version} ${iosConfig.force_update ? '(FORCED)' : ''}`;
+                
+                const badge = document.getElementById('badge-ios-status');
+                if (badge) {
+                    badge.textContent = iosConfig.is_active ? (iosConfig.force_update ? 'Force Update' : 'Active') : 'Inactive';
+                    badge.style.background = iosConfig.is_active ? 'rgba(162, 170, 173, 0.2)' : 'rgba(239, 68, 68, 0.2)';
+                    badge.style.color = iosConfig.is_active ? '#E5E9EC' : '#ef4444';
+                }
+            }
+        } catch (err) {
+            console.error('Error loading app versions:', err);
+        }
+    }
+
+    async function saveAppVersion(platform) {
+        const isAndroid = platform === 'android';
+        const prefix = isAndroid ? 'android' : 'ios';
+
+        const payload = {
+            platform: platform,
+            latest_version: document.getElementById(`${prefix}-latest-version`).value.trim(),
+            min_version: document.getElementById(`${prefix}-min-version`).value.trim(),
+            force_update: document.getElementById(`${prefix}-force-update`).checked,
+            is_active: document.getElementById(`${prefix}-is-active`).checked,
+            update_url: document.getElementById(`${prefix}-update-url`).value.trim(),
+            title: document.getElementById(`${prefix}-title-en`).value.trim() || 'New Version Available',
+            title_km: document.getElementById(`${prefix}-title-km`).value.trim() || 'មានកំណែថ្មីនៃកម្មវិធី',
+            release_notes: document.getElementById(`${prefix}-notes-en`).value,
+            release_notes_km: document.getElementById(`${prefix}-notes-km`).value,
+        };
+
+        if (!payload.latest_version || !payload.min_version) {
+            alert('Please specify both Latest and Minimum version numbers.');
+            return;
+        }
+
+        try {
+            const res = await fetch(`${API_BASE}/app-versions`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) throw new Error('Failed to save version settings');
+            showToast(`${platform.toUpperCase()} version configuration saved successfully!`);
+            await loadAppVersions();
+        } catch (err) {
+            alert('Error saving version settings: ' + err.message);
+        }
+    }
+
+    // Attach form submit listeners
+    const formAndroid = document.getElementById('form-version-android');
+    if (formAndroid) {
+        formAndroid.addEventListener('submit', (e) => {
+            e.preventDefault();
+            saveAppVersion('android');
+        });
+    }
+
+    const formIos = document.getElementById('form-version-ios');
+    if (formIos) {
+        formIos.addEventListener('submit', (e) => {
+            e.preventDefault();
+            saveAppVersion('ios');
+        });
+    }
+
+    // Live Version Flow Simulator
+    let lastSimResult = null;
+    const btnRunSim = document.getElementById('btn-run-simulation');
+    if (btnRunSim) {
+        btnRunSim.addEventListener('click', async () => {
+            const platform = document.getElementById('sim-platform').value;
+            const currentVersion = document.getElementById('sim-version-input').value.trim();
+            if (!currentVersion) {
+                alert('Please enter a version to test (e.g. 1.0.0)');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/app-versions/simulate`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        platform: platform,
+                        current_version: currentVersion
+                    })
+                });
+                if (!res.ok) throw new Error('Simulation failed');
+                const sim = await res.json();
+                lastSimResult = sim;
+
+                // Reset all cards
+                document.querySelectorAll('.flow-card').forEach(c => c.classList.remove('active-flow'));
+
+                const resultBox = document.getElementById('sim-result-text');
+                const previewBtn = document.getElementById('btn-preview-sim-modal');
+
+                if (sim.action === 'force_update') {
+                    document.getElementById('flow-card-force').classList.add('active-flow');
+                    resultBox.innerHTML = `<span style="color: #ef4444;"><i class="fa-solid fa-triangle-exclamation"></i> <strong>FORCE UPDATE</strong></span> &bull; ${escapeHtml(sim.reason)}`;
+                    if (previewBtn) previewBtn.style.display = 'inline-flex';
+                } else if (sim.action === 'optional_update') {
+                    document.getElementById('flow-card-optional').classList.add('active-flow');
+                    resultBox.innerHTML = `<span style="color: #f59e0b;"><i class="fa-solid fa-circle-exclamation"></i> <strong>OPTIONAL UPDATE</strong></span> &bull; ${escapeHtml(sim.reason)}`;
+                    if (previewBtn) previewBtn.style.display = 'inline-flex';
+                } else {
+                    document.getElementById('flow-card-continue').classList.add('active-flow');
+                    resultBox.innerHTML = `<span style="color: #10b981;"><i class="fa-solid fa-circle-check"></i> <strong>CONTINUE</strong></span> &bull; ${escapeHtml(sim.reason)}`;
+                    if (previewBtn) previewBtn.style.display = 'none';
+                }
+            } catch (err) {
+                alert('Simulation error: ' + err.message);
+            }
+        });
+    }
+
+    const btnPreviewSim = document.getElementById('btn-preview-sim-modal');
+    if (btnPreviewSim) {
+        btnPreviewSim.addEventListener('click', () => {
+            if (!lastSimResult) return;
+            const mode = lastSimResult.action === 'force_update' ? 'force' : 'optional';
+            openPhoneMockupPreview(lastSimResult.platform, mode, lastSimResult.current_version, lastSimResult.latest_version);
+        });
+    }
+
+    // Phone Mockup Preview Modal
+    function openPhoneMockupPreview(platform, mode, currentVer, latestVer) {
+        const isAndroid = platform === 'android';
+        const prefix = isAndroid ? 'android' : 'ios';
+        const modal = document.getElementById('app-version-preview-modal');
+        const dialog = document.getElementById('phone-modal-dialog');
+        const iconWrap = document.getElementById('preview-icon-wrap');
+        const icon = document.getElementById('preview-icon');
+        const badge = document.getElementById('preview-badge');
+        const title = document.getElementById('preview-title');
+        const curVerSpan = document.getElementById('preview-cur-ver');
+        const newVerSpan = document.getElementById('preview-new-ver');
+        const notes = document.getElementById('preview-notes');
+        const btnAction = document.getElementById('preview-btn-action');
+        const btnDismiss = document.getElementById('preview-btn-dismiss');
+
+        const titleText = document.getElementById(`${prefix}-title-en`).value || 'Update Available';
+        const latestText = latestVer || document.getElementById(`${prefix}-latest-version`).value || '1.1.0';
+        const curText = currentVer || (mode === 'force' ? '1.0.0' : document.getElementById(`${prefix}-min-version`).value || '1.0.5');
+        const notesRaw = document.getElementById(`${prefix}-notes-en`).value || '• Improved booking and tracking features\n• General bug fixes and stability enhancements';
+
+        curVerSpan.textContent = `v${curText}`;
+        newVerSpan.textContent = `v${latestText}`;
+        title.textContent = titleText;
+        notes.innerHTML = escapeHtml(notesRaw).replace(/\n/g, '<br>');
+
+        if (mode === 'force') {
+            dialog.className = 'phone-modal-dialog mode-force';
+            badge.textContent = 'MANDATORY UPDATE';
+            badge.style.background = 'rgba(239, 68, 68, 0.15)';
+            badge.style.color = '#dc2626';
+            icon.className = 'fa-solid fa-triangle-exclamation';
+            btnAction.textContent = isAndroid ? 'Update on Google Play' : 'Update on App Store';
+            btnDismiss.style.display = 'none';
+        } else {
+            dialog.className = 'phone-modal-dialog mode-optional';
+            badge.textContent = 'OPTIONAL UPDATE';
+            badge.style.background = 'rgba(255, 200, 61, 0.2)';
+            badge.style.color = '#b45309';
+            icon.className = 'fa-solid fa-cloud-arrow-up';
+            btnAction.textContent = isAndroid ? 'Update on Google Play' : 'Update on App Store';
+            btnDismiss.style.display = 'block';
+            btnDismiss.textContent = 'Remind Me Later';
+        }
+
+        modal.classList.add('active');
+    }
+
+    // Attach preview buttons on Android and iOS cards
+    document.querySelectorAll('.btn-preview-ui').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const platform = btn.getAttribute('data-platform');
+            const type = btn.getAttribute('data-type');
+            openPhoneMockupPreview(platform, type);
+        });
+    });
+
+    const btnClosePreview = document.getElementById('btn-close-preview');
+    if (btnClosePreview) {
+        btnClosePreview.addEventListener('click', () => {
+            const modal = document.getElementById('app-version-preview-modal');
+            if (modal) modal.classList.remove('active');
+        });
+    }
+
     // Check Auth on Startup
     if (checkAdminAuth()) {
         loadSummary().then(() => {
@@ -3516,7 +3776,9 @@ document.addEventListener('DOMContentLoaded', () => {
             loadPassengers();
             loadVehicleModels();
             loadNewsArticles();
+            loadAppVersions();
         });
     }
 });
+
 

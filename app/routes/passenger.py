@@ -296,7 +296,7 @@ def get_recommended_trips(
         .options(selectinload(Trip.driver), selectinload(Trip.vehicle), selectinload(Trip.bookings))
         .where(
             Trip.status == "scheduled",
-            Trip.departure_time > now,
+            Trip.departure_time >= (now - timedelta(hours=4)),
             Trip.available_seats > 0,
         )
         .order_by(Trip.departure_time.asc())
@@ -328,7 +328,7 @@ def list_passenger_trips(
         .options(selectinload(Trip.driver), selectinload(Trip.vehicle), selectinload(Trip.bookings))
         .where(
             Trip.status == "scheduled",
-            Trip.departure_time > now,
+            Trip.departure_time >= (now - timedelta(hours=4)),
             Trip.available_seats > 0,
         )
         .order_by(Trip.departure_time.asc())

@@ -164,6 +164,10 @@
                     <i class="fa-solid fa-car-side nav-icon"></i>
                     <span data-i18n="nav_vehicle_models">Vehicle Models</span>
                 </a>
+                <a href="#app-versions" class="nav-item" data-tab="app-versions">
+                    <i class="fa-solid fa-code-branch nav-icon"></i>
+                    <span data-i18n="nav_app_versions">App Version Control</span>
+                </a>
             </nav>
 
             <div class="sidebar-footer">
@@ -1144,6 +1148,285 @@
                     </div>
                 </div>
             </section>
+
+            <!-- Tab: App Version Control -->
+            <section id="tab-app-versions" class="tab-pane">
+                <!-- KPI Status Bar -->
+                <div class="kpi-grid">
+                    <div class="kpi-card gradient-card">
+                        <div class="kpi-card-header">
+                            <span class="kpi-label">Android Release Status</span>
+                            <i class="fa-brands fa-android kpi-icon"></i>
+                        </div>
+                        <div class="kpi-value" id="kpi-android-version">v1.0.0</div>
+                        <div class="kpi-meta" id="kpi-android-min">Min Req: v1.0.0</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-card-header">
+                            <span class="kpi-label">iOS Release Status</span>
+                            <i class="fa-brands fa-apple kpi-icon"></i>
+                        </div>
+                        <div class="kpi-value" id="kpi-ios-version">v1.0.0</div>
+                        <div class="kpi-meta" id="kpi-ios-min">Min Req: v1.0.0</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-card-header">
+                            <span class="kpi-label">Update Rule Engine</span>
+                            <i class="fa-solid fa-shield-halved kpi-icon"></i>
+                        </div>
+                        <div class="kpi-value" id="kpi-engine-status" style="color: #3DDC84;">ONLINE</div>
+                        <div class="kpi-meta">Automatic SemVer Branching</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-card-header">
+                            <span class="kpi-label">API Endpoint</span>
+                            <i class="fa-solid fa-globe kpi-icon"></i>
+                        </div>
+                        <div class="kpi-value" style="font-size: 1.25rem; font-weight: 700;">/api/version</div>
+                        <div class="kpi-meta">Mobile Client Check Route</div>
+                    </div>
+                </div>
+
+                <!-- Platform Settings Grid -->
+                <div class="layout-grid" style="grid-template-columns: 1fr 1fr; gap: var(--spacing-lg);">
+                    <!-- Android Config Card -->
+                    <div class="content-card">
+                        <div class="card-header" style="display: flex; align-items: center; justify-content: space-between;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <i class="fa-brands fa-android" style="font-size: 1.6rem; color: #3DDC84;"></i>
+                                <div>
+                                    <h2 class="headline-sm">Android Version Rule</h2>
+                                    <p class="body-sm" style="color: var(--color-text-secondary); margin: 0;">Google Play Store &amp; APK Distribution</p>
+                                </div>
+                            </div>
+                            <span class="badge" id="badge-android-status" style="background: rgba(61, 220, 132, 0.2); color: #3DDC84; font-weight: 700; padding: 4px 10px; border-radius: 8px;">Active</span>
+                        </div>
+                        <form id="form-version-android" class="settings-form" style="margin-top: 1rem;">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="android-latest-version">Latest Release Version <span style="color: var(--color-primary); font-size: 0.75rem;">(Prompt update if older)</span></label>
+                                    <input type="text" id="android-latest-version" class="search-input" placeholder="e.g. 1.1.0" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="android-min-version">Minimum Required Version <span style="color: #ff5252; font-size: 0.75rem;">(Force block if below)</span></label>
+                                    <input type="text" id="android-min-version" class="search-input" placeholder="e.g. 1.0.5" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group toggle-group">
+                                    <div class="toggle-label-wrap">
+                                        <label for="android-force-update">Mandatory Force Update</label>
+                                        <p class="input-desc">Force all older versions to update immediately</p>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="android-force-update">
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+                                <div class="form-group toggle-group">
+                                    <div class="toggle-label-wrap">
+                                        <label for="android-is-active">Active Version Checking</label>
+                                        <p class="input-desc">Enable version check for Android clients</p>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="android-is-active" checked>
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="android-update-url">Store / Download URL (Google Play or APK)</label>
+                                <div style="display: flex; gap: 8px;">
+                                    <input type="url" id="android-update-url" class="search-input" placeholder="https://play.google.com/store/apps/details?id=com.mytravel.app" required style="flex-grow: 1;">
+                                    <a id="btn-test-url-android" href="https://play.google.com/store/apps/details?id=com.mytravel.app" target="_blank" class="btn btn-secondary" title="Test URL"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="android-title-en">Release Title (English)</label>
+                                    <input type="text" id="android-title-en" class="search-input" placeholder="e.g. New Version Available">
+                                </div>
+                                <div class="form-group">
+                                    <label for="android-title-km">Release Title (Khmer ភាសាខ្មែរ)</label>
+                                    <input type="text" id="android-title-km" class="search-input" placeholder="e.g. មានកំណែថ្មីនៃកម្មវិធី">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="android-notes-en">What's New / Release Notes (English)</label>
+                                    <textarea id="android-notes-en" class="search-input" rows="4" placeholder="• Improved booking speed&#10;• Bug fixes and UI enhancements"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="android-notes-km">What's New (Khmer ភាសាខ្មែរ)</label>
+                                    <textarea id="android-notes-km" class="search-input" rows="4" placeholder="• បង្កើនល្បឿននៃការកក់&#10;• កែសម្រួលចំណុចខ្វះខាត និងបង្កើនល្បឿន"></textarea>
+                                </div>
+                            </div>
+                            <div class="form-actions" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <button type="submit" class="btn btn-primary" id="btn-save-android">
+                                    <i class="fa-solid fa-floppy-disk"></i> <span>Save Android Settings</span>
+                                </button>
+                                <button type="button" class="btn btn-secondary btn-preview-ui" data-platform="android" data-type="force">
+                                    <i class="fa-solid fa-triangle-exclamation"></i> <span>Preview Force Modal</span>
+                                </button>
+                                <button type="button" class="btn btn-secondary btn-preview-ui" data-platform="android" data-type="optional">
+                                    <i class="fa-solid fa-bell"></i> <span>Preview Optional Sheet</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- iOS Config Card -->
+                    <div class="content-card">
+                        <div class="card-header" style="display: flex; align-items: center; justify-content: space-between;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <i class="fa-brands fa-apple" style="font-size: 1.8rem; color: #A2AAAD;"></i>
+                                <div>
+                                    <h2 class="headline-sm">iOS Version Rule</h2>
+                                    <p class="body-sm" style="color: var(--color-text-secondary); margin: 0;">Apple App Store Distribution</p>
+                                </div>
+                            </div>
+                            <span class="badge" id="badge-ios-status" style="background: rgba(162, 170, 173, 0.2); color: #E5E9EC; font-weight: 700; padding: 4px 10px; border-radius: 8px;">Active</span>
+                        </div>
+                        <form id="form-version-ios" class="settings-form" style="margin-top: 1rem;">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="ios-latest-version">Latest Release Version <span style="color: var(--color-primary); font-size: 0.75rem;">(Prompt update if older)</span></label>
+                                    <input type="text" id="ios-latest-version" class="search-input" placeholder="e.g. 1.1.0" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="ios-min-version">Minimum Required Version <span style="color: #ff5252; font-size: 0.75rem;">(Force block if below)</span></label>
+                                    <input type="text" id="ios-min-version" class="search-input" placeholder="e.g. 1.0.5" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group toggle-group">
+                                    <div class="toggle-label-wrap">
+                                        <label for="ios-force-update">Mandatory Force Update</label>
+                                        <p class="input-desc">Force all older versions to update immediately</p>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="ios-force-update">
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+                                <div class="form-group toggle-group">
+                                    <div class="toggle-label-wrap">
+                                        <label for="ios-is-active">Active Version Checking</label>
+                                        <p class="input-desc">Enable version check for iOS clients</p>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="ios-is-active" checked>
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="ios-update-url">Apple App Store URL</label>
+                                <div style="display: flex; gap: 8px;">
+                                    <input type="url" id="ios-update-url" class="search-input" placeholder="https://apps.apple.com/app/mytravel/id000000000" required style="flex-grow: 1;">
+                                    <a id="btn-test-url-ios" href="https://apps.apple.com/app/mytravel/id000000000" target="_blank" class="btn btn-secondary" title="Test URL"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="ios-title-en">Release Title (English)</label>
+                                    <input type="text" id="ios-title-en" class="search-input" placeholder="e.g. New Version Available">
+                                </div>
+                                <div class="form-group">
+                                    <label for="ios-title-km">Release Title (Khmer ភាសាខ្មែរ)</label>
+                                    <input type="text" id="ios-title-km" class="search-input" placeholder="e.g. មានកំណែថ្មីនៃកម្មវិធី">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="ios-notes-en">What's New / Release Notes (English)</label>
+                                    <textarea id="ios-notes-en" class="search-input" rows="4" placeholder="• Improved booking speed&#10;• Bug fixes and UI enhancements"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="ios-notes-km">What's New (Khmer ភាសាខ្មែរ)</label>
+                                    <textarea id="ios-notes-km" class="search-input" rows="4" placeholder="• បង្កើនល្បឿននៃការកក់&#10;• កែសម្រួលចំណុចខ្វះខាត និងបង្កើនល្បឿន"></textarea>
+                                </div>
+                            </div>
+                            <div class="form-actions" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <button type="submit" class="btn btn-primary" id="btn-save-ios">
+                                    <i class="fa-solid fa-floppy-disk"></i> <span>Save iOS Settings</span>
+                                </button>
+                                <button type="button" class="btn btn-secondary btn-preview-ui" data-platform="ios" data-type="force">
+                                    <i class="fa-solid fa-triangle-exclamation"></i> <span>Preview Force Modal</span>
+                                </button>
+                                <button type="button" class="btn btn-secondary btn-preview-ui" data-platform="ios" data-type="optional">
+                                    <i class="fa-solid fa-bell"></i> <span>Preview Optional Sheet</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Interactive Version Logic Simulator -->
+                <div class="content-card" style="margin-top: var(--spacing-lg);">
+                    <div class="card-header">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <i class="fa-solid fa-flask" style="font-size: 1.4rem; color: var(--color-primary);"></i>
+                            <div>
+                                <h2 class="headline-sm">Interactive Version Update Flow Simulator</h2>
+                                <p class="body-sm" style="color: var(--color-text-secondary); margin: 0;">Test how mobile client versions evaluate through the 3-tier update rule engine</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="padding: 1rem 0;">
+                        <div style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; margin-bottom: 1.5rem;">
+                            <div class="form-group" style="margin-bottom: 0; min-width: 160px;">
+                                <label for="sim-platform" style="font-weight: 600;">Platform</label>
+                                <select id="sim-platform" class="search-input" style="padding: 0.6rem 1rem;">
+                                    <option value="android">Android</option>
+                                    <option value="ios">Apple iOS</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0; min-width: 220px;">
+                                <label for="sim-version-input" style="font-weight: 600;">Client Installed Version</label>
+                                <input type="text" id="sim-version-input" class="search-input" value="1.0.0" placeholder="e.g. 1.0.0, 1.0.6, 1.1.0" style="padding: 0.6rem 1rem;">
+                            </div>
+                            <button type="button" class="btn btn-primary" id="btn-run-simulation" style="padding: 0.65rem 1.4rem;">
+                                <i class="fa-solid fa-play"></i> <span>Evaluate Rule</span>
+                            </button>
+                        </div>
+
+                        <!-- 3-Way Flow Diagram Visualizer -->
+                        <div class="version-flow-container" id="version-flow-diagram">
+                            <div class="flow-card flow-card-force" id="flow-card-force">
+                                <div class="flow-badge">Version &lt; Min</div>
+                                <div class="flow-icon"><i class="fa-solid fa-ban"></i></div>
+                                <div class="flow-title">FORCE UPDATE</div>
+                                <div class="flow-desc">User is completely blocked from continuing until they update the app from the store.</div>
+                            </div>
+                            <div class="flow-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+                            <div class="flow-card flow-card-optional" id="flow-card-optional">
+                                <div class="flow-badge">Min &le; Version &lt; Latest</div>
+                                <div class="flow-icon"><i class="fa-solid fa-circle-exclamation"></i></div>
+                                <div class="flow-title">OPTIONAL UPDATE</div>
+                                <div class="flow-desc">User receives friendly notification sheet with "Update Now" and "Later" buttons.</div>
+                            </div>
+                            <div class="flow-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+                            <div class="flow-card flow-card-continue" id="flow-card-continue">
+                                <div class="flow-badge">Version &ge; Latest</div>
+                                <div class="flow-icon"><i class="fa-solid fa-circle-check"></i></div>
+                                <div class="flow-title">CONTINUE</div>
+                                <div class="flow-desc">App is up to date! User proceeds seamlessly into the app with no interruptions.</div>
+                            </div>
+                        </div>
+
+                        <div id="sim-result-box" style="margin-top: 1.25rem; padding: 1rem 1.25rem; border-radius: 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--color-surface-container); display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <span style="font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em;">Simulation Outcome:</span>
+                                <div id="sim-result-text" style="font-size: 1.05rem; font-weight: 700; margin-top: 2px;">Enter a version and click "Evaluate Rule"</div>
+                            </div>
+                            <button type="button" class="btn btn-secondary" id="btn-preview-sim-modal" style="display: none;">
+                                <i class="fa-solid fa-eye"></i> <span>Preview Dialog</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
 
@@ -1424,6 +1707,63 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Modal: Phone Mockup App Update Preview -->
+    <div class="modal-overlay" id="app-version-preview-modal">
+        <div class="modal-card phone-preview-card" style="max-width: 400px; padding: 0; background: transparent; border: none; box-shadow: none;">
+            <div class="phone-frame">
+                <div class="phone-speaker"></div>
+                <div class="phone-screen">
+                    <div class="phone-status-bar">
+                        <span>9:41</span>
+                        <div style="display: flex; gap: 6px; align-items: center;">
+                            <i class="fa-solid fa-signal" style="font-size: 0.65rem;"></i>
+                            <i class="fa-solid fa-wifi" style="font-size: 0.65rem;"></i>
+                            <i class="fa-solid fa-battery-full" style="font-size: 0.65rem;"></i>
+                        </div>
+                    </div>
+                    <!-- App Interface Underlay / Dimmed Background -->
+                    <div class="phone-app-backdrop">
+                        <div class="phone-app-nav">
+                            <img src="assets/logo.png" alt="Logo" style="height: 22px;">
+                            <span style="font-weight: 700; font-size: 0.85rem; color: #17223A;">My Travel Taxi</span>
+                        </div>
+                        <div class="phone-app-card-skeleton"></div>
+                        <div class="phone-app-card-skeleton" style="height: 80px;"></div>
+                    </div>
+
+                    <!-- Dynamic Popup Dialog rendered over the app -->
+                    <div class="phone-modal-dialog" id="phone-modal-dialog">
+                        <div class="phone-modal-icon-wrap" id="preview-icon-wrap">
+                            <i class="fa-solid fa-cloud-arrow-up" id="preview-icon"></i>
+                        </div>
+                        <div class="preview-badge-row">
+                            <span class="preview-badge" id="preview-badge">Mandatory Update</span>
+                        </div>
+                        <h3 class="preview-title" id="preview-title">Update Required</h3>
+                        <div class="preview-versions">
+                            <span class="ver-chip current" id="preview-cur-ver">v1.0.0</span>
+                            <i class="fa-solid fa-arrow-right ver-arrow"></i>
+                            <span class="ver-chip new" id="preview-new-ver">v1.1.0</span>
+                        </div>
+                        <div class="preview-notes-box">
+                            <div class="preview-notes-title">What's New:</div>
+                            <div class="preview-notes-content" id="preview-notes">
+                                • Improved booking speed<br>• Bug fixes and stability
+                            </div>
+                        </div>
+                        <div class="preview-actions">
+                            <button class="preview-btn-primary" id="preview-btn-action">Update Now</button>
+                            <button class="preview-btn-secondary" id="preview-btn-dismiss">Later</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-secondary" id="btn-close-preview" style="margin-top: 14px; width: 100%; justify-content: center;">
+                <i class="fa-solid fa-xmark"></i> <span>Close Preview</span>
+            </button>
         </div>
     </div>
 

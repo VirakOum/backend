@@ -19,6 +19,7 @@ from ..models import (
     DriverWalletEntry,
     DriverMembership,
     AppRuntimeSetting,
+    AppVersionConfig,
     SystemDiscountTicket,
     SystemAd,
     SystemMessage,
@@ -40,10 +41,15 @@ from ..schemas import (
     NewsArticleCreate,
     NewsArticleUpdate,
     NewsArticleRead,
+    AppVersionConfigRead,
+    AppVersionConfigUpdate,
+    AppVersionSimulateRequest,
+    AppVersionSimulateResponse,
 )
 from ..auth import hash_password, verify_password, issue_token
 from .driver_fee import evaluate_driver_wallet_lock, get_runtime_settings, MEMBERSHIP_CATALOG
 from ..services import send_push_notification_to_user, ensure_default_vehicle_models
+from ..version_control import get_or_create_app_version_config, evaluate_version
 
 
 router = APIRouter(prefix="/travel/admin", tags=["admin-dashboard"])
@@ -1215,3 +1221,53 @@ def delete_admin_news(article_id: uuid.UUID, db: Session = Depends(get_db)) -> N
         raise HTTPException(status_code=404, detail="News article not found")
     db.delete(article)
     db.commit()
+
+
+# App Version Control Endpoints
+@router.get("/app-versions", response_model=List[AppVersionConfigRead])
+def get_admin_app_versions(db: Session = Depends(get_db)) -> Any:
+    # Ensure default records exist for both android and ios
+    for p in ("android", "ios"):
+        get_or_create_app_version_config(db, p)
+    configs = db.execute(select(AppVersionConfig).order_by(AppVersionConfig.platform.asc())).scalars().all()
+    return configs
+
+
+@router.post("/app-versions", response_model=AppVersionConfigRead)
+def update_admin_app_version(payload: AppVersionConfigUpdate, db: Session = Depends(get_db)) -> Any:
+    config = get_or_create_app_version_config(db, payload.platform)
+    config.latest_version = payload.latest_version.strip()
+    config.min_version = payload.min_version.strip()
+    config.force_update = payload.force_update
+    config.update_url = payload.update_url.strip()
+    config.title = payload.title.strip() or "New Version Available"
+    config.title_km = payload.title_km.strip() or "មានកំណែថ្មីនៃកម្មវិធី"
+    config.release_notes = payload.release_notes
+    config.release_notes_km = payload.release_notes_km
+    config.is_active = payload.is_active
+    config.updated_at = phnom_penh_now()
+
+    db.commit()
+    db.refresh(config)
+    return config
+
+
+@router.post("/app-versions/simulate", response_model=AppVersionSimulateResponse)
+def simulate_admin_app_version(payload: AppVersionSimulateRequest, db: Session = Depends(get_db)) -> Any:
+    config = get_or_create_app_version_config(db, payload.platform)
+    action, reason = evaluate_version(
+        current_version=payload.current_version,
+        min_version=config.min_version,
+        latest_version=config.latest_version,
+        force_update_flag=config.force_update,
+        is_active=config.is_active,
+    )
+    return AppVersionSimulateResponse(
+        platform=config.platform,
+        current_version=payload.current_version,
+        latest_version=config.latest_version,
+        min_version=config.min_version,
+        force_update=config.force_update,
+        action=action,
+        reason=reason,
+    )

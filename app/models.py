@@ -727,3 +727,21 @@ class Item(Base):
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str | None] = mapped_column(String(300), nullable=True)
 
+
+class AppVersionConfig(Base):
+    __tablename__ = "app_version_configs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    platform: Mapped[str] = mapped_column(String(20), unique=True, nullable=False, index=True)
+    latest_version: Mapped[str] = mapped_column(String(30), default="1.0.0", nullable=False)
+    min_version: Mapped[str] = mapped_column(String(30), default="1.0.0", nullable=False)
+    force_update: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    update_url: Mapped[str] = mapped_column(String(500), default="", nullable=False)
+    title: Mapped[str] = mapped_column(String(200), default="New Version Available", nullable=False)
+    title_km: Mapped[str] = mapped_column(String(200), default="មានកំណែថ្មីនៃកម្មវិធី", nullable=False)
+    release_notes: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    release_notes_km: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, onupdate=phnom_penh_now, nullable=False)
+

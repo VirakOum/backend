@@ -961,3 +961,65 @@ class NewsArticleRead(BaseModel):
 class NewsArticleListResponse(BaseModel):
     articles: list[NewsArticleRead]
 
+
+class AppVersionCheckResponse(BaseModel):
+    platform: str
+    latest_version: str
+    min_version: str
+    force_update: bool
+    action: Literal["force_update", "optional_update", "continue"]
+    update_url: str
+    title: str
+    title_km: str
+    release_notes: str
+    release_notes_km: str
+    is_active: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AppVersionConfigRead(BaseModel):
+    id: int
+    platform: str
+    latest_version: str
+    min_version: str
+    force_update: bool
+    update_url: str
+    title: str
+    title_km: str
+    release_notes: str
+    release_notes_km: str
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AppVersionConfigUpdate(BaseModel):
+    platform: str = Field(..., max_length=20)
+    latest_version: str = Field(..., max_length=30)
+    min_version: str = Field(..., max_length=30)
+    force_update: bool = False
+    update_url: str = Field("", max_length=500)
+    title: str = Field("New Version Available", max_length=200)
+    title_km: str = Field("មានកំណែថ្មីនៃកម្មវិធី", max_length=200)
+    release_notes: str = ""
+    release_notes_km: str = ""
+    is_active: bool = True
+
+
+class AppVersionSimulateRequest(BaseModel):
+    platform: str = "android"
+    current_version: str
+
+
+class AppVersionSimulateResponse(BaseModel):
+    platform: str
+    current_version: str
+    latest_version: str
+    min_version: str
+    force_update: bool
+    action: Literal["force_update", "optional_update", "continue"]
+    reason: str
+
