@@ -48,6 +48,7 @@ from ..schemas import (
     AppVersionSimulateResponse,
 )
 from ..auth import hash_password, verify_password, issue_token
+from ..config import get_google_maps_api_key
 from .driver_fee import evaluate_driver_wallet_lock, get_runtime_settings, MEMBERSHIP_CATALOG
 from ..services import send_push_notification_to_user, ensure_default_vehicle_models
 from ..version_control import get_or_create_app_version_config, evaluate_version
@@ -280,7 +281,7 @@ def get_admin_summary(db: Session = Depends(get_db)) -> Any:
 @router.get("/map-config")
 def get_map_config() -> Any:
     """Safe runtime retrieval of Google Maps API key from environment variable."""
-    api_key = os.getenv("GOOGLE_MAPS_API_KEY", "")
+    api_key = get_google_maps_api_key()
     return {
         "google_maps_api_key": api_key,
         "enabled": bool(api_key),

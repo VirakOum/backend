@@ -47,3 +47,8 @@ def get_google_places_api_key_android() -> str:
 
 def get_google_places_api_key_ios() -> str:
     return _env_text("GOOGLE_PLACES_API_KEY_IOS") or get_google_places_api_key()
+
+
+def get_google_maps_api_key() -> str:
+    return _env_text("GOOGLE_MAPS_API_KEY")
+
