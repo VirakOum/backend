@@ -138,7 +138,7 @@ def test_public_version_check_endpoint():
             "latest_version": "1.1.0",
             "min_version": "1.0.5",
             "force_update": False,
-            "update_url": "https://play.google.com/store/apps/details?id=com.mytravel.app",
+            "update_url": "https://play.google.com/store/apps/details?id=com.kh.mytravel.mytravel",
             "title": "New Version Available",
             "title_km": "មានកំណែថ្មីនៃកម្មវិធី",
             "release_notes": "• Improved booking speed\n• Bug fixes",
