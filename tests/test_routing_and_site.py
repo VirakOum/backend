@@ -10,6 +10,13 @@ def test_public_site_serves_landing_page():
     assert "MyTravel Taxi & Inter-City Travel | Cambodia" in response.text
     assert "MYTRAVEL.TAXI" in response.text
 
+def test_privacy_policy_page():
+    for path in ["/privacy", "/privacy.html", "/v1/api/privacy", "/v1/api/privacy.html"]:
+        res = client.get(path)
+        assert res.status_code == 200, f"Failed for path {path}"
+        assert "My Travel Privacy Policy" in res.text
+        assert "account-deletion" in res.text
+
 def test_admin_redirect_to_mytravel():
     response = client.get("/admin", follow_redirects=False)
     assert response.status_code == 307

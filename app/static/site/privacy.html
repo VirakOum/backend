@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy & Account Deletion | My Travel</title>
+    <meta name="description" content="Official Privacy Policy and Account Deletion procedures for My Travel (com.kh.mytravel.mytravel) in Cambodia. Learn how we handle your data, location, and account deletion.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kantumruy+Pro:ital,wght@0,400;0,600;0,700;1,400&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="assets/logo.png">
+    <link rel="shortcut icon" type="image/png" href="/favicon.ico">
+    <link rel="apple-touch-icon" href="assets/logo.png">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .policy-container {
+            max-width: 900px;
+            margin: 100px auto 60px;
+            padding: 0 20px;
+        }
+        .policy-card {
+            background: #FFFFFF;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            padding: 40px;
+            margin-bottom: 28px;
+        }
+        .policy-header {
+            margin-bottom: 32px;
+            border-bottom: 2px solid #F1F5F9;
+            padding-bottom: 24px;
+        }
+        .policy-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 200, 61, 0.16);
+            color: #B45309;
+            border: 1px solid #FFC83D;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+        .policy-title {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--accent-dark);
+            line-height: 1.25;
+            margin-bottom: 10px;
+        }
+        .policy-meta {
+            font-size: 0.92rem;
+            color: var(--text-muted);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .policy-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .policy-section {
+            margin-bottom: 36px;
+        }
+        .policy-section h2 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--accent-dark);
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .policy-section h3 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--accent-dark-subtle);
+            margin: 20px 0 8px;
+        }
+        .policy-section p {
+            font-size: 0.98rem;
+            color: #334155;
+            line-height: 1.7;
+            margin-bottom: 12px;
+        }
+        .policy-section ul, .policy-section ol {
+            padding-left: 24px;
+            margin-bottom: 14px;
+        }
+        .policy-section li {
+            font-size: 0.96rem;
+            color: #334155;
+            line-height: 1.65;
+            margin-bottom: 8px;
+        }
+        .deletion-box {
+            background: #FEF2F2;
+            border: 1.5px solid #FCA5A5;
+            border-radius: var(--radius-md);
+            padding: 24px;
+            margin: 20px 0;
+        }
+        .deletion-box h3 {
+            color: #991B1B;
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .cash-box {
+            background: #F0FDF4;
+            border: 1.5px solid #86EFAC;
+            border-radius: var(--radius-md);
+            padding: 20px 24px;
+            margin: 20px 0;
+        }
+        .cash-box h3 {
+            color: #166534;
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .steps-list {
+            counter-reset: step-counter;
+            list-style: none;
+            padding-left: 0;
+            margin-top: 14px;
+        }
+        .steps-list li {
+            position: relative;
+            padding-left: 42px;
+            margin-bottom: 14px;
+        }
+        .steps-list li::before {
+            counter-increment: step-counter;
+            content: counter(step-counter);
+            position: absolute;
+            left: 0;
+            top: 2px;
+            width: 28px;
+            height: 28px;
+            background: #E11D48;
+            color: #FFFFFF;
+            font-size: 0.85rem;
+            font-weight: 700;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .contact-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+        .contact-item {
+            background: #F8FAFC;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 18px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        .contact-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: #FFC83D;
+            color: #17223A;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+        @media (max-width: 640px) {
+            .policy-card {
+                padding: 24px 18px;
+            }
+            .policy-title {
+                font-size: 1.65rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header & Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="brand">
+                <div class="brand-icon">
+                    <i class="fa-solid fa-taxi"></i>
+                </div>
+                <div>
+                    <div class="brand-title">MYTRAVEL.TAXI</div>
+                    <div class="brand-tagline">Cambodia's Modern Inter-City Ride & Taxi Network</div>
+                </div>
+            </a>
+
+            <div class="nav-actions">
+                <a href="/" class="btn-taxi" style="padding: 8px 18px; font-size: 0.9rem; text-decoration: none;">
+                    <i class="fa-solid fa-house" style="margin-right: 6px;"></i> Home
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="policy-container">
+        <div class="policy-card">
+            
+            <div class="policy-header">
+                <div class="policy-badge">
+                    <i class="fa-solid fa-shield-halved"></i> Privacy Policy & Account Deletion
+                </div>
+                <h1 class="policy-title">My Travel Privacy Policy</h1>
+                <div class="policy-meta">
+                    <div class="policy-meta-item">
+                        <i class="fa-solid fa-calendar-check" style="color: #FFC83D;"></i>
+                        <span><strong>Effective date:</strong> September 25, 2026</span>
+                    </div>
+                    <div class="policy-meta-item">
+                        <i class="fa-solid fa-mobile-screen" style="color: #FFC83D;"></i>
+                        <span><strong>App:</strong> My Travel (<code>com.kh.mytravel.mytravel</code>)</span>
+                    </div>
+                    <div class="policy-meta-item">
+                        <i class="fa-solid fa-user-tie" style="color: #FFC83D;"></i>
+                        <span><strong>Operator:</strong> Virak Oum</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 1 -->
+            <div class="policy-section">
+                <h2><i class="fa-solid fa-circle-info" style="color: #FFC83D;"></i> 1. Introduction and Overview</h2>
+                <p>This Privacy Policy explains how My Travel ("My Travel," "we," "us," or "our") collects, uses, stores, and protects personal information when passengers and drivers use our mobile application and related transportation services in Cambodia.</p>
+                <p>My Travel is an inter-provincial ride-hailing and travel platform connecting passengers with independent drivers traveling between Phnom Penh and Cambodia's 24 provinces. Our core features include trip discovery, vehicle seat booking, driver vehicle and route management, real-time GPS pickup tracking, passenger boarding verification, trip notifications, and customer support.</p>
+                <p>We are deeply committed to user privacy and data security. <strong>We do not sell personal data, and we do not track users across third-party apps or websites for advertising purposes.</strong></p>
+            </div>
+
+            <!-- Section 2 -->
+            <div class="policy-section">
+                <h2><i class="fa-solid fa-database" style="color: #FFC83D;"></i> 2. Information We Collect</h2>
+                
+                <h3>A. Account and Profile Information</h3>
+                <p>When you create or update an account as a passenger or driver, we collect:</p>
+                <ul>
+                    <li><strong>Personal details:</strong> Full name, mobile phone number, profile photo, user role (<code>passenger</code> or <code>driver</code>), account ID, and account creation timestamp.</li>
+                    <li><strong>Account credentials:</strong> Passwords are encrypted using secure cryptographic hashing algorithms. We never store or transmit your plain-text password.</li>
+                    <li><strong>Device & session identifiers:</strong> Platform type (iOS / Android), device model, operating system version, trusted-device identifiers, and backend-issued session tokens used exclusively to authenticate and secure your account session.</li>
+                    <li><strong>App preferences:</strong> Preferred display language (English or Khmer) and theme settings stored locally on your device.</li>
+                </ul>
+
+                <h3>B. Driver and Vehicle Information (Drivers Only)</h3>
+                <p>To ensure passenger safety and comply with transportation standards, driver accounts provide:</p>
+                <ul>
+                    <li>Vehicle details: Make, model, year, exterior color, license plate number, total seating capacity, and vehicle photos.</li>
+                    <li>Driver verification: A clear driver face photo for identity verification and passenger recognition during pickup.</li>
+                </ul>
+
+                <h3>C. Trip, Booking, and Route Information</h3>
+                <p>To facilitate inter-provincial travel, we collect:</p>
+                <ul>
+                    <li>Departure province/location, destination province/location, route stops, departure date and time, number of reserved seats, pickup and drop-off coordinates or landmark descriptions.</li>
+                    <li>Booking lifecycle status (<code>pending</code>, <code>driver_arrived</code>, <code>passenger_boarded</code>, <code>completed</code>, or <code>cancelled</code>).</li>
+                    <li>Booking reference numbers and historical travel records.</li>
+                </ul>
+
+                <div class="cash-box">
+                    <h3><i class="fa-solid fa-money-bill-wave"></i> D. Payment Information (Direct Cash on Arrival)</h3>
+                    <p><strong>100% Cash-on-Arrival Model:</strong> All ride fares are paid directly in physical cash by the passenger to the driver upon ride completion or arrival at the destination.</p>
+                    <p><strong>No In-App Digital Banking:</strong> My Travel does <strong>NOT</strong> collect, process, or store credit card numbers, debit card numbers, bank account credentials, digital wallets, or CVV codes.</p>
+                    <p><strong>Driver Service Accounting:</strong> The application maintains internal operational records for drivers (membership tiers, completed cash trip logs, and administrative service-fee summaries). These records are strictly operational ledgers and do not involve banking or payment gateway integrations within the mobile app.</p>
+                </div>
+
+                <h3>E. Precise Location Information</h3>
+                <p>With your explicit device permission, My Travel collects precise foreground and background GPS location data:</p>
+                <ul>
+                    <li><strong>Foreground Location:</strong> Used when searching for vehicles departing from your current province, exploring nearby routes on the map, or selecting pickup and drop-off points.</li>
+                    <li><strong>Background Location (Active Trips Only):</strong>
+                        <ul>
+                            <li><strong>For Drivers:</strong> When a trip is marked active or departed, the driver's device periodically shares live GPS coordinates so booked passengers can monitor the vehicle's approach.</li>
+                            <li><strong>For Passengers:</strong> During the active pickup phase, the passenger's location is shared with the assigned driver to calculate real-time proximity and verify arrival.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Strict Location Stop Policy:</strong> Background location updates immediately terminate as soon as the active pickup or trip is completed, confirmed, or cancelled. We do not collect background location when the app is idle or outside an active trip.</li>
+                </ul>
+
+                <h3>F. Photos and Camera</h3>
+                <p>If you grant camera or photo library permission, the app accesses images solely when you choose to take or upload a profile picture, driver face photo, or vehicle photo. The app does not scan or upload other photos from your media library.</p>
+
+                <h3>G. Push and Operational Notifications</h3>
+                <p>With your permission, we send operational notifications regarding booking confirmations, driver arrival alerts, passenger boarding requests, trip status changes, safety alerts, and account messages.</p>
+            </div>
+
+            <!-- Section 3 -->
+            <div class="policy-section">
+                <h2><i class="fa-solid fa-gears" style="color: #FFC83D;"></i> 3. How We Use Information</h2>
+                <p>We process personal information strictly for legitimate operational purposes:</p>
+                <ul>
+                    <li><strong>Service delivery:</strong> To enable passengers to discover trips, reserve seats, and communicate with drivers, and to allow drivers to publish routes and manage passenger seating.</li>
+                    <li><strong>Live navigation & safety:</strong> To provide map visualization, real-time vehicle tracking, proximity calculations for arrival confirmation, and boarding verification.</li>
+                    <li><strong>Account security:</strong> To authenticate users, prevent duplicate or fraudulent accounts, and verify trusted devices.</li>
+                    <li><strong>Operational communications:</strong> To deliver trip updates, arrival alerts, and customer service assistance.</li>
+                    <li><strong>Dispute resolution & legal compliance:</strong> To investigate safety incidents, resolve trip disputes, and comply with applicable laws and transportation regulations in Cambodia.</li>
+                </ul>
+                <p><strong>We never sell, rent, or trade your personal information. We do not engage in cross-app advertising tracking or profiling.</strong></p>
+            </div>
+
+            <!-- Section 4 -->
+            <div class="policy-section">
+                <h2><i class="fa-solid fa-share-nodes" style="color: #FFC83D;"></i> 4. How Information is Shared</h2>
+                <p>We share information only in the following limited circumstances:</p>
+                <ul>
+                    <li><strong>Between Assigned Passenger and Driver:</strong> Passengers see the driver's name, profile photo, vehicle model, license plate, contact phone number, and live vehicle location during an active trip. Drivers see the booked passenger's name, profile photo, contact phone number, reserved seat count, and pickup location during an active pickup.</li>
+                    <li><strong>Third-Party Infrastructure and Technical Providers:</strong> Google Maps API (used for maps and geocoding under Google's Privacy Policy) and cloud infrastructure providers under strict confidentiality.</li>
+                    <li><strong>Legal Requirements and Safety Protection:</strong> When strictly required by Cambodian law, court order, or official law enforcement request, or when necessary to protect the physical safety of passengers, drivers, or the public.</li>
+                    <li><strong>No Sharing with Financial or Advertising Networks:</strong> Because My Travel operates on a physical cash basis, no personal or financial data is shared with banks, payment gateways, credit bureaus, or advertising networks.</li>
+                </ul>
+            </div>
+
+            <!-- Section 5: Account Deletion (Apple Guideline 5.1.1(v) Compliant) -->
+            <div class="policy-section" id="account-deletion">
+                <h2><i class="fa-solid fa-user-xmark" style="color: #E11D48;"></i> 5. Account Deletion and Data Retention</h2>
+                <p>We believe in full user control over personal data. In compliance with <strong>Apple App Store Guideline 5.1.1(v)</strong> and <strong>Google Play User Data policies</strong>, users can easily and permanently delete their account at any time.</p>
+
+                <div class="deletion-box">
+                    <h3><i class="fa-solid fa-mobile-screen-button"></i> A. How to Delete Your Account In-App (Self-Service)</h3>
+                    <p>You can permanently delete your account directly inside the My Travel mobile app with immediate effect:</p>
+                    <ol class="steps-list">
+                        <li>Open the <strong>My Travel</strong> app and log in.</li>
+                        <li>Tap the <strong>Account</strong> tab in the bottom navigation bar.</li>
+                        <li>Tap <strong>"Edit profile"</strong> (កែសម្រួលព័ត៌មានផ្ទាល់ខ្លួន).</li>
+                        <li>Scroll down to the bottom of the profile sheet and tap the red <strong>"Delete Account"</strong> (លុបគណនី) button located next to Save profile.</li>
+                        <li>Review the confirmation dialog warning that this action is irreversible, and tap <strong>"Delete"</strong> to confirm.</li>
+                        <li>The app immediately calls our secure deletion API (<code>DELETE /v1/api/travel/auth/me</code>), revokes all active authentication tokens, clears all locally cached data, and permanently removes your account and personal records from our active servers.</li>
+                    </ol>
+                </div>
+
+                <h3>B. External Account Deletion Request (Web / Email)</h3>
+                <p>If you have uninstalled the app, cannot access your device, or prefer to request deletion externally:</p>
+                <ul>
+                    <li><strong>Email Request:</strong> Send an email to <a href="mailto:virakoumst@gmail.com" style="color: #E11D48; font-weight: 700;">virakoumst@gmail.com</a> with the subject line <em>"Account Deletion Request"</em>, including your registered mobile phone number.</li>
+                    <li>External deletion requests are verified and processed within <strong>7 business days</strong>.</li>
+                </ul>
+
+                <h3>C. What Happens When an Account is Deleted</h3>
+                <p>Upon deletion:</p>
+                <ul>
+                    <li>Your user profile (name, phone number, password hash, profile photo) is permanently deleted.</li>
+                    <li>All active session tokens and trusted-device secrets are immediately revoked.</li>
+                    <li>Driver vehicle listings, seat configurations, and driver documents are permanently deleted.</li>
+                    <li>Live GPS tracking data is instantly purged.</li>
+                    <li>Any non-identifying operational trip logs required by Cambodian transport regulations, tax compliance, or unresolved dispute investigations are archived in an anonymized format stripped of your personal identifiers.</li>
+                </ul>
+            </div>
+
+            <!-- Section 6 -->
+            <div class="policy-section">
+                <h2><i class="fa-solid fa-lock" style="color: #FFC83D;"></i> 6. Data Security and Storage</h2>
+                <p>We implement robust administrative and technical security measures:</p>
+                <ul>
+                    <li>All communications between the mobile application and our servers are encrypted using Transport Layer Security (TLS/HTTPS).</li>
+                    <li>User passwords are cryptographically hashed and cannot be decrypted by our staff.</li>
+                    <li>Session authorization uses short-lived tokens and device-bound cryptographic secrets to prevent unauthorized session hijacking.</li>
+                    <li>Access to production databases is restricted to authorized personnel under strict principle-of-least-privilege access controls.</li>
+                </ul>
+            </div>
+
+            <!-- Section 7 -->
+            <div class="policy-section">
+                <h2><i class="fa-solid fa-child-reaching" style="color: #FFC83D;"></i> 7. Children's Privacy</h2>
+                <p>My Travel is not directed to children under the age of 13. We do not knowingly collect personal information from children. If we discover that a child has provided us with personal information without parental consent, we will promptly delete such information. If you believe a minor has registered an account, please contact us at <a href="mailto:virakoumst@gmail.com">virakoumst@gmail.com</a>.</p>
+            </div>
+
+            <!-- Section 8 -->
+            <div class="policy-section">
+                <h2><i class="fa-solid fa-phone" style="color: #FFC83D;"></i> 8. Contact Us</h2>
+                <p>If you have any questions, feedback, or requests regarding this Privacy Policy or your personal data, please contact our team:</p>
+                
+                <div class="contact-grid">
+                    <div class="contact-item">
+                        <div class="contact-icon"><i class="fa-solid fa-envelope"></i></div>
+                        <div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted);">Direct Privacy Email</div>
+                            <a href="mailto:virakoumst@gmail.com" style="font-weight: 700; color: var(--text-dark);">virakoumst@gmail.com</a>
+                        </div>
+                    </div>
+                    <div class="contact-item">
+                        <div class="contact-icon"><i class="fa-solid fa-phone"></i></div>
+                        <div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted);">Hotline Support</div>
+                            <a href="tel:0966519115" style="font-weight: 700; color: var(--text-dark);">096 651 9115</a>
+                        </div>
+                    </div>
+                    <div class="contact-item">
+                        <div class="contact-icon"><i class="fa-brands fa-telegram"></i></div>
+                        <div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted);">Telegram Support</div>
+                            <a href="https://t.me/MyTravel_Taxi_bot" target="_blank" rel="noopener noreferrer" style="font-weight: 700; color: #2563EB;">@MyTravel_Taxi_bot</a>
+                        </div>
+                    </div>
+                    <div class="contact-item">
+                        <div class="contact-icon"><i class="fa-solid fa-location-dot"></i></div>
+                        <div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted);">Head Office</div>
+                            <div style="font-weight: 700; color: var(--text-dark);">Phnom Penh, Cambodia</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-container">
+            <div class="footer-top" style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2rem; align-items: flex-start;">
+                <div>
+                    <div style="font-size: 1.5rem; font-weight: 800; color: #FFFFFF;">MYTRAVEL.TAXI</div>
+                    <div style="font-size: 0.85rem; color: var(--text-light); margin-top: 0.25rem;">Cambodia's Modern Inter-City Ride & Taxi Network</div>
+                </div>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <a href="/" style="color: var(--text-light); text-decoration: none; font-size: 0.95rem;">Home</a>
+                    <span style="color: var(--text-light);">•</span>
+                    <a href="/privacy" style="color: #FFC83D; text-decoration: underline; font-size: 0.95rem;">Privacy Policy</a>
+                    <span style="color: var(--text-light);">•</span>
+                    <a href="/privacy#account-deletion" style="color: #F87171; text-decoration: underline; font-size: 0.95rem;">Account Deletion</a>
+                </div>
+            </div>
+            <div class="footer-bottom" style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid rgba(255,255,255,0.08); font-size: 0.85rem; color: var(--text-light);">
+                © 2026 My Travel Transport Systems (Virak Oum). All rights reserved. Kingdom of Cambodia.
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

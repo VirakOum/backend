@@ -228,6 +228,14 @@ def serve_public_site():
     return FileResponse(STATIC_SITE_DIR / "index.html", headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
 
+@app.get("/privacy", include_in_schema=False)
+@app.get("/privacy.html", include_in_schema=False)
+@api_v1_router.get("/privacy", include_in_schema=False)
+@api_v1_router.get("/privacy.html", include_in_schema=False)
+def serve_privacy_policy():
+    return FileResponse(STATIC_SITE_DIR / "privacy.html", headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+
+
 @app.get("/admin", include_in_schema=False)
 @app.get("/admin/", include_in_schema=False)
 @app.get("/admin/mytravel", include_in_schema=False)
