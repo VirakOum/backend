@@ -5,7 +5,7 @@ from binascii import Error as Base64DecodeError
 from copy import deepcopy
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select, func, inspect, or_
+from sqlalchemy import select, func, inspect, or_, delete
 from sqlalchemy.orm import Session, selectinload
 from uuid import UUID
 from datetime import date, datetime, time, timedelta
@@ -27,7 +27,31 @@ from ..config import (
 	get_google_places_api_key_ios,
 )
 from ..db import get_db
-from ..models import Address, Booking, BookingLiveLocation, BookingPaymentInstruction, DriverMembership, DriverWalletEntry, NewsArticle, NotificationPreference, Payment, SupportTicket, SystemMessage, Trip, User, UserNotification, UserPushToken, Vehicle, VehicleModel, phnom_penh_now
+from ..models import (
+	Address,
+	AuthToken,
+	Booking,
+	BookingLiveLocation,
+	BookingPaymentInstruction,
+	DriverDailyFeeSummary,
+	DriverInvoice,
+	DriverMembership,
+	DriverWallet,
+	DriverWalletEntry,
+	NewsArticle,
+	NotificationPreference,
+	Payment,
+	SupportTicket,
+	SystemMessage,
+	Trip,
+	TrustedDevice,
+	User,
+	UserNotification,
+	UserPushToken,
+	Vehicle,
+	VehicleModel,
+	phnom_penh_now,
+)
 from .driver_fee import (
     evaluate_driver_wallet_lock,
     get_or_create_driver_wallet,
@@ -1474,6 +1498,40 @@ def update_me(
 	db.commit()
 	db.refresh(current_user)
 	return UserRead.model_validate(current_user)
+
+
+@router.delete("/auth/me", status_code=status.HTTP_200_OK)
+def delete_me(
+	db: Session = Depends(get_db),
+	current_user: User = Depends(get_current_user),
+) -> dict:
+	"""
+	Permanently delete the authenticated user account and associated personal data.
+	Complies with Apple App Store Review Guideline 5.1.1(v).
+	"""
+	user_id = current_user.id
+	phone = current_user.phone
+	role = current_user.role
+
+	if role == "driver":
+		db.execute(delete(DriverWalletEntry).where(DriverWalletEntry.driver_id == user_id))
+		db.execute(delete(DriverDailyFeeSummary).where(DriverDailyFeeSummary.driver_id == user_id))
+		db.execute(delete(DriverInvoice).where(DriverInvoice.driver_id == user_id))
+		db.execute(delete(DriverMembership).where(DriverMembership.driver_id == user_id))
+		db.execute(delete(DriverWallet).where(DriverWallet.driver_id == user_id))
+		db.execute(delete(Vehicle).where(Vehicle.owner_id == user_id))
+
+	db.execute(delete(AuthToken).where(AuthToken.user_id == user_id))
+	db.execute(delete(TrustedDevice).where(TrustedDevice.user_id == user_id))
+	db.execute(delete(UserPushToken).where(UserPushToken.user_id == user_id))
+	db.execute(delete(UserNotification).where(UserNotification.user_id == user_id))
+	db.execute(delete(NotificationPreference).where(NotificationPreference.user_id == user_id))
+	db.execute(delete(SupportTicket).where(SupportTicket.user_id == user_id))
+
+	db.delete(current_user)
+	db.commit()
+
+	return {"message": "Account successfully deleted", "phone": phone}
 
 
 @router.get("/users/{user_id}", response_model=UserRead)
