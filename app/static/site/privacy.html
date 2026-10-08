@@ -289,14 +289,15 @@
                 <h3>E. Precise Location Information</h3>
                 <p>With your explicit device permission, My Travel collects precise foreground and background GPS location data:</p>
                 <ul>
+                    <li><strong>In-App Prominent Disclosure:</strong> Before requesting any device location permissions, My Travel presents a dedicated, prominent modal disclosure explaining what data is collected (precise GPS location), how it is used (trip discovery, real-time vehicle route sharing, active trip continuous tracking), and providing clear consent options ("Agree & Continue" or "Not Now").</li>
                     <li><strong>Foreground Location:</strong> Used when searching for vehicles departing from your current province, exploring nearby routes on the map, or selecting pickup and drop-off points.</li>
-                    <li><strong>Background Location (Active Trips Only):</strong>
+                    <li><strong>Continuous / Background Location (Active Trips Only):</strong>
                         <ul>
-                            <li><strong>For Drivers:</strong> When a trip is marked active or departed, the driver's device periodically shares live GPS coordinates so booked passengers can monitor the vehicle's approach.</li>
-                            <li><strong>For Passengers:</strong> During the active pickup phase, the passenger's location is shared with the assigned driver to calculate real-time proximity and verify arrival.</li>
+                            <li><strong>For Drivers:</strong> When a trip is marked active or departed, the driver's device periodically shares live GPS coordinates (via a foreground service with an ongoing notification) so booked passengers can monitor the vehicle's approach along the route, even when the app is minimized, closed, or running in the background.</li>
+                            <li><strong>For Passengers:</strong> Passengers access location while actively using the app (foreground) to locate departure points and find nearby vehicles. Background location is not collected from passengers.</li>
                         </ul>
                     </li>
-                    <li><strong>Strict Location Stop Policy:</strong> Background location updates immediately terminate as soon as the active pickup or trip is completed, confirmed, or cancelled. We do not collect background location when the app is idle or outside an active trip.</li>
+                    <li><strong>Strict Location Stop Policy:</strong> Continuous location updates immediately terminate as soon as the active pickup or trip is completed, confirmed, or cancelled. We do not collect location data when the app is idle or outside an active trip. Location data is never shared with third parties or used for advertising.</li>
                 </ul>
 
                 <h3>F. Photos and Camera</h3>
