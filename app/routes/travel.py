@@ -1754,7 +1754,7 @@ def create_trip(
 
 @router.get("/driver/trips", response_model=list[TripRead])
 def list_driver_trips(
-	status_filter: str | None = Query(default=None, alias="status", pattern="^(scheduled|active|completed|cancelled)$"),
+	status_filter: str | None = Query(default=None, alias="status", pattern="^(scheduled|active|completed|cancelled)?$"),
 	db: Session = Depends(get_db),
 	current_user: User = Depends(get_current_user),
 ) -> list[TripRead]:
@@ -1766,8 +1766,9 @@ def list_driver_trips(
 		.options(selectinload(Trip.driver), selectinload(Trip.vehicle), selectinload(Trip.bookings))
 		.where(Trip.driver_id == current_user.id)
 	)
-	if status_filter is not None:
-		query = query.where(Trip.status == status_filter)
+	normalized_status = status_filter.strip() if status_filter else None
+	if normalized_status:
+		query = query.where(Trip.status == normalized_status)
 	rows = db.execute(query.order_by(Trip.departure_time.desc())).scalars().all()
 	return [_build_trip_read(row) for row in rows]
 
