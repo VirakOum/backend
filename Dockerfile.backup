@@ -1,0 +1,11 @@
+FROM postgres:16-alpine
+
+RUN apk add --no-cache aws-cli bash gzip curl
+
+COPY scripts/backup_to_spaces.sh /backup_to_spaces.sh
+COPY scripts/entrypoint_backup.sh /entrypoint_backup.sh
+COPY scripts/restore_from_spaces.sh /restore_from_spaces.sh
+
+RUN chmod +x /backup_to_spaces.sh /entrypoint_backup.sh /restore_from_spaces.sh
+
+ENTRYPOINT ["/entrypoint_backup.sh"]

@@ -2,6 +2,13 @@ services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
+    command: >
+      postgres
+        -c shared_buffers=2GB
+        -c effective_cache_size=6GB
+        -c work_mem=16MB
+        -c maintenance_work_mem=512MB
+        -c max_connections=150
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-fastapi_learning}
       POSTGRES_USER: ${POSTGRES_USER:-fastapi}
@@ -15,6 +22,11 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
     networks:
       - default
       - coolify
@@ -54,9 +66,45 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
     networks:
       - default
       - coolify
+
+  db-backup:
+    build:
+      context: .
+      dockerfile: Dockerfile.backup
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-fastapi_learning}
+      POSTGRES_USER: ${POSTGRES_USER:-fastapi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fastapi}
+      DO_SPACES_KEY: ${DO_SPACES_KEY:-}
+      DO_SPACES_SECRET: ${DO_SPACES_SECRET:-}
+      DO_SPACES_REGION: ${DO_SPACES_REGION:-sgp1}
+      DO_SPACES_ENDPOINT: ${DO_SPACES_ENDPOINT:-https://sgp1.digitaloceanspaces.com}
+      DO_SPACES_BUCKET: ${DO_SPACES_BUCKET:-mytravel-backups}
+      DO_SPACES_PREFIX: ${DO_SPACES_PREFIX:-backups/db}
+      BACKUP_CRON: ${BACKUP_CRON:-0 19 * * *}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+      RUN_BACKUP_ON_STARTUP: ${RUN_BACKUP_ON_STARTUP:-false}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "2"
+    networks:
+      - default
 
 volumes:
   fastapi_learning_postgres_data:
