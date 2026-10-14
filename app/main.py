@@ -21,6 +21,7 @@ from .routes.driver_fee import router as driver_fee_router
 from .routes.admin import router as admin_router
 from .routes.live_ws import hub, router as live_ws_router
 from .routes.items import router as items_router
+from .routes.universal_links import router as universal_links_router
 
 root_path = os.getenv("FASTAPI_ROOT_PATH", "")
 BASE_DIR = Path(__file__).resolve().parent
@@ -133,6 +134,8 @@ def api_v1_root():
 for r in [meta_router, travel_router, passenger_router, addresses_router, driver_fee_router, admin_router, live_ws_router, items_router]:
     api_v1_router.include_router(r)
     app.include_router(r)
+
+app.include_router(universal_links_router)
 
 
 @app.get("/api/version", response_model=AppVersionCheckResponse, tags=["version-control"])
