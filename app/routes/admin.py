@@ -1160,14 +1160,27 @@ def list_admin_news(
 
 @router.post("/news", response_model=NewsArticleRead, status_code=201)
 def create_admin_news(payload: NewsArticleCreate, db: Session = Depends(get_db)) -> Any:
-    title_en = (payload.title or payload.title_kh or "").strip()
-    title_kh = (payload.title_kh or payload.title or "").strip()
+    raw_title = (payload.title or "").strip()
+    raw_title_kh = (payload.title_kh or "").strip()
+    title_en = raw_title or raw_title_kh
+    title_kh = raw_title_kh or raw_title
     if not title_en and not title_kh:
         raise HTTPException(status_code=400, detail="Headline is required")
 
     img_url = (payload.image_url or "").strip()
     if not img_url:
         img_url = "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=800&auto=format&fit=crop"
+
+    source_name = (payload.source_name or "News").strip()
+    if not source_name:
+        source_name = "News"
+
+    category = (payload.category or "Breaking News").strip()
+    if not category:
+        category = "Breaking News"
+
+    is_breaking = bool(payload.is_breaking) if payload.is_breaking is not None else False
+    is_active = bool(payload.is_active) if payload.is_active is not None else True
 
     article = NewsArticle(
         id=uuid.uuid4(),
@@ -1178,10 +1191,10 @@ def create_admin_news(payload: NewsArticleCreate, db: Session = Depends(get_db))
         content=payload.content.strip() if payload.content else None,
         image_url=img_url,
         source_url=payload.source_url.strip() if payload.source_url else None,
-        source_name=payload.source_name.strip() if payload.source_name else "News",
-        category=payload.category.strip() if payload.category else "Breaking News",
-        is_breaking=payload.is_breaking,
-        is_active=payload.is_active,
+        source_name=source_name,
+        category=category,
+        is_breaking=is_breaking,
+        is_active=is_active,
         published_at=phnom_penh_now(),
         created_at=phnom_penh_now(),
     )
@@ -1207,17 +1220,17 @@ def update_admin_news(article_id: uuid.UUID, payload: NewsArticleUpdate, db: Ses
     if payload.content is not None:
         article.content = payload.content.strip() if payload.content else None
     if payload.image_url is not None:
-        article.image_url = payload.image_url.strip()
+        article.image_url = payload.image_url.strip() or "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=800&auto=format&fit=crop"
     if payload.source_url is not None:
         article.source_url = payload.source_url.strip() if payload.source_url else None
     if payload.source_name is not None:
-        article.source_name = payload.source_name.strip()
+        article.source_name = payload.source_name.strip() or "News"
     if payload.category is not None:
-        article.category = payload.category.strip()
+        article.category = payload.category.strip() or "Breaking News"
     if payload.is_breaking is not None:
-        article.is_breaking = payload.is_breaking
+        article.is_breaking = bool(payload.is_breaking)
     if payload.is_active is not None:
-        article.is_active = payload.is_active
+        article.is_active = bool(payload.is_active)
 
     db.commit()
     db.refresh(article)

@@ -114,3 +114,60 @@ def test_news_crud_and_public_feed():
     # 6. Delete article
     resp = client.delete(f"/v1/api/travel/admin/news/{article_id}")
     assert resp.status_code == 204
+
+
+def test_news_resilient_null_and_long_payloads():
+    # Test sending nulls and empty values (which previously caused 422 Unprocessable Content)
+    payload = {
+        "title": "Road Repair Notice",
+        "title_kh": None,
+        "summary": None,
+        "summary_kh": None,
+        "content": None,
+        "image_url": None,
+        "source_url": None,
+        "source_name": None,
+        "category": None,
+        "is_breaking": None,
+        "is_active": None,
+    }
+    resp = client.post("/v1/api/travel/admin/news", json=payload)
+    assert resp.status_code == 201, resp.text
+    created = resp.json()
+    assert created["title"] == "Road Repair Notice"
+    assert created["title_kh"] == "Road Repair Notice"  # falls back to title
+    assert created["source_name"] == "News"  # safe default
+    assert created["category"] == "Breaking News"  # safe default
+    assert created["is_breaking"] is False
+    assert created["is_active"] is True
+    assert "https://images.unsplash.com" in created["image_url"]
+    article_id = created["id"]
+
+    # Test updating with nulls / partials
+    update_payload = {
+        "source_name": None,
+        "category": None,
+        "is_breaking": None,
+    }
+    resp = client.put(f"/v1/api/travel/admin/news/{article_id}", json=update_payload)
+    assert resp.status_code == 200, resp.text
+
+    # Test very long image_url and source_url (> 500 chars)
+    long_img = "https://images.example.com/test?" + ("param=value&" * 50)
+    long_source = "https://news.example.com/article?" + ("token=12345&" * 50)
+    long_headline = "A" * 300
+    long_payload = {
+        "title": long_headline,
+        "title_kh": "B" * 300,
+        "image_url": long_img,
+        "source_url": long_source,
+    }
+    resp = client.post("/v1/api/travel/admin/news", json=long_payload)
+    assert resp.status_code == 201, resp.text
+    long_created = resp.json()
+    assert long_created["image_url"] == long_img
+    assert long_created["source_url"] == long_source
+
+    # Clean up
+    client.delete(f"/v1/api/travel/admin/news/{article_id}")
+    client.delete(f"/v1/api/travel/admin/news/{long_created['id']}")

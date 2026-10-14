@@ -2918,7 +2918,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadNewsArticles() {
         try {
-            const response = await fetch(`${API_BASE}/news`);
+            const response = await fetch(`${API_BASE}/news`, { headers: getAuthHeaders() });
             if (!response.ok) return;
             const articles = await response.json();
             const tableBody = document.getElementById('news-table-body');
@@ -3013,21 +3013,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right: 6px;"></i> Publishing...';
             }
 
-            const rawTitleKh = document.getElementById('news-title-kh').value.trim();
-            const rawTitle = document.getElementById('news-title').value.trim();
+            const rawTitleKh = (document.getElementById('news-title-kh')?.value || '').trim();
+            const rawTitle = (document.getElementById('news-title')?.value || '').trim();
             const titleKh = rawTitleKh || rawTitle;
             const title = rawTitle || rawTitleKh;
-            let imageUrl = document.getElementById('news-image-url').value.trim();
+            let imageUrl = (document.getElementById('news-image-url')?.value || '').trim();
             if (!imageUrl) {
                 imageUrl = 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=800&auto=format&fit=crop';
             }
-            const sourceName = document.getElementById('news-source-name').value.trim() || 'News';
-            const category = document.getElementById('news-category').value;
-            const sourceUrl = document.getElementById('news-source-url').value.trim() || null;
-            const summaryKh = document.getElementById('news-summary-kh').value.trim() || null;
-            const summary = document.getElementById('news-summary').value.trim() || null;
-            const isBreaking = document.getElementById('news-is-breaking').checked;
-            const isActive = document.getElementById('news-is-active').checked;
+            const sourceName = (document.getElementById('news-source-name')?.value || '').trim() || 'News';
+            const category = document.getElementById('news-category')?.value || 'Breaking News';
+            const sourceUrl = (document.getElementById('news-source-url')?.value || '').trim() || null;
+            const summaryKh = (document.getElementById('news-summary-kh')?.value || '').trim() || null;
+            const summary = (document.getElementById('news-summary')?.value || '').trim() || null;
+            const isBreaking = !!document.getElementById('news-is-breaking')?.checked;
+            const isActive = document.getElementById('news-is-active') ? document.getElementById('news-is-active').checked : true;
 
             if (!titleKh && !title) {
                 alert(currentLanguage === 'en' ? 'Please enter a headline' : 'សូមបញ្ចូលចំណងជើងព័ត៌មាន');
@@ -3041,15 +3041,15 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const response = await fetch(`${API_BASE}/news`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({
-                        title,
-                        title_kh: titleKh,
+                        title: title || titleKh,
+                        title_kh: titleKh || title,
                         image_url: imageUrl,
                         source_name: sourceName,
-                        category,
+                        category: category,
                         source_url: sourceUrl,
-                        summary,
+                        summary: summary,
                         summary_kh: summaryKh,
                         is_breaking: isBreaking,
                         is_active: isActive,
@@ -3060,13 +3060,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     const isEn = currentLanguage === 'en';
                     showToast(isEn ? '🎉 News article published successfully!' : '🎉 បានចុះផ្សាយព័ត៌មានដោយជោគជ័យ!');
                     formCreateNews.reset();
-                    document.getElementById('news-source-name').value = 'News';
-                    document.getElementById('news-is-active').checked = true;
+                    if (document.getElementById('news-source-name')) document.getElementById('news-source-name').value = 'News';
+                    if (document.getElementById('news-is-active')) document.getElementById('news-is-active').checked = true;
                     if (newsImgPreviewContainer) newsImgPreviewContainer.style.display = 'none';
                     loadNewsArticles();
                 } else {
                     const err = await response.json();
-                    alert(err.detail || 'Could not publish article.');
+                    let errMsg = 'Could not publish article.';
+                    if (typeof err.detail === 'string') {
+                        errMsg = err.detail;
+                    } else if (Array.isArray(err.detail)) {
+                        errMsg = err.detail.map(d => `${d.loc ? d.loc.slice(1).join('.') + ': ' : ''}${d.msg}`).join('\n');
+                    }
+                    alert(errMsg);
                 }
             } catch (error) {
                 console.error('Error creating news article:', error);
@@ -3087,7 +3093,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.toggleNewsActive = async (id) => {
         try {
-            const response = await fetch(`${API_BASE}/news/${id}/toggle-active`, { method: 'POST' });
+            const response = await fetch(`${API_BASE}/news/${id}/toggle-active`, { method: 'POST', headers: getAuthHeaders() });
             if (response.ok) {
                 showToast(currentLanguage === 'en' ? 'Article visibility updated.' : 'បានបច្ចុប្បន្នភាពការបង្ហាញព័ត៌មាន។');
                 loadNewsArticles();
@@ -3100,7 +3106,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.deleteNewsArticle = async (id) => {
         if (!confirm(currentLanguage === 'en' ? 'Delete this news article?' : 'តើអ្នកពិតជាចង់លុបព័ត៌មាននេះមែនទេ?')) return;
         try {
-            const response = await fetch(`${API_BASE}/news/${id}`, { method: 'DELETE' });
+            const response = await fetch(`${API_BASE}/news/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
             if (response.ok) {
                 showToast(currentLanguage === 'en' ? 'Article deleted.' : 'បានលុបព័ត៌មាន។');
                 loadNewsArticles();
