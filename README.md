@@ -78,14 +78,14 @@ The previous nested checkout under `python/` was removed after being identified 
 ### Run with Docker
 
 #### Local Development Mode
-For local development, run Docker Compose with default host port bindings (`http://localhost:8000` for FastAPI and `5433` for PostgreSQL):
+For local development, run Docker Compose with default host port bindings (`http://localhost:8000` for FastAPI, `5433` for PostgreSQL, and `6379` for Redis):
 
 ```bash
 docker compose up --build
 ```
 
 #### Production / Coolify Deployment Mode
-For production deployment behind Coolify / Traefik reverse proxy (to prevent host port 8000 collisions):
+For production deployment behind Coolify / Traefik reverse proxy:
 
 Set **Docker Compose Location** in Coolify settings to:
 ```
@@ -97,9 +97,19 @@ Or run manually with the production compose file:
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-### On-Demand Backup & Restore Commands
-When deployed, you can trigger a backup anytime or restore with these simple commands:
+### Realtime WebSocket Scaling (Redis Pub/Sub)
+The production compose environment runs **4 Uvicorn workers** (`--workers 4`) across CPU cores:
 
+- **Redis Pub/Sub (`redis:7-alpine`)**: Synchronizes live driver and passenger GPS location broadcasts across all worker processes in real time.
+- **Graceful Fallback**: If `REDIS_URL` is omitted (e.g. during local tests or offline dev), `LiveLocationHub` automatically falls back to local in-memory broadcasting.
+
+### Automated Database Backups (DigitalOcean Spaces)
+The `db-backup` service runs alongside PostgreSQL in Docker:
+- **Scheduled Time**: Runs daily at **02:00 AM Cambodia time** (`19:00 UTC`).
+- **Retention**: Automatically prunes remote backups older than **14 days** to keep Spaces storage clean.
+- **Destination**: Uploads compressed `.sql.gz` archives to S3-compatible DigitalOcean Spaces (`sgp1`).
+
+#### On-Demand Backup & Restore Commands
 Trigger an immediate backup:
 ```bash
 docker compose -f docker-compose.prod.yml exec db-backup /backup_to_spaces.sh
@@ -215,12 +225,12 @@ alembic downgrade -1
 ```
 
 The `addresses` table is seeded automatically from [`addresses.json`](addresses.json) when you run `alembic upgrade head`.
-## add a reusable generator script that creates model + route + CRUD wiring in your exact project style
+## Reusable CRUD Generator Script
 
-Example:
+Generate a complete SQLAlchemy model, Pydantic schemas, routes, and CRUD wiring:
+
+```bash
 python scripts/generate_crud.py Category --fields name:str:100 description:str?:300
 alembic revision --autogenerate -m "create categories table"
 alembic upgrade head
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload 
-c:\Users\USer\Documents\Github\Mytravel\backend_repo\.venv\Scripts\Activate.ps1
-git push upstream main
+```
