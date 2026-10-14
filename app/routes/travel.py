@@ -5,7 +5,7 @@ from binascii import Error as Base64DecodeError
 from copy import deepcopy
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select, func, inspect, or_, delete
+from sqlalchemy import select, func, inspect, or_, and_, delete
 from sqlalchemy.orm import Session, selectinload
 from uuid import UUID
 from datetime import date, datetime, time, timedelta
@@ -344,7 +344,10 @@ def _repair_impossible_completed_trips(db: Session) -> None:
 			selectinload(Trip.driver),
 			selectinload(Trip.bookings).selectinload(Booking.wallet_entries),
 		)
-		.where(Trip.status == "completed")
+		.where(
+			Trip.status == "completed",
+			Trip.departure_time > now_local,
+		)
 	).scalars().all()
 	updated = False
 	for trip in rows:
@@ -507,7 +510,19 @@ def _expire_stale_trips_and_bookings(db: Session) -> None:
 		.options(
 			selectinload(Trip.bookings).selectinload(Booking.payment_instruction),
 		)
-		.where(Trip.status.in_(("scheduled", "active", "completed")))
+		.where(
+			or_(
+				and_(
+					Trip.status.in_(("scheduled", "active")),
+					Trip.departure_time <= now_local + timedelta(hours=2),
+				),
+				and_(
+					Trip.status == "completed",
+					Trip.repeat_mode.in_(("daily", "weekly")),
+					Trip.departure_time <= now_local,
+				),
+			)
+		)
 	).scalars().all()
 
 	updated = False
@@ -1941,15 +1956,26 @@ def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     return 2 * earth_radius_km * asin(sqrt(a))
 
 def _resolve_province_from_coords(lat: float, lng: float, db: Session) -> tuple[Address | None, Address | None, Address | None, Address | None]:
-    # Resolve the nearest village with lat/lng
+    # Query nearest villages within a ~33km bounding box first for speed
+    delta = 0.3
     villages = db.execute(
         select(Address)
         .where(
             Address.type == "village",
-            Address.latitude.is_not(None),
-            Address.longitude.is_not(None),
+            Address.latitude.between(lat - delta, lat + delta),
+            Address.longitude.between(lng - delta, lng + delta),
         )
     ).scalars().all()
+    if not villages:
+        # Fallback to broader search only if no village in immediate bounding box
+        villages = db.execute(
+            select(Address)
+            .where(
+                Address.type == "village",
+                Address.latitude.is_not(None),
+                Address.longitude.is_not(None),
+            )
+        ).scalars().all()
     if not villages:
         return None, None, None, None
     nearest_village = min(
