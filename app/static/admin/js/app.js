@@ -3013,9 +3013,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right: 6px;"></i> Publishing...';
             }
 
-            const titleKh = document.getElementById('news-title-kh').value.trim();
-            const title = document.getElementById('news-title').value.trim();
-            const imageUrl = document.getElementById('news-image-url').value.trim();
+            const rawTitleKh = document.getElementById('news-title-kh').value.trim();
+            const rawTitle = document.getElementById('news-title').value.trim();
+            const titleKh = rawTitleKh || rawTitle;
+            const title = rawTitle || rawTitleKh;
+            let imageUrl = document.getElementById('news-image-url').value.trim();
+            if (!imageUrl) {
+                imageUrl = 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=800&auto=format&fit=crop';
+            }
             const sourceName = document.getElementById('news-source-name').value.trim() || 'News';
             const category = document.getElementById('news-category').value;
             const sourceUrl = document.getElementById('news-source-url').value.trim() || null;
@@ -3024,7 +3029,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const isBreaking = document.getElementById('news-is-breaking').checked;
             const isActive = document.getElementById('news-is-active').checked;
 
-            if (!titleKh || !title || !imageUrl) {
+            if (!titleKh && !title) {
+                alert(currentLanguage === 'en' ? 'Please enter a headline' : 'សូមបញ្ចូលចំណងជើងព័ត៌មាន');
                 if (btnSubmit) {
                     btnSubmit.disabled = false;
                     btnSubmit.innerHTML = originalBtnHtml;

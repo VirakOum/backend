@@ -912,14 +912,14 @@ class PushTokenRegisterResponse(BaseModel):
 
 
 class NewsArticleCreate(BaseModel):
-    title: str = Field(..., max_length=255)
-    title_kh: str = Field(..., max_length=255)
+    title: str = Field(default="", max_length=255)
+    title_kh: str = Field(default="", max_length=255)
     summary: str | None = None
     summary_kh: str | None = None
     content: str | None = None
-    image_url: str = Field(..., max_length=500)
+    image_url: str = Field(default="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=800&auto=format&fit=crop", max_length=500)
     source_url: str | None = Field(None, max_length=500)
-    source_name: str = Field(default="Fresh News", max_length=100)
+    source_name: str = Field(default="News", max_length=100)
     category: str = Field(default="Breaking News", max_length=50)
     is_breaking: bool = False
     is_active: bool = True

@@ -1160,16 +1160,25 @@ def list_admin_news(
 
 @router.post("/news", response_model=NewsArticleRead, status_code=201)
 def create_admin_news(payload: NewsArticleCreate, db: Session = Depends(get_db)) -> Any:
+    title_en = (payload.title or payload.title_kh or "").strip()
+    title_kh = (payload.title_kh or payload.title or "").strip()
+    if not title_en and not title_kh:
+        raise HTTPException(status_code=400, detail="Headline is required")
+
+    img_url = (payload.image_url or "").strip()
+    if not img_url:
+        img_url = "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=800&auto=format&fit=crop"
+
     article = NewsArticle(
         id=uuid.uuid4(),
-        title=payload.title.strip(),
-        title_kh=payload.title_kh.strip(),
+        title=title_en,
+        title_kh=title_kh,
         summary=payload.summary.strip() if payload.summary else None,
         summary_kh=payload.summary_kh.strip() if payload.summary_kh else None,
         content=payload.content.strip() if payload.content else None,
-        image_url=payload.image_url.strip(),
+        image_url=img_url,
         source_url=payload.source_url.strip() if payload.source_url else None,
-        source_name=payload.source_name.strip() if payload.source_name else "Fresh News",
+        source_name=payload.source_name.strip() if payload.source_name else "News",
         category=payload.category.strip() if payload.category else "Breaking News",
         is_breaking=payload.is_breaking,
         is_active=payload.is_active,
