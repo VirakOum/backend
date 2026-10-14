@@ -97,6 +97,24 @@ Or run manually with the production compose file:
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
+### On-Demand Backup & Restore Commands
+When deployed, you can trigger a backup anytime or restore with these simple commands:
+
+Trigger an immediate backup:
+```bash
+docker compose -f docker-compose.prod.yml exec db-backup /backup_to_spaces.sh
+```
+
+List backups stored in Spaces:
+```bash
+docker compose -f docker-compose.prod.yml exec db-backup /restore_from_spaces.sh
+```
+
+Restore a specific backup:
+```bash
+docker compose -f docker-compose.prod.yml exec db-backup /restore_from_spaces.sh mytravel_db_20261014_020000.sql.gz
+```
+
 
 ## Web Interfaces & System Endpoints
 
