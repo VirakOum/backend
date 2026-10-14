@@ -1,4 +1,15 @@
 services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   db:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -22,8 +33,11 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://fastapi:fastapi@db:5432/fastapi_learning}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
     ports:
       - "${APP_PORT:-8000}:8000"
     command: >
@@ -46,6 +60,3 @@ services:
 volumes:
   fastapi_learning_postgres_data:
   pgadmin_data:
-
-
-

@@ -8,6 +8,7 @@ DATABASE_URL = os.getenv(
     "DATABASE_URL",
     "postgresql+psycopg://fastapi:fastapi@localhost:5432/fastapi_learning",
 )
+REDIS_URL = os.getenv("REDIS_URL", "")
 
 
 def _env_flag(name: str, default: bool = False) -> bool:

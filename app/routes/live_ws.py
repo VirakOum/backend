@@ -1,23 +1,76 @@
-from __future__ import annotations
-
+import asyncio
 from collections import defaultdict
 from datetime import timedelta
+import json
+import logging
 from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
+try:
+    import redis.asyncio as aioredis
+except ImportError:
+    aioredis = None  # type: ignore
+
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from ..config import REDIS_URL
 from ..db import SessionLocal
 from ..models import AuthToken, Booking, BookingLiveLocation, Trip, User, phnom_penh_now
 
+logger = logging.getLogger("travel.live_ws")
 router = APIRouter(prefix="/travel/live", tags=["travel-live"])
 
 
 class LiveLocationHub:
     def __init__(self) -> None:
         self._rooms: dict[str, set[WebSocket]] = defaultdict(set)
+        self._redis_url: str = REDIS_URL
+        self._redis: Any = None
+        self._pubsub_task: asyncio.Task | None = None
+        self._closing: bool = False
+        self.channel_name: str = "mytravel:live:location"
+
+    async def start(self) -> None:
+        """Initialize Redis connection and subscriber background task."""
+        if not self._redis_url or aioredis is None:
+            logger.info("REDIS_URL not set or redis module missing; running LiveLocationHub in local in-memory mode")
+            return
+        self._closing = False
+        try:
+            self._redis = aioredis.from_url(
+                self._redis_url,
+                decode_responses=True,
+                socket_connect_timeout=3.0,
+                socket_timeout=5.0,
+                retry_on_timeout=True,
+            )
+            await self._redis.ping()
+            self._pubsub_task = asyncio.create_task(self._listen_redis())
+            logger.info("LiveLocationHub connected to Redis pub/sub at %s", self._redis_url)
+        except Exception as e:
+            logger.warning(
+                "Failed to connect to Redis for LiveLocationHub: %s. Operating in local mode.",
+                e,
+            )
+
+    async def stop(self) -> None:
+        """Cleanly close subscriber task and Redis connection."""
+        self._closing = True
+        if self._pubsub_task and not self._pubsub_task.done():
+            self._pubsub_task.cancel()
+            try:
+                await self._pubsub_task
+            except (asyncio.CancelledError, Exception):
+                pass
+            self._pubsub_task = None
+        if self._redis:
+            try:
+                await self._redis.aclose()
+            except Exception:
+                pass
+            self._redis = None
 
     async def connect(self, websocket: WebSocket, rooms: set[str]) -> None:
         await websocket.accept()
@@ -36,14 +89,61 @@ class LiveLocationHub:
                 self._rooms.pop(room, None)
 
     async def broadcast(self, room: str, payload: dict[str, Any]) -> None:
+        """Broadcast to all workers via Redis pub/sub, or local in-memory if Redis unavailable."""
+        if self._redis:
+            try:
+                message = json.dumps({"room": room, "payload": payload})
+                await self._redis.publish(self.channel_name, message)
+                return
+            except Exception as e:
+                logger.warning("Failed to publish to Redis (%s), falling back to local broadcast", e)
+        await self._broadcast_local(room, payload)
+
+    async def _broadcast_local(self, room: str, payload: dict[str, Any]) -> None:
+        """Send message directly to WebSockets attached to this worker process."""
         dead: list[WebSocket] = []
         for websocket in tuple(self._rooms.get(room, ())):
             try:
                 await websocket.send_json(payload)
-            except RuntimeError:
+            except Exception:
                 dead.append(websocket)
         for websocket in dead:
             self.disconnect(websocket)
+
+    async def _listen_redis(self) -> None:
+        """Background task that listens to Redis channel and delivers to local room websockets."""
+        while not self._closing:
+            try:
+                if not self._redis:
+                    break
+                pubsub = self._redis.pubsub()
+                await pubsub.subscribe(self.channel_name)
+                logger.info("Subscribed to Redis channel '%s'", self.channel_name)
+                async for message in pubsub.listen():
+                    if self._closing:
+                        break
+                    if message and message.get("type") == "message":
+                        data_raw = message.get("data")
+                        if not data_raw:
+                            continue
+                        try:
+                            data = json.loads(data_raw)
+                            room = data.get("room")
+                            payload = data.get("payload")
+                            if room and payload is not None:
+                                await self._broadcast_local(room, payload)
+                        except Exception as decode_err:
+                            logger.error("Error decoding Redis message: %s", decode_err)
+            except asyncio.CancelledError:
+                break
+            except Exception as conn_err:
+                if self._closing:
+                    break
+                logger.warning(
+                    "Redis pubsub connection lost: %s. Reconnecting in 3 seconds...",
+                    conn_err,
+                )
+                await asyncio.sleep(3)
 
 
 hub = LiveLocationHub()

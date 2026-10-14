@@ -19,7 +19,7 @@ from .routes.passenger import router as passenger_router
 from .routes.addresses import router as addresses_router
 from .routes.driver_fee import router as driver_fee_router
 from .routes.admin import router as admin_router
-from .routes.live_ws import router as live_ws_router
+from .routes.live_ws import hub, router as live_ws_router
 from .routes.items import router as items_router
 
 root_path = os.getenv("FASTAPI_ROOT_PATH", "")
@@ -93,6 +93,16 @@ def _ensure_trip_live_location_columns() -> None:
 @app.on_event("startup")
 def _apply_runtime_trip_schema_repairs() -> None:
     _ensure_trip_live_location_columns()
+
+
+@app.on_event("startup")
+async def _start_live_location_hub() -> None:
+    await hub.start()
+
+
+@app.on_event("shutdown")
+async def _stop_live_location_hub() -> None:
+    await hub.stop()
 
 
 class NoCacheStaticFiles(StaticFiles):
