@@ -39,7 +39,11 @@ ASSETLINKS_DATA = [
             "namespace": "android_app",
             "package_name": "com.kh.mytravel.mytravel",
             "sha256_cert_fingerprints": [
+                # Google Play App Signing (Production Play Store)
+                "4B:33:E5:28:B3:A4:59:1A:D1:77:90:CD:9F:49:CB:47:EF:A9:9F:EF:D9:58:75:B7:29:3D:FE:87:E1:FE:47:73",
+                # Local Release Keystore (Keystone.jks)
                 "0C:B8:64:C9:26:44:67:E9:21:9F:A5:F4:D2:0B:66:40:2F:1C:F2:B1:FA:05:2F:BF:42:6F:EF:40:6F:9D:ED:47",
+                # Local Debug Keystore
                 "ED:F9:37:D3:54:59:0B:A8:73:D3:8E:DD:AE:E3:7E:1A:D6:C8:33:CD:25:74:18:08:70:77:F3:EA:B9:37:DC:F8",
             ],
         },
