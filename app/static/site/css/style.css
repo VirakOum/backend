@@ -60,59 +60,34 @@ button {
     outline: none;
 }
 
-.nav-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.mobile-toggle {
-    display: none;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    color: var(--accent-dark);
-    font-size: 1.2rem;
-    width: 42px;
-    height: 42px;
-    border-radius: var(--radius-sm);
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: var(--transition-fast);
-    box-shadow: var(--shadow-sm);
-}
-
-.mobile-toggle:hover {
-    background: var(--accent-taxi);
-    color: var(--accent-dark);
-}
-
-
 /* Header & Navbar */
 .navbar {
     position: sticky;
     top: 0;
     z-index: 1000;
-    background: rgba(243, 245, 248, 0.85);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: rgba(243, 245, 248, 0.88);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
     border-bottom: 1px solid var(--border-color);
-    padding: 1rem 2rem;
+    padding: 0.85rem 1.75rem;
     transition: var(--transition-fast);
 }
 
 .nav-container {
-    max-width: 1280px;
+    max-width: 1360px;
     margin: 0 auto;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 1.5rem;
 }
 
 .brand {
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    text-decoration: none;
+    flex-shrink: 0;
 }
 
 .brand-icon {
@@ -133,26 +108,33 @@ button {
     font-weight: 800;
     letter-spacing: -0.5px;
     color: var(--accent-dark);
+    line-height: 1.15;
 }
 
 .brand-tagline {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     color: var(--text-muted);
     font-weight: 500;
+    white-space: nowrap;
 }
 
 .nav-links {
     display: flex;
     align-items: center;
-    gap: 2rem;
+    gap: clamp(0.55rem, 1.1vw, 1.25rem);
     list-style: none;
+    margin: 0;
+    padding: 0;
 }
 
 .nav-link {
     font-weight: 600;
-    font-size: 0.95rem;
+    font-size: 0.88rem;
     color: var(--text-dark);
+    white-space: nowrap;
+    text-decoration: none;
     transition: var(--transition-fast);
+    padding: 0.25rem 0.2rem;
 }
 
 .nav-link:hover {
@@ -162,26 +144,84 @@ button {
 .nav-actions {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.65rem;
+    flex-shrink: 0;
+}
+
+.btn-taxi-nav {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    background: var(--accent-taxi);
+    color: var(--accent-dark);
+    border: 1.5px solid var(--border-taxi);
+    padding: 0.48rem 1rem;
+    border-radius: var(--radius-full);
+    font-weight: 700;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    text-decoration: none;
+    box-shadow: 0 2px 8px rgba(255, 200, 61, 0.28);
+    transition: var(--transition-fast);
+}
+
+.btn-taxi-nav:hover {
+    background: var(--accent-taxi-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(255, 200, 61, 0.45);
+    color: var(--accent-dark);
+}
+
+.btn-taxi-nav i {
+    color: #B45309;
+    font-size: 0.95rem;
 }
 
 .lang-btn {
     background: var(--bg-card);
     border: 1.5px solid var(--border-color);
-    padding: 0.5rem 1rem;
+    padding: 0.48rem 0.95rem;
     border-radius: var(--radius-full);
     font-weight: 600;
     font-size: 0.85rem;
     color: var(--text-dark);
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.45rem;
+    white-space: nowrap;
+    cursor: pointer;
     transition: var(--transition-fast);
 }
 
 .lang-btn:hover {
     border-color: var(--accent-taxi);
     box-shadow: var(--shadow-sm);
+}
+
+.mobile-only-nav {
+    display: none;
+}
+
+.mobile-toggle {
+    display: none;
+    background: var(--bg-card);
+    border: 1.5px solid var(--border-color);
+    color: var(--accent-dark);
+    font-size: 1.15rem;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    box-shadow: var(--shadow-sm);
+}
+
+.mobile-toggle:hover {
+    background: var(--accent-taxi);
+    color: var(--accent-dark);
+    border-color: var(--border-taxi);
 }
 
 .btn-admin {
@@ -200,14 +240,6 @@ button {
 .btn-admin:hover {
     background: var(--accent-dark-subtle);
     box-shadow: 0 4px 14px rgba(23, 34, 58, 0.25);
-}
-
-/* Mobile Menu Toggle */
-.mobile-toggle {
-    display: none;
-    font-size: 1.4rem;
-    background: none;
-    color: var(--text-dark);
 }
 
 /* Hero Section */
@@ -868,19 +900,27 @@ footer {
     line-height: 1.5;
 }
 
+@keyframes slideDownNav {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 /* Responsive Breakpoints */
-@media (max-width: 992px) {
+@media (max-width: 1240px) {
+    .brand-tagline {
+        display: none;
+    }
+}
+
+@media (max-width: 1080px) {
     .navbar {
         padding: 0.85rem 1.25rem;
-    }
-
-    .hero-grid, .estimator-form, .safety-box {
-        grid-template-columns: 1fr;
-    }
-
-    .hero-title {
-        font-size: 2.1rem;
-        line-height: 1.25;
     }
 
     .mobile-toggle {
@@ -910,6 +950,22 @@ footer {
         animation: slideDownNav 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
     }
 
+    .mobile-only-nav {
+        display: block;
+    }
+
+    .mobile-trips-highlight {
+        background: rgba(255, 200, 61, 0.18) !important;
+        border: 1.5px solid var(--accent-taxi) !important;
+        border-radius: var(--radius-sm);
+        color: var(--accent-dark) !important;
+        font-weight: 800 !important;
+        margin: 0.35rem 0;
+        display: flex !important;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
     .nav-links li {
         border-bottom: 1px solid rgba(226, 232, 240, 0.7);
     }
@@ -930,6 +986,33 @@ footer {
     .nav-link:hover, .nav-link:focus {
         color: var(--accent-taxi-hover);
         padding-left: 0.85rem;
+    }
+}
+
+@media (max-width: 540px) {
+    .btn-taxi-nav span {
+        display: none;
+    }
+    .btn-taxi-nav {
+        padding: 0.48rem 0.65rem;
+        font-size: 0.95rem;
+    }
+}
+
+@media (max-width: 380px) {
+    .btn-taxi-nav {
+        display: none;
+    }
+}
+
+@media (max-width: 992px) {
+    .hero-grid, .estimator-form, .safety-box {
+        grid-template-columns: 1fr;
+    }
+
+    .hero-title {
+        font-size: 2.1rem;
+        line-height: 1.25;
     }
 
     .hero-buttons {

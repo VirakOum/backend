@@ -35,7 +35,12 @@
             </a>
 
             <ul class="nav-links" id="nav-links">
-                <li><a href="/trips" class="nav-link" style="background: rgba(255,200,61,0.18); color: var(--accent-dark); padding: 0.35rem 0.75rem; border-radius: var(--radius-sm); border: 1.5px solid var(--accent-taxi); font-weight: 700;"><i class="fa-solid fa-car-side" style="margin-right: 0.35rem; color: #D97706;"></i><span data-i18n="nav_all_trips">All Trips</span></a></li>
+                <li class="mobile-only-nav">
+                    <a href="/trips" class="nav-link mobile-trips-highlight">
+                        <i class="fa-solid fa-car-side" style="color: #D97706;"></i>
+                        <span data-i18n="nav_all_trips">All Trips</span>
+                    </a>
+                </li>
                 <li><a href="#about" class="nav-link" data-i18n="nav_about">About</a></li>
                 <li><a href="#account-creation" class="nav-link" data-i18n="nav_account">How to Register</a></li>
                 <li><a href="#estimator" class="nav-link" data-i18n="nav_estimator">Fare Estimator</a></li>
@@ -47,6 +52,10 @@
             </ul>
 
             <div class="nav-actions">
+                <a href="/trips" class="btn-taxi-nav" title="View all scheduled trips">
+                    <i class="fa-solid fa-car-side"></i>
+                    <span data-i18n="nav_all_trips">All Trips</span>
+                </a>
                 <button id="lang-toggle-btn" class="lang-btn" aria-label="Toggle Language">
                     <i class="fa-solid fa-globe"></i>
                     <span>ភាសាខ្មែរ</span>
