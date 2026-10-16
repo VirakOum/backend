@@ -152,7 +152,7 @@ def _render_deep_link_page(
     <meta name="twitter:image" content="{image_url}">
 
     <!-- iOS Smart App Banner -->
-    <meta name="apple-itunes-app" content="app-id=com.kh.mytravel.app, app-argument={app_deep_link}">
+    <meta name="apple-itunes-app" content="app-id=6815109556, app-argument={app_deep_link}">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -388,7 +388,8 @@ def _render_trip_detail_page(
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{title}">
     <meta name="twitter:description" content="{description}">
-    <meta name="twitter:image" content="{social_img}">
+    <!-- iOS Smart App Banner -->
+    <meta name="apple-itunes-app" content="app-id=6815109556, app-argument={app_deep_link}">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

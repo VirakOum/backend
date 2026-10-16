@@ -23,7 +23,7 @@ DEFAULT_VERSION_CONFIGS = {
         "latest_version": "1.0.0",
         "min_version": "1.0.0",
         "force_update": False,
-        "update_url": "https://apps.apple.com/app/mytravel/id000000000",
+        "update_url": "https://apps.apple.com/app/my-travel/id6815109556",
         "title": "New Version Available",
         "title_km": "មានកំណែថ្មីនៃកម្មវិធី",
         "release_notes": "• Performance enhancements\n• Bug fixes and stability improvements",

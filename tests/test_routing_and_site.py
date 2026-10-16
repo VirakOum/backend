@@ -78,3 +78,26 @@ def test_favicon_and_assets_resolution():
     assert asset_res.status_code == 200
 
 
+def test_smart_app_download_redirects():
+    # iOS redirect
+    ios_res = client.get("/app", headers={"User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)"}, follow_redirects=False)
+    assert ios_res.status_code == 302
+    assert "apps.apple.com/app/my-travel/id6815109556" in ios_res.headers["location"]
+
+    # Android redirect
+    android_res = client.get("/download", headers={"User-Agent": "Mozilla/5.0 (Linux; Android 14; Pixel 8)"}, follow_redirects=False)
+    assert android_res.status_code == 302
+    assert "play.google.com/store/apps/details?id=com.kh.mytravel.mytravel" in android_res.headers["location"]
+
+    # Desktop fallback
+    desktop_res = client.get("/app", headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}, follow_redirects=False)
+    assert desktop_res.status_code == 302
+    assert desktop_res.headers["location"] == "/#download"
+
+    # Direct APK fallback to Google Play when no local APK uploaded
+    apk_res = client.get("/download/mytravel-passenger.apk", follow_redirects=False)
+    assert apk_res.status_code == 302
+    assert "play.google.com/store/apps/details?id=com.kh.mytravel.mytravel" in apk_res.headers["location"]
+
+
+

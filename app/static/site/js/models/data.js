@@ -218,10 +218,10 @@ window.MyTravelData = {
 
     // App Download Links
     DOWNLOAD_LINKS: {
-        passenger_apk: "https://mytravel.taxi/download/mytravel-passenger.apk",
-        driver_apk: "https://mytravel.taxi/download/mytravel-driver.apk",
-        google_play: "https://play.google.com/store/apps/details?id=com.mytravel.taxi",
-        app_store: "https://apps.apple.com/app/mytravel-taxi/id123456789"
+        passenger_apk: "/download/mytravel-passenger.apk",
+        driver_apk: "/download/mytravel-driver.apk",
+        google_play: "https://play.google.com/store/apps/details?id=com.kh.mytravel.mytravel",
+        app_store: "https://apps.apple.com/app/my-travel/id6815109556"
     },
 
     // Localization Translations (English / Khmer)

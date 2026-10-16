@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Query
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
 from fastapi.openapi.utils import get_openapi
@@ -255,6 +255,32 @@ def serve_privacy_policy():
 @app.get("/search-trips", include_in_schema=False)
 def serve_public_trips_page():
     return FileResponse(STATIC_SITE_DIR / "trips.html", headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+
+
+@app.get("/app", include_in_schema=False)
+@app.get("/app/", include_in_schema=False)
+@app.get("/download", include_in_schema=False)
+@app.get("/download/", include_in_schema=False)
+@api_v1_router.get("/app", include_in_schema=False)
+@api_v1_router.get("/download", include_in_schema=False)
+def smart_app_download_redirect(request: Request):
+    user_agent = request.headers.get("user-agent", "").lower()
+    if any(dev in user_agent for dev in ("iphone", "ipad", "ipod", "cfnetwork", "darwin")):
+        return RedirectResponse(url="https://apps.apple.com/app/my-travel/id6815109556", status_code=302)
+    elif "android" in user_agent:
+        return RedirectResponse(url="https://play.google.com/store/apps/details?id=com.kh.mytravel.mytravel", status_code=302)
+    return RedirectResponse(url="/#download", status_code=302)
+
+
+@app.get("/download/{filename:path}", include_in_schema=False)
+@api_v1_router.get("/download/{filename:path}", include_in_schema=False)
+def serve_download_file(filename: str):
+    downloads_dir = STATIC_SITE_DIR / "downloads"
+    target = downloads_dir / filename
+    if target.is_file():
+        return FileResponse(target, filename=filename, media_type="application/vnd.android.package-archive")
+    # Graceful fallback: redirect directly to Google Play Store so users never encounter a 404
+    return RedirectResponse(url="https://play.google.com/store/apps/details?id=com.kh.mytravel.mytravel", status_code=302)
 
 
 @app.get("/admin", include_in_schema=False)
