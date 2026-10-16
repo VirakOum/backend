@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 from ..db import get_db
-from ..models import Trip, NewsArticle, SystemAd, Vehicle, UniversalLinkConfig
+from ..models import Trip, NewsArticle, SystemAd, Vehicle, UniversalLinkConfig, User
 
 router = APIRouter(tags=["universal_links"])
 
@@ -315,6 +315,543 @@ def _render_deep_link_page(
     return HTMLResponse(content=html)
 
 
+def _sanitize_og_image(url: str) -> str:
+    if not url or url.startswith("data:"):
+        return "https://mytravel.taxi/assets/logo.png"
+    return url
+
+
+def _render_trip_detail_page(
+    *,
+    trip: Trip,
+    vehicle: Vehicle | None,
+    driver: User | None,
+    car_photos: list[str],
+    hero_photo: str,
+    has_real_car_photo: bool,
+    app_deep_link: str,
+    web_canonical_url: str,
+) -> HTMLResponse:
+    title = f"{trip.departure_province} ទៅ {trip.destination_province} - My Travel Taxi"
+    dep_time_str = trip.departure_time.strftime("%d/%m/%Y • %I:%M %p") if trip.departure_time else "ឆាប់ៗនេះ"
+    price_usd = f"${float(trip.price_per_seat):,.2f}" if trip.price_per_seat else "តម្លៃពិសេស"
+    price_khr = f"{int(float(trip.price_per_seat or 0) * 4100):,} ៛" if trip.price_per_seat else "តម្លៃពិសេស"
+
+    vehicle_model = (vehicle.model or "រថយន្តតាក់ស៊ីទំនើប").strip() if vehicle else "រថយន្តតាក់ស៊ីទំនើប"
+    vehicle_type = (vehicle.vehicle_type or "Car").strip() if vehicle else "Car"
+    plate_number = (vehicle.plate_number or "").strip() if vehicle else ""
+    color = (vehicle.color or "").strip() if vehicle else ""
+
+    driver_name = driver.full_name if driver else "អ្នកបើកបរអាជីព"
+    rating_val = f"{float(driver.rating_avg or 4.9):.1f}" if driver else "4.9"
+    trips_count = driver.completed_trips if (driver and driver.completed_trips) else 120
+
+    description = f"ជើងដំណើរពី {trip.departure_province} ទៅ {trip.destination_province} ជាមួយ {vehicle_model} ({vehicle_type}) | ចេញដំណើរ: {dep_time_str} | តម្លៃ: {price_usd} / {price_khr} | កៅអីនៅសល់: {trip.available_seats}/{trip.total_seats}"
+    social_img = _sanitize_og_image(hero_photo)
+
+    gallery_html = ""
+    if len(car_photos) > 1:
+        thumb_items = []
+        for idx, p_url in enumerate(car_photos):
+            active_class = "active" if idx == 0 else ""
+            thumb_items.append(
+                f'<button type="button" class="thumb-btn {active_class}" onclick="selectCarPhoto(this, \'{p_url}\')">'
+                f'<img src="{p_url}" alt="Car photo {idx+1}">'
+                f'</button>'
+            )
+        gallery_html = f'<div class="thumbnails-container">{"".join(thumb_items)}</div>'
+
+    verified_badge_html = ""
+    if has_real_car_photo:
+        verified_badge_html = '<span class="photo-verified-badge"><i class="fa-solid fa-camera"></i> រូបថតរថយន្តពិត</span>'
+
+    html = f"""<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title}</title>
+    <meta name="description" content="{description}">
+    <link rel="canonical" href="{web_canonical_url}">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{web_canonical_url}">
+    <meta property="og:title" content="{title}">
+    <meta property="og:description" content="{description}">
+    <meta property="og:image" content="{social_img}">
+    <meta property="og:site_name" content="My Travel Cambodia">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{title}">
+    <meta name="twitter:description" content="{description}">
+    <meta name="twitter:image" content="{social_img}">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;600;700;800;900&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        :root {{
+            --primary: #17223A;
+            --accent: #FFC83D;
+            --accent-hover: #F5B82E;
+            --bg-dark: #0B0F19;
+            --card-bg: #131B2E;
+            --surface-elevated: #1E293B;
+            --border: #334155;
+            --text-white: #F8FAFC;
+            --text-muted: #94A3B8;
+            --success: #1FA86C;
+            --radius-card: 24px;
+        }}
+        * {{
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Kantumruy Pro', -apple-system, BlinkMacSystemFont, sans-serif;
+        }}
+        body {{
+            background: linear-gradient(145deg, #070A11 0%, #0F172A 100%);
+            color: var(--text-white);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }}
+        .top-nav {{
+            max-width: 520px;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+            padding: 0 4px;
+        }}
+        .brand-link {{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 800;
+            font-size: 15px;
+            font-family: 'Outfit', sans-serif;
+        }}
+        .brand-link img {{
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+        }}
+        .btn-all-trips-nav {{
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 200, 61, 0.12);
+            color: var(--accent);
+            border: 1px solid rgba(255, 200, 61, 0.35);
+            padding: 7px 14px;
+            border-radius: 9999px;
+            font-size: 12.5px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }}
+        .btn-all-trips-nav:hover {{
+            background: var(--accent);
+            color: #0F172A;
+        }}
+        .trip-card {{
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            max-width: 520px;
+            width: 100%;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.65);
+            animation: fadeIn 0.35s ease-out;
+        }}
+        @keyframes fadeIn {{
+            from {{ opacity: 0; transform: translateY(10px); }}
+            to {{ opacity: 1; transform: translateY(0); }}
+        }}
+        .hero-media {{
+            position: relative;
+            width: 100%;
+            height: 240px;
+            background: #1E293B;
+            overflow: hidden;
+        }}
+        .hero-media img {{
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            transition: transform 0.3s ease;
+        }}
+        .photo-verified-badge {{
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(8px);
+            color: var(--accent);
+            border: 1px solid rgba(255, 200, 61, 0.4);
+            padding: 5px 12px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        }}
+        .status-badge {{
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            background: rgba(31, 168, 108, 0.9);
+            color: #FFFFFF;
+            padding: 5px 12px;
+            border-radius: 9999px;
+            font-size: 11.5px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }}
+        .thumbnails-container {{
+            display: flex;
+            gap: 8px;
+            padding: 10px 16px;
+            background: rgba(11, 15, 25, 0.8);
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+        }}
+        .thumb-btn {{
+            width: 52px;
+            height: 40px;
+            border-radius: 8px;
+            border: 2px solid transparent;
+            overflow: hidden;
+            background: none;
+            cursor: pointer;
+            padding: 0;
+            flex-shrink: 0;
+            opacity: 0.65;
+            transition: all 0.2s ease;
+        }}
+        .thumb-btn.active, .thumb-btn:hover {{
+            opacity: 1;
+            border-color: var(--accent);
+            transform: scale(1.05);
+        }}
+        .thumb-btn img {{
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }}
+        .card-body {{
+            padding: 22px;
+        }}
+        .route-header {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--surface-elevated);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 14px 18px;
+            margin-bottom: 16px;
+        }}
+        .route-point {{
+            display: flex;
+            flex-direction: column;
+        }}
+        .route-label {{
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }}
+        .route-name {{
+            font-size: 17px;
+            font-weight: 900;
+            color: #FFFFFF;
+            margin-top: 2px;
+        }}
+        .route-arrow {{
+            color: var(--accent);
+            font-size: 16px;
+            padding: 0 10px;
+        }}
+        .info-grid {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 18px;
+        }}
+        .info-box {{
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 12px 14px;
+        }}
+        .info-label {{
+            font-size: 11px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 4px;
+            font-weight: 700;
+        }}
+        .info-val {{
+            font-size: 14px;
+            font-weight: 800;
+            color: #FFFFFF;
+        }}
+        .info-val.price {{
+            color: var(--accent);
+            font-size: 16px;
+        }}
+        .info-val.seats {{
+            color: var(--success);
+        }}
+        .driver-strip {{
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--surface-elevated);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+        }}
+        .driver-avatar {{
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: var(--primary);
+            border: 2px solid var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent);
+            font-weight: 800;
+            font-size: 18px;
+            overflow: hidden;
+        }}
+        .driver-meta {{
+            flex: 1;
+        }}
+        .driver-name {{
+            font-size: 14px;
+            font-weight: 800;
+            color: #FFFFFF;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }}
+        .driver-stats {{
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }}
+        .driver-stats .star {{
+            color: #FFC83D;
+        }}
+        .btn-primary {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            background: var(--accent);
+            color: #0F172A;
+            text-decoration: none;
+            padding: 16px;
+            border-radius: 18px;
+            font-weight: 900;
+            font-size: 16px;
+            box-shadow: 0 6px 20px rgba(255, 200, 61, 0.35);
+            transition: all 0.2s ease;
+            margin-bottom: 10px;
+        }}
+        .btn-primary:hover {{
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+        }}
+        .action-row {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }}
+        .btn-secondary {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            background: transparent;
+            color: #F8FAFC;
+            border: 1px solid var(--border);
+            text-decoration: none;
+            padding: 13px;
+            border-radius: 16px;
+            font-weight: 700;
+            font-size: 13.5px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }}
+        .btn-secondary:hover {{
+            background: var(--surface-elevated);
+            border-color: var(--text-muted);
+        }}
+        .toast {{
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #1FA86C;
+            color: #FFFFFF;
+            padding: 10px 22px;
+            border-radius: 9999px;
+            font-size: 13px;
+            font-weight: 700;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }}
+        .toast.show {{
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }}
+    </style>
+</head>
+<body>
+    <div class="top-nav">
+        <a href="/" class="brand-link">
+            <img src="/assets/logo.png" alt="My Travel Logo" onerror="this.src='https://mytravel.taxi/assets/logo.png'">
+            <span>MYTRAVEL.TAXI</span>
+        </a>
+        <a href="/trips" class="btn-all-trips-nav">
+            <i class="fa-solid fa-list-ul"></i> ជើងដំណើរទាំងអស់
+        </a>
+    </div>
+
+    <div class="trip-card">
+        <div class="hero-media">
+            <img id="main-car-img" src="{hero_photo}" alt="{vehicle_model}" onerror="this.src='https://images.unsplash.com/photo-1549399542-7e3f8b79c341?q=80&w=800&auto=format&fit=crop'">
+            {verified_badge_html}
+            <div class="status-badge"><i class="fa-solid fa-circle-check"></i> កំពុងបើកកក់</div>
+        </div>
+
+        {gallery_html}
+
+        <div class="card-body">
+            <div class="route-header">
+                <div class="route-point">
+                    <span class="route-label">ចេញដំណើរ (From)</span>
+                    <span class="route-name">{trip.departure_province}</span>
+                </div>
+                <div class="route-arrow">
+                    <i class="fa-solid fa-arrow-right-long"></i>
+                </div>
+                <div class="route-point" style="text-align: right;">
+                    <span class="route-label">ទៅកាន់ (To)</span>
+                    <span class="route-name">{trip.destination_province}</span>
+                </div>
+            </div>
+
+            <div class="info-grid">
+                <div class="info-box">
+                    <div class="info-label"><i class="fa-regular fa-clock"></i> ពេលចេញដំណើរ</div>
+                    <div class="info-val">{dep_time_str}</div>
+                </div>
+                <div class="info-box">
+                    <div class="info-label"><i class="fa-solid fa-tag"></i> តម្លៃក្នុង ១កៅអី</div>
+                    <div class="info-val price">{price_usd} <span style="font-size:12px; font-weight:600; color:var(--text-muted)">({price_khr})</span></div>
+                </div>
+                <div class="info-box">
+                    <div class="info-label"><i class="fa-solid fa-car-side"></i> យានយន្ត</div>
+                    <div class="info-val">{vehicle_model} <span style="font-size:11.5px; color:var(--text-muted)">({vehicle_type})</span></div>
+                </div>
+                <div class="info-box">
+                    <div class="info-label"><i class="fa-solid fa-chair"></i> កៅអីនៅសល់</div>
+                    <div class="info-val seats">{trip.available_seats} នៃ {trip.total_seats} កៅអី</div>
+                </div>
+            </div>
+
+            <div class="driver-strip">
+                <div class="driver-avatar">
+                    <i class="fa-solid fa-user"></i>
+                </div>
+                <div class="driver-meta">
+                    <div class="driver-name">
+                        {driver_name}
+                        <i class="fa-solid fa-circle-check" style="color:#38BDF8; font-size:13px;" title="Verified Driver"></i>
+                    </div>
+                    <div class="driver-stats">
+                        <span class="star"><i class="fa-solid fa-star"></i> {rating_val}</span> • {trips_count} ជើងជោគជ័យ
+                    </div>
+                </div>
+                {f'<div style="text-align:right; font-size:12px; color:var(--text-muted); font-weight:700;"><i class="fa-solid fa-id-card"></i> {plate_number}</div>' if plate_number else ''}
+            </div>
+
+            <a href="{app_deep_link}" class="btn-primary" id="btn-deep-link">
+                <i class="fa-solid fa-mobile-screen-button"></i> បើកកក់ក្នុងកម្មវិធី My Travel
+            </a>
+
+            <div class="action-row">
+                <a href="/trips" class="btn-secondary">
+                    <i class="fa-solid fa-magnifying-glass"></i> ស្វែងរកជើងផ្សេង
+                </a>
+                <button type="button" class="btn-secondary" onclick="copyTripLink()">
+                    <i class="fa-solid fa-share-nodes"></i> ចម្លងដំណភ្ជាប់
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">✓ បានចម្លងដំណភ្ជាប់រួចរាល់!</div>
+
+    <script>
+        function selectCarPhoto(btn, src) {{
+            const mainImg = document.getElementById('main-car-img');
+            if (mainImg) mainImg.src = src;
+            document.querySelectorAll('.thumb-btn').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+        }}
+
+        function copyTripLink() {{
+            navigator.clipboard.writeText(window.location.href).then(() => {{
+                const toast = document.getElementById('toast');
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 2500);
+            }});
+        }}
+
+        const deepLink = "{app_deep_link}";
+        if (deepLink && !window.location.search.includes('no_redirect=1')) {{
+            setTimeout(function() {{
+                window.location.href = deepLink;
+            }}, 600);
+        }}
+    </script>
+</body>
+</html>
+"""
+    return HTMLResponse(content=html)
+
+
 @router.get("/trips/{trip_id}", response_class=HTMLResponse, include_in_schema=False)
 @router.get("/t/{trip_id}", response_class=HTMLResponse, include_in_schema=False)
 def open_trip_universal_link(
@@ -338,31 +875,37 @@ def open_trip_universal_link(
         )
 
     vehicle = db.get(Vehicle, trip.vehicle_id) if trip.vehicle_id else None
-    vehicle_info = f"{vehicle.vehicle_type or ''} {vehicle.model or ''}".strip() if vehicle else ""
-    if not vehicle_info:
-        vehicle_info = "រថយន្តតាក់ស៊ីទំនើប"
-    vehicle_photo = (
-        vehicle.image_urls[0]
-        if (vehicle and vehicle.image_urls and len(vehicle.image_urls) > 0)
-        else "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?q=80&w=800&auto=format&fit=crop"
-    )
+    driver = db.get(User, trip.driver_id) if trip.driver_id else None
 
-    dep_time = trip.departure_time.strftime("%d/%m/%Y %H:%M") if trip.departure_time else "ឆាប់ៗនេះ"
-    price_formatted = f"${trip.price_per_seat:,.2f}" if trip.price_per_seat else "តម្លៃពិសេស"
+    car_photos: list[str] = []
+    if vehicle and vehicle.image_urls:
+        for img in vehicle.image_urls:
+            if img and isinstance(img, str) and img.strip():
+                car_photos.append(img.strip())
 
-    title = f"{trip.departure_province} ទៅ {trip.destination_province}"
-    description = (
-        f"ដំណើរកម្សាន្តជាមួយ {vehicle_info} | ចេញដំណើរ: {dep_time} | "
-        f"តម្លៃ: {price_formatted}/កៅអី | កៅអីនៅសល់: {trip.available_seats}។ កក់ឥឡូវនេះ!"
-    )
+    has_real_car_photo = len(car_photos) > 0
+    if has_real_car_photo:
+        primary_photo = car_photos[0]
+    else:
+        v_type = (vehicle.vehicle_type or "").lower() if vehicle else ""
+        if "van" in v_type or "hiace" in v_type:
+            primary_photo = "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?q=80&w=800&auto=format&fit=crop"
+        elif "bus" in v_type:
+            primary_photo = "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=800&auto=format&fit=crop"
+        elif "suv" in v_type:
+            primary_photo = "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?q=80&w=800&auto=format&fit=crop"
+        else:
+            primary_photo = "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?q=80&w=800&auto=format&fit=crop"
 
-    return _render_deep_link_page(
-        title=title,
-        description=description,
-        image_url=vehicle_photo,
+    return _render_trip_detail_page(
+        trip=trip,
+        vehicle=vehicle,
+        driver=driver,
+        car_photos=car_photos,
+        hero_photo=primary_photo,
+        has_real_car_photo=has_real_car_photo,
         app_deep_link=f"mytravel://trip/{trip_id}",
         web_canonical_url=f"https://mytravel.taxi/trips/{trip_id}",
-        badge_text="ដំណើរកម្សាន្តផ្លូវជាតិ",
     )
 
 

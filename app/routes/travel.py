@@ -653,6 +653,7 @@ def _build_trip_read(trip: Trip) -> TripRead:
 			plate_number=trip.vehicle.plate_number,
 			color=trip.vehicle.color,
 			seat_type=trip.vehicle.seat_type,
+			image_urls=trip.vehicle.image_urls or [],
 		)
 
 	return TripRead.model_validate(trip).model_copy(
@@ -1794,6 +1795,37 @@ def update_trip(
 	if updated_trip is None:
 		raise HTTPException(status_code=404, detail="Trip not found")
 	return _build_trip_read(updated_trip)
+
+
+@router.get("/trips/public", response_model=list[TripRead])
+def get_public_trips(
+	departure_province: str | None = None,
+	destination_province: str | None = None,
+	schedule: str | None = None,
+	search: str | None = None,
+	limit: int = Query(default=60, ge=1, le=100),
+	db: Session = Depends(get_db),
+) -> list[TripRead]:
+	_expire_stale_trips_and_bookings(db)
+	stmt = select(Trip).where(Trip.status.in_(["scheduled", "active"]))
+	if departure_province and departure_province.strip() and departure_province.strip().lower() != "all":
+		stmt = stmt.where(func.lower(Trip.departure_province) == departure_province.strip().lower())
+	if destination_province and destination_province.strip() and destination_province.strip().lower() != "all":
+		stmt = stmt.where(func.lower(Trip.destination_province) == destination_province.strip().lower())
+	if search and search.strip():
+		term = f"%{search.strip().lower()}%"
+		stmt = stmt.join(Trip.vehicle, isouter=True).join(Trip.driver, isouter=True).where(
+			or_(
+				func.lower(Trip.departure_province).like(term),
+				func.lower(Trip.destination_province).like(term),
+				func.lower(Vehicle.model).like(term),
+				func.lower(Vehicle.plate_number).like(term),
+				func.lower(User.full_name).like(term),
+			)
+		)
+	stmt = stmt.order_by(Trip.departure_time.asc()).limit(limit)
+	trips = db.execute(stmt).scalars().all()
+	return [_build_trip_read(trip) for trip in trips]
 
 
 @router.get("/trips/search", response_model=list[TripRead])

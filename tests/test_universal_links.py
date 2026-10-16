@@ -184,3 +184,75 @@ def test_admin_universal_links_get_and_update():
     reset_res = client.post("/v1/api/travel/admin/universal-links/reset")
     assert reset_res.status_code == 200
 
+
+def test_serve_public_trips_page():
+    response = client.get("/trips")
+    assert response.status_code == 200
+    assert "All Available Trips" in response.text
+    assert "MYTRAVEL.TAXI" in response.text
+
+    response_alias = client.get("/trips.html")
+    assert response_alias.status_code == 200
+    assert "All Available Trips" in response_alias.text
+
+
+def test_public_trips_api():
+    response = client.get("/v1/api/travel/trips/public")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+
+
+def test_render_trip_detail_page_with_car_photo():
+    from unittest.mock import MagicMock
+    from datetime import datetime
+    from app.routes.universal_links import _render_trip_detail_page
+
+    trip = MagicMock()
+    trip.id = uuid.uuid4()
+    trip.departure_province = "Phnom Penh"
+    trip.destination_province = "Siem Reap"
+    trip.departure_address = "Central Market"
+    trip.destination_address = "Siem Reap Old Market"
+    trip.departure_time = datetime(2026, 10, 20, 8, 0, 0)
+    trip.price_per_seat = 25.0
+    trip.available_seats = 4
+    trip.total_seats = 6
+
+    vehicle = MagicMock()
+    vehicle.model = "Lexus RX330"
+    vehicle.vehicle_type = "SUV"
+    vehicle.plate_number = "2BC-9988"
+    vehicle.color = "White Pearl"
+
+    driver = MagicMock()
+    driver.full_name = "Sokha Heng"
+    driver.rating_avg = 4.95
+    driver.completed_trips = 88
+
+    car_photos = [
+        "https://example.com/car_front.jpg",
+        "https://example.com/car_interior.jpg",
+    ]
+
+    res = _render_trip_detail_page(
+        trip=trip,
+        vehicle=vehicle,
+        driver=driver,
+        car_photos=car_photos,
+        hero_photo=car_photos[0],
+        has_real_car_photo=True,
+        app_deep_link=f"mytravel://trip/{trip.id}",
+        web_canonical_url=f"https://mytravel.taxi/trips/{trip.id}",
+    )
+    html = res.body.decode("utf-8")
+    assert "https://example.com/car_front.jpg" in html
+    assert "រូបថតរថយន្តពិត" in html or "Verified" in html
+    assert "Lexus RX330" in html
+    assert "2BC-9988" in html
+    assert "Sokha Heng" in html
+    assert f"mytravel://trip/{trip.id}" in html
+    assert "/trips" in html
+
+
+

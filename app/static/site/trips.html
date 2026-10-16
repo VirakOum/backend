@@ -1,0 +1,1694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Available Trips & Inter-City Rides | MyTravel Cambodia</title>
+    <meta name="description" content="Search and browse all scheduled inter-city taxi and ride-sharing trips across 25 Cambodian provinces. Real car photos, verified drivers, transparent fares, and instant booking.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kantumruy+Pro:ital,wght@0,400;0,600;0,700;1,400&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Favicon & Website Brand Icon -->
+    <link rel="icon" type="image/png" href="assets/logo.png">
+    <link rel="shortcut icon" type="image/png" href="/favicon.ico">
+    <link rel="apple-touch-icon" href="assets/logo.png">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        :root {
+            --trips-hero-bg: linear-gradient(135deg, #17223A 0%, #243456 100%);
+        }
+
+        .trips-page-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem 5rem;
+        }
+
+        /* Hero Search Banner */
+        .trips-hero {
+            background: var(--trips-hero-bg);
+            border-radius: var(--radius-lg);
+            padding: 3rem 2.5rem;
+            color: #FFFFFF;
+            margin-bottom: 2.5rem;
+            box-shadow: 0 16px 40px rgba(23, 34, 58, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .trips-hero::after {
+            content: '';
+            position: absolute;
+            right: -80px;
+            bottom: -80px;
+            width: 320px;
+            height: 320px;
+            background: radial-gradient(circle, rgba(255, 200, 61, 0.12) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .trips-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255, 200, 61, 0.15);
+            color: #FFC83D;
+            border: 1px solid rgba(255, 200, 61, 0.35);
+            padding: 0.4rem 1rem;
+            border-radius: var(--radius-full);
+            font-size: 0.85rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .trips-title {
+            font-size: 2.3rem;
+            font-weight: 800;
+            line-height: 1.25;
+            margin-bottom: 0.75rem;
+            color: #FFFFFF;
+        }
+
+        .trips-subtitle {
+            font-size: 1.05rem;
+            color: #CBD5E1;
+            max-width: 720px;
+            line-height: 1.6;
+            margin-bottom: 2rem;
+        }
+
+        /* Search Filter Box */
+        .search-panel {
+            background: #FFFFFF;
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+            border: 1px solid var(--border-color);
+            color: var(--text-dark);
+        }
+
+        .search-grid {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr 180px 180px auto;
+            gap: 1rem;
+            align-items: flex-end;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .input-label {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .input-control {
+            background: var(--bg-main);
+            border: 1.5px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.75rem 1rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            outline: none;
+            transition: var(--transition-fast);
+            font-family: inherit;
+            width: 100%;
+        }
+
+        .input-control:focus {
+            border-color: var(--accent-taxi);
+            background: #FFFFFF;
+            box-shadow: 0 0 0 3px rgba(255, 200, 61, 0.2);
+        }
+
+        .swap-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: var(--bg-main);
+            border: 1.5px solid var(--border-color);
+            color: var(--accent-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            margin-bottom: 2px;
+        }
+
+        .swap-btn:hover {
+            background: var(--accent-taxi);
+            border-color: var(--accent-taxi);
+            transform: rotate(180deg);
+        }
+
+        .search-btn {
+            background: var(--accent-taxi);
+            color: var(--accent-dark);
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 0.8rem 1.6rem;
+            font-size: 1rem;
+            font-weight: 800;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.6rem;
+            transition: var(--transition-fast);
+            box-shadow: 0 4px 14px rgba(255, 200, 61, 0.35);
+            white-space: nowrap;
+            height: 48px;
+        }
+
+        .search-btn:hover {
+            background: var(--accent-taxi-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(255, 200, 61, 0.45);
+        }
+
+        /* Quick Route Pills */
+        .quick-pills-row {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+            margin-top: 1.25rem;
+            padding-top: 1.25rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .quick-pills-label {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            margin-right: 0.4rem;
+        }
+
+        .route-pill {
+            background: var(--bg-main);
+            border: 1px solid var(--border-color);
+            padding: 0.4rem 0.9rem;
+            border-radius: var(--radius-full);
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--accent-dark);
+            cursor: pointer;
+            transition: var(--transition-fast);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .route-pill:hover, .route-pill.active {
+            background: var(--accent-dark);
+            color: #FFFFFF;
+            border-color: var(--accent-dark);
+        }
+
+        .route-pill.active .pill-icon {
+            color: var(--accent-taxi);
+        }
+
+        .photo-filter-chip {
+            margin-left: auto;
+            background: rgba(31, 168, 108, 0.1);
+            border: 1.5px solid var(--success-color);
+            color: var(--success-color);
+            font-weight: 700;
+        }
+
+        .photo-filter-chip.active {
+            background: var(--success-color);
+            color: #FFFFFF;
+        }
+
+        /* Filter & Stats Toolbar */
+        .results-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.75rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .results-count {
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: var(--accent-dark);
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .results-count-badge {
+            background: var(--accent-taxi);
+            color: var(--accent-dark);
+            padding: 0.2rem 0.7rem;
+            border-radius: var(--radius-full);
+            font-size: 0.9rem;
+            font-weight: 800;
+        }
+
+        .sort-control {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .sort-select {
+            background: #FFFFFF;
+            border: 1.5px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.5rem 0.9rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--accent-dark);
+            outline: none;
+            cursor: pointer;
+        }
+
+        /* Trips Grid */
+        .trips-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+            gap: 1.75rem;
+        }
+
+        /* Trip Card */
+        .trip-card {
+            background: #FFFFFF;
+            border-radius: var(--radius-md);
+            border: 1.5px solid var(--border-color);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition-smooth);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .trip-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 14px 30px rgba(23, 34, 58, 0.1);
+            border-color: #CBD5E1;
+        }
+
+        /* Car Photo Hero in Card */
+        .trip-card-photo-wrap {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            background: #0F172A;
+            overflow: hidden;
+        }
+
+        .trip-card-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.4s ease;
+        }
+
+        .trip-card:hover .trip-card-img {
+            transform: scale(1.04);
+        }
+
+        .no-photo-banner {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1E293B 0%, #334155 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #94A3B8;
+            gap: 0.6rem;
+        }
+
+        .no-photo-icon {
+            font-size: 3rem;
+            color: var(--accent-taxi);
+            opacity: 0.85;
+        }
+
+        .photo-verified-tag {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: rgba(23, 34, 58, 0.85);
+            backdrop-filter: blur(8px);
+            color: #FFFFFF;
+            border: 1px solid rgba(255, 200, 61, 0.6);
+            padding: 4px 10px;
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            z-index: 2;
+        }
+
+        .photo-verified-tag i {
+            color: var(--accent-taxi);
+        }
+
+        .photo-count-tag {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #FFFFFF;
+            padding: 3px 8px;
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            font-weight: 600;
+            z-index: 2;
+        }
+
+        .trip-status-tag {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            padding: 4px 12px;
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-scheduled {
+            background: rgba(255, 255, 255, 0.95);
+            color: #0284C7;
+            border: 1px solid #BAE6FD;
+        }
+
+        .status-active {
+            background: rgba(31, 168, 108, 0.95);
+            color: #FFFFFF;
+            box-shadow: 0 2px 8px rgba(31, 168, 108, 0.4);
+        }
+
+        .status-pulse-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #FFFFFF;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(1.3); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        /* Card Content */
+        .trip-card-body {
+            padding: 1.25rem 1.4rem;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        /* Route Timeline */
+        .route-flow {
+            position: relative;
+            padding-left: 28px;
+            margin-bottom: 1.25rem;
+        }
+
+        .route-flow::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 10px;
+            bottom: 10px;
+            width: 2px;
+            background: #CBD5E1;
+            border-style: dashed;
+        }
+
+        .route-stop {
+            position: relative;
+            margin-bottom: 0.9rem;
+        }
+
+        .route-stop:last-child {
+            margin-bottom: 0;
+        }
+
+        .route-dot {
+            position: absolute;
+            left: -28px;
+            top: 4px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            background: #FFFFFF;
+            border: 2px solid var(--accent-dark);
+            z-index: 1;
+        }
+
+        .route-dot.origin {
+            border-color: #0284C7;
+            color: #0284C7;
+        }
+
+        .route-dot.dest {
+            background: var(--accent-taxi);
+            border-color: var(--accent-taxi);
+            color: var(--accent-dark);
+        }
+
+        .route-location-title {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: var(--accent-dark);
+            line-height: 1.25;
+        }
+
+        .route-location-sub {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .route-time-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: #0369A1;
+            background: #F0F9FF;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-top: 4px;
+        }
+
+        /* Vehicle & Driver Specs */
+        .specs-strip {
+            background: var(--bg-main);
+            border-radius: var(--radius-sm);
+            padding: 0.75rem 1rem;
+            margin-bottom: 1.25rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        .spec-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .spec-label {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .spec-val {
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: var(--accent-dark);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* Card Footer: Fare & Actions */
+        .trip-card-footer {
+            margin-top: auto;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .fare-block {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .fare-usd {
+            font-size: 1.45rem;
+            font-weight: 800;
+            color: var(--accent-dark);
+            line-height: 1.1;
+        }
+
+        .fare-khr {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .seats-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--success-color);
+            background: rgba(31, 168, 108, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-top: 3px;
+        }
+
+        .seats-badge.low {
+            color: #DC2626;
+            background: #FEF2F2;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-card-detail {
+            background: var(--bg-main);
+            color: var(--accent-dark);
+            border: 1px solid var(--border-color);
+            padding: 0.6rem 0.9rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .btn-card-detail:hover {
+            background: #E2E8F0;
+        }
+
+        .btn-card-book {
+            background: var(--accent-taxi);
+            color: var(--accent-dark);
+            border: 1px solid var(--accent-taxi);
+            padding: 0.6rem 1.1rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.88rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            box-shadow: 0 3px 10px rgba(255, 200, 61, 0.3);
+        }
+
+        .btn-card-book:hover {
+            background: var(--accent-taxi-hover);
+            transform: translateY(-1px);
+        }
+
+        /* Empty State */
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 4rem 2rem;
+            background: #FFFFFF;
+            border-radius: var(--radius-md);
+            border: 1.5px dashed var(--border-color);
+        }
+
+        .empty-icon {
+            width: 72px;
+            height: 72px;
+            background: rgba(255, 200, 61, 0.15);
+            color: #D97706;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin: 0 auto 1.25rem;
+        }
+
+        .empty-title {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: var(--accent-dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-desc {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            max-width: 480px;
+            margin: 0 auto 1.5rem;
+            line-height: 1.6;
+        }
+
+        /* App Download Modal Sheet */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(6px);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-card {
+            background: #FFFFFF;
+            border-radius: var(--radius-lg);
+            max-width: 500px;
+            width: 100%;
+            padding: 2.25rem;
+            position: relative;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+            animation: modalPop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes modalPop {
+            0% { transform: scale(0.92); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .modal-close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--bg-main);
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent-dark);
+        }
+
+        .modal-badge {
+            background: rgba(255, 200, 61, 0.2);
+            color: #B45309;
+            padding: 4px 10px;
+            border-radius: var(--radius-full);
+            font-size: 0.8rem;
+            font-weight: 700;
+            display: inline-block;
+            margin-bottom: 0.75rem;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--accent-dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .modal-desc {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-app-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .btn-modal-open-app {
+            background: var(--accent-taxi);
+            color: var(--accent-dark);
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 0.9rem;
+            font-size: 1.05rem;
+            font-weight: 800;
+            text-align: center;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.6rem;
+            box-shadow: 0 4px 12px rgba(255, 200, 61, 0.4);
+        }
+
+        .btn-modal-download {
+            background: var(--accent-dark);
+            color: #FFFFFF;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 0.8rem;
+            font-size: 0.95rem;
+            font-weight: 700;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .btn-modal-web-detail {
+            background: var(--bg-main);
+            color: var(--accent-dark);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.8rem;
+            font-size: 0.95rem;
+            font-weight: 700;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        /* Responsive Layout */
+        @media (max-width: 1024px) {
+            .search-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .swap-btn {
+                display: none;
+            }
+            .search-btn {
+                grid-column: span 2;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .trips-page-container {
+                padding: 1.25rem 1rem 4rem;
+            }
+            .trips-hero {
+                padding: 2rem 1.25rem;
+            }
+            .trips-title {
+                font-size: 1.7rem;
+            }
+            .search-grid {
+                grid-template-columns: 1fr;
+            }
+            .search-btn {
+                grid-column: span 1;
+            }
+            .trips-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Header & Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="brand">
+                <div class="brand-icon">
+                    <i class="fa-solid fa-taxi"></i>
+                </div>
+                <div>
+                    <div class="brand-title">MYTRAVEL.TAXI</div>
+                    <div class="brand-tagline">Cambodia's Modern Inter-City Ride & Taxi Network</div>
+                </div>
+            </a>
+
+            <ul class="nav-links" id="nav-links">
+                <li><a href="/" class="nav-link" data-i18n="nav_home"><i class="fa-solid fa-house" style="margin-right: 4px;"></i> Home</a></li>
+                <li><a href="/trips" class="nav-link" style="color: var(--accent-dark); font-weight: 800; border-bottom: 2px solid var(--accent-taxi); padding-bottom: 2px;" data-i18n="nav_all_trips"><i class="fa-solid fa-car-side" style="margin-right: 4px; color: #D97706;"></i> All Trips</a></li>
+                <li><a href="/#estimator" class="nav-link" data-i18n="nav_estimator">Fare Estimator</a></li>
+                <li><a href="/#account-creation" class="nav-link" data-i18n="nav_account">How to Register</a></li>
+                <li><a href="/#download" class="nav-link" data-i18n="nav_download">Download App</a></li>
+                <li><a href="/#safety" class="nav-link" data-i18n="nav_safety">Safety</a></li>
+            </ul>
+
+            <div class="nav-actions">
+                <button id="lang-toggle-btn" class="lang-btn" aria-label="Toggle Language">
+                    <i class="fa-solid fa-globe"></i>
+                    <span id="lang-btn-text">ភាសាខ្មែរ</span>
+                </button>
+                <button id="mobile-menu-btn" class="mobile-toggle" aria-label="Toggle Navigation Menu">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Main Content -->
+    <main class="trips-page-container">
+
+        <!-- Hero Search Section -->
+        <section class="trips-hero">
+            <div class="trips-badge">
+                <i class="fa-solid fa-road"></i>
+                <span data-i18n="hero_badge_network">25 Cambodian Provinces • Inter-City Ride Sharing</span>
+            </div>
+            <h1 class="trips-title" data-i18n="page_title">
+                All Available Trips & Scheduled Rides
+            </h1>
+            <p class="trips-subtitle" data-i18n="page_subtitle">
+                Explore scheduled and active inter-city taxi rides across Cambodia. View verified driver vehicle photos, live departure times, seat availability, and guaranteed transparent fares.
+            </p>
+
+            <!-- Search Panel -->
+            <div class="search-panel">
+                <div class="search-grid">
+                    
+                    <!-- Departure Province -->
+                    <div class="input-group">
+                        <label class="input-label" for="search-origin">
+                            <i class="fa-solid fa-location-dot" style="color: #0284C7;"></i>
+                            <span data-i18n="lbl_origin">Departure (ចេញដំណើរ)</span>
+                        </label>
+                        <select id="search-origin" class="input-control">
+                            <option value="">All Provinces (គ្រប់ខេត្ត)</option>
+                        </select>
+                    </div>
+
+                    <!-- Swap Button -->
+                    <button id="btn-swap-provinces" class="swap-btn" title="Swap Origin and Destination" type="button">
+                        <i class="fa-solid fa-arrow-right-arrow-left"></i>
+                    </button>
+
+                    <!-- Destination Province -->
+                    <div class="input-group">
+                        <label class="input-label" for="search-dest">
+                            <i class="fa-solid fa-flag-checkered" style="color: #D97706;"></i>
+                            <span data-i18n="lbl_destination">Destination (គោលដៅ)</span>
+                        </label>
+                        <select id="search-dest" class="input-control">
+                            <option value="">All Provinces (គ្រប់ខេត្ត)</option>
+                        </select>
+                    </div>
+
+                    <!-- Vehicle Type -->
+                    <div class="input-group">
+                        <label class="input-label" for="search-vehicle-type">
+                            <i class="fa-solid fa-car"></i>
+                            <span data-i18n="lbl_vehicle_type">Vehicle Type</span>
+                        </label>
+                        <select id="search-vehicle-type" class="input-control">
+                            <option value="">All Vehicles</option>
+                            <option value="sedan">Sedan (4 Seats)</option>
+                            <option value="suv">SUV (6-7 Seats)</option>
+                            <option value="van">Minivan (12-15 Seats)</option>
+                        </select>
+                    </div>
+
+                    <!-- Keyword Search -->
+                    <div class="input-group">
+                        <label class="input-label" for="search-keyword">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <span data-i18n="lbl_keyword">Search Keyword</span>
+                        </label>
+                        <input id="search-keyword" type="text" class="input-control" placeholder="Driver, model, plate...">
+                    </div>
+
+                    <!-- Search Button -->
+                    <button id="btn-submit-search" class="search-btn" type="button">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <span data-i18n="btn_find_trips">Search Trips</span>
+                    </button>
+                </div>
+
+                <!-- Quick Popular Route Pills -->
+                <div class="quick-pills-row">
+                    <span class="quick-pills-label" data-i18n="lbl_popular_routes">Popular Routes:</span>
+                    <button class="route-pill active" data-orig="" data-dest="">
+                        <i class="fa-solid fa-list pill-icon"></i> <span data-i18n="pill_all_trips">All Trips</span>
+                    </button>
+                    <button class="route-pill" data-orig="PP" data-dest="SR">
+                        <span class="pill-icon">➔</span> Phnom Penh ➔ Siem Reap
+                    </button>
+                    <button class="route-pill" data-orig="PP" data-dest="SHV">
+                        <span class="pill-icon">➔</span> Phnom Penh ➔ Sihanoukville
+                    </button>
+                    <button class="route-pill" data-orig="PP" data-dest="KP">
+                        <span class="pill-icon">➔</span> Phnom Penh ➔ Kampot
+                    </button>
+                    <button class="route-pill" data-orig="BTB" data-dest="PP">
+                        <span class="pill-icon">➔</span> Battambang ➔ Phnom Penh
+                    </button>
+                    <button id="chip-with-photo" class="route-pill photo-filter-chip">
+                        <i class="fa-solid fa-camera"></i> <span data-i18n="chip_photo_only">With Car Photo</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Results Overview Bar -->
+        <div class="results-toolbar">
+            <div class="results-count">
+                <span data-i18n="txt_available_trips">Available Trips:</span>
+                <span id="trips-count-badge" class="results-count-badge">0</span>
+            </div>
+
+            <div class="sort-control">
+                <label for="sort-select" style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);" data-i18n="lbl_sort">Sort By:</label>
+                <select id="sort-select" class="sort-select">
+                    <option value="time_asc">Departure Time (Soonest)</option>
+                    <option value="price_asc">Price (Lowest First)</option>
+                    <option value="seats_desc">Available Seats (Most Left)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Trips Dynamic Grid -->
+        <div id="trips-container" class="trips-grid">
+            <!-- Cards will be populated by JavaScript -->
+        </div>
+
+    </main>
+
+    <!-- App Booking Modal / Deep Link Sheet -->
+    <div id="booking-modal" class="modal-overlay">
+        <div class="modal-card">
+            <button id="modal-close-btn" class="modal-close-btn" aria-label="Close Modal">&times;</button>
+            <div class="modal-badge">
+                <i class="fa-solid fa-shield-halved"></i> <span data-i18n="modal_badge">Instant App Booking</span>
+            </div>
+            <h3 id="modal-trip-title" class="modal-title">Book Seat in MyTravel App</h3>
+            <p id="modal-trip-desc" class="modal-desc">
+                Open this trip directly in the MyTravel mobile app to choose your specific seat number, view real-time driver tracking, and pay by Cash or KHQR on arrival.
+            </p>
+
+            <div class="modal-app-actions">
+                <button id="modal-btn-open-app" class="btn-modal-open-app">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                    <span data-i18n="modal_btn_open_app">Open in MyTravel App</span>
+                </button>
+                <a id="modal-btn-web-detail" href="#" class="btn-modal-web-detail">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span data-i18n="modal_btn_view_web">View Full Trip Web Preview</span>
+                </a>
+                <a href="/#download" class="btn-modal-download">
+                    <i class="fa-solid fa-download"></i>
+                    <span data-i18n="modal_btn_download">Don't have app? Download Here</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-container">
+            <div class="footer-top" style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2rem; align-items: flex-start;">
+                <div>
+                    <div style="font-size: 1.5rem; font-weight: 800; color: #FFFFFF;">MYTRAVEL.TAXI</div>
+                    <div style="font-size: 0.85rem; color: var(--text-light); margin-top: 0.25rem;">Cambodia's Modern Inter-City Ride & Taxi Network</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.06); padding: 1.25rem 1.5rem; border-radius: 16px; border: 1px solid rgba(255,255,255,0.12);">
+                    <div style="font-size: 1.05rem; font-weight: 800; color: #FFC83D; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fa-solid fa-headset"></i> <span>24/7 Hotline Support & Contact</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.9rem;">
+                        <div>
+                            <span style="color: var(--text-light);">Hotline Support:</span>
+                            <a href="tel:0966519115" style="color: #FFFFFF; font-weight: 700; text-decoration: none; margin-left: 0.4rem;">
+                                <i class="fa-solid fa-phone" style="color: #FFC83D; margin-right: 0.25rem;"></i> 096 651 9115
+                            </a>
+                        </div>
+                        <div>
+                            <span style="color: var(--text-light);">Direct Email:</span>
+                            <a href="mailto:virakoumst@gmail.com" style="color: #FFFFFF; font-weight: 700; text-decoration: none; margin-left: 0.4rem;">
+                                <i class="fa-solid fa-envelope" style="color: #FFC83D; margin-right: 0.25rem;"></i> virakoumst@gmail.com
+                            </a>
+                        </div>
+                        <div>
+                            <span style="color: var(--text-light);">Telegram Support:</span>
+                            <a href="https://t.me/MyTravel_Taxi_bot" target="_blank" rel="noopener noreferrer" style="color: #60A5FA; font-weight: 700; text-decoration: none; margin-left: 0.4rem;">
+                                <i class="fa-brands fa-telegram" style="margin-right: 0.25rem;"></i> @MyTravel_Taxi_bot
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom" style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid rgba(255,255,255,0.08); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem;">
+                <div>
+                    © 2026 MyTravel Transport Systems. All rights reserved. Kingdom of Cambodia.
+                </div>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <a href="/trips" style="color: #FFC83D; text-decoration: underline; font-size: 0.9rem;">All Trips</a>
+                    <span style="color: var(--text-light);">•</span>
+                    <a href="/privacy" style="color: #FFC83D; text-decoration: underline; font-size: 0.9rem;">Privacy Policy</a>
+                    <span style="color: var(--text-light);">•</span>
+                    <a href="/privacy#account-deletion" style="color: #F87171; text-decoration: underline; font-size: 0.9rem;">Account Deletion</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts (MVC: Model then Controller) -->
+    <script src="js/models/data.js"></script>
+    <script>
+        /**
+         * Trips Page Interactive Controller
+         */
+        document.addEventListener('DOMContentLoaded', () => {
+            const data = window.MyTravelData || {};
+            let currentLang = localStorage.getItem('mytravel_lang') || 'en';
+            let allTrips = [];
+            let filterWithPhotoOnly = false;
+            let activeSelectedTrip = null;
+
+            // DOM elements
+            const originSelect = document.getElementById('search-origin');
+            const destSelect = document.getElementById('search-dest');
+            const vehicleSelect = document.getElementById('search-vehicle-type');
+            const keywordInput = document.getElementById('search-keyword');
+            const btnSearch = document.getElementById('btn-submit-search');
+            const btnSwap = document.getElementById('btn-swap-provinces');
+            const tripsContainer = document.getElementById('trips-container');
+            const tripsCountBadge = document.getElementById('trips-count-badge');
+            const sortSelect = document.getElementById('sort-select');
+            const chipWithPhoto = document.getElementById('chip-with-photo');
+            const langToggleBtn = document.getElementById('lang-toggle-btn');
+            const langBtnText = document.getElementById('lang-btn-text');
+            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+            const navLinks = document.getElementById('nav-links');
+
+            // Modal elements
+            const bookingModal = document.getElementById('booking-modal');
+            const modalCloseBtn = document.getElementById('modal-close-btn');
+            const modalTripTitle = document.getElementById('modal-trip-title');
+            const modalTripDesc = document.getElementById('modal-trip-desc');
+            const modalBtnOpenApp = document.getElementById('modal-btn-open-app');
+            const modalBtnWebDetail = document.getElementById('modal-btn-web-detail');
+
+            // Province mapping
+            const provinces = data.PROVINCES || [
+                { id: "PP", name_en: "Phnom Penh", name_km: "ភ្នំពេញ" },
+                { id: "SR", name_en: "Siem Reap", name_km: "សៀមរាប" },
+                { id: "SHV", name_en: "Preah Sihanouk", name_km: "ព្រះសីហនុ" },
+                { id: "KP", name_en: "Kampot", name_km: "កំពត" },
+                { id: "BTB", name_en: "Battambang", name_km: "បាត់ដំបង" },
+                { id: "KPC", name_en: "Kampong Cham", name_km: "កំពង់ចាម" },
+                { id: "KCH", name_en: "Kampong Chhnang", name_km: "កំពង់ឆ្នាំង" },
+                { id: "KSP", name_en: "Kampong Speu", name_km: "កំពង់ស្ពឺ" },
+                { id: "KTH", name_en: "Kampong Thom", name_km: "កំពង់ធំ" },
+                { id: "KEP", name_en: "Kep", name_km: "កែប" },
+                { id: "KDL", name_en: "Kandal", name_km: "កណ្ដាល" },
+                { id: "KK", name_en: "Koh Kong", name_km: "កោះកុង" },
+                { id: "KTE", name_en: "Kratie", name_km: "ក្រចេះ" },
+                { id: "MDK", name_en: "Mondulkiri", name_km: "មណ្ឌលគិរី" },
+                { id: "BMC", name_en: "Banteay Meanchey", name_km: "បន្ទាយមានជ័យ" },
+                { id: "OMC", name_en: "Oddar Meanchey", name_km: "ឧត្តរមានជ័យ" },
+                { id: "PLN", name_en: "Pailin", name_km: "ប៉ៃលិន" },
+                { id: "PVH", name_en: "Preah Vihear", name_km: "ព្រះវិហារ" },
+                { id: "PST", name_en: "Pursat", name_km: "ពោធិ៍សាត់" },
+                { id: "PVG", name_en: "Prey Veng", name_km: "ព្រៃវែង" },
+                { id: "RTK", name_en: "Ratanakiri", name_km: "រតនគិរី" },
+                { id: "STR", name_en: "Stung Treng", name_km: "ស្ទឹងត្រែង" },
+                { id: "SVR", name_en: "Svay Rieng", name_km: "ស្វាយរៀង" },
+                { id: "TKO", name_en: "Takeo", name_km: "តាកែវ" },
+                { id: "TBK", name_en: "Tboung Khmum", name_km: "ត្បូងឃ្មុំ" }
+            ];
+
+            const I18N_TRIPS = {
+                en: {
+                    nav_home: "Home",
+                    nav_all_trips: "All Trips",
+                    nav_estimator: "Fare Estimator",
+                    nav_account: "How to Register",
+                    nav_download: "Download App",
+                    nav_safety: "Safety",
+                    hero_badge_network: "25 Cambodian Provinces • Inter-City Ride Sharing",
+                    page_title: "All Available Trips & Scheduled Rides",
+                    page_subtitle: "Explore scheduled and active inter-city taxi rides across Cambodia. View verified driver vehicle photos, live departure times, seat availability, and guaranteed transparent fares.",
+                    lbl_origin: "Departure (ចេញដំណើរ)",
+                    lbl_destination: "Destination (គោលដៅ)",
+                    lbl_vehicle_type: "Vehicle Type",
+                    lbl_keyword: "Search Keyword",
+                    btn_find_trips: "Search Trips",
+                    lbl_popular_routes: "Popular Routes:",
+                    pill_all_trips: "All Trips",
+                    chip_photo_only: "With Car Photo",
+                    txt_available_trips: "Available Trips:",
+                    lbl_sort: "Sort By:",
+                    btn_book_seat: "Book in App",
+                    btn_view_details: "View Details",
+                    badge_verified_photo: "Verified Car Photo",
+                    txt_seats_left: "seats left",
+                    txt_all_seats: "total",
+                    modal_badge: "Instant App Booking",
+                    modal_btn_open_app: "Open in MyTravel App",
+                    modal_btn_view_web: "View Full Trip Web Preview",
+                    modal_btn_download: "Don't have app? Download Here",
+                    empty_title: "No Available Trips Found",
+                    empty_desc: "We couldn't find any trips matching your exact search filters. Try clearing some filters or search for another date.",
+                    empty_btn_reset: "Reset All Filters"
+                },
+                km: {
+                    nav_home: "ទំព័រដើម",
+                    nav_all_trips: "ជើងដំណើរទាំងអស់",
+                    nav_estimator: "គណនាថ្លៃឈ្នួល",
+                    nav_account: "របៀបចុះឈ្មោះ",
+                    nav_download: "ទាញយកកម្មវិធី",
+                    nav_safety: "សុវត្ថិភាព",
+                    hero_badge_network: "២៥ ខេត្ត-ក្រុងទូទាំងកម្ពុជា • សេវាកម្មរថយន្តឈ្នួលអន្តរខេត្ត",
+                    page_title: "ជើងដំណើរ និងរថយន្តឈ្នួលអន្តរខេត្តទាំងអស់",
+                    page_subtitle: "ស្វែងរក និងកក់ជើងធ្វើដំណើរអន្តរខេត្តទូទាំងកម្ពុជា។ មើលរូបភាពរថយន្តពិត ម៉ោងចេញដំណើរ ចំនួនកៅអីទំនេរ និងតម្លៃសំបុត្រច្បាស់លាស់។",
+                    lbl_origin: "ទីតាំងចេញដំណើរ",
+                    lbl_destination: "ទីតាំងគោលដៅ",
+                    lbl_vehicle_type: "ប្រភេទរថយន្ត",
+                    lbl_keyword: "ស្វែងរកពាក្យគន្លឹះ",
+                    btn_find_trips: "ស្វែងរកជើងដំណើរ",
+                    lbl_popular_routes: "ផ្លូវពេញនិយម៖",
+                    pill_all_trips: "គ្រប់ជើងដំណើរ",
+                    chip_photo_only: "មានរូបរថយន្តពិត",
+                    txt_available_trips: "ជើងដំណើរដែលមាន៖",
+                    lbl_sort: "តម្រៀបតាម៖",
+                    btn_book_seat: "កក់ក្នុងកម្មវិធី",
+                    btn_view_details: "មើលលម្អិត",
+                    badge_verified_photo: "រូបរថយន្តពិត",
+                    txt_seats_left: "កៅអីទំនេរ",
+                    txt_all_seats: "សរុប",
+                    modal_badge: "ការកក់ក្នុងកម្មវិធីរហ័ស",
+                    modal_btn_open_app: "បើកក្នុងកម្មវិធី MyTravel",
+                    modal_btn_view_web: "មើលព័ត៌មានលម្អិតលើវិបសាយ",
+                    modal_btn_download: "មិនទាន់មាន App? ទាញយកទីនេះ",
+                    empty_title: "មិនមានជើងដំណើរត្រូវនឹងការស្វែងរកទេ",
+                    empty_desc: "យើងមិនបានរកឃើញជើងដំណើរដែលត្រូវនឹងលក្ខខណ្ឌរបស់អ្នកទេ។ សូមសាកល្បងសម្អាតតម្រង ឬជ្រើសរើសខេត្តផ្សេង។",
+                    empty_btn_reset: "សម្អាតតម្រងទាំងអស់"
+                }
+            };
+
+            // Initialize Page
+            function init() {
+                populateDropdowns();
+                parseUrlParams();
+                bindEvents();
+                updateLanguage(currentLang);
+                fetchTrips();
+            }
+
+            // Populate Province Dropdowns
+            function populateDropdowns() {
+                originSelect.innerHTML = `<option value="">${currentLang === 'km' ? 'គ្រប់ខេត្ត (All Provinces)' : 'All Provinces (គ្រប់ខេត្ត)'}</option>`;
+                destSelect.innerHTML = `<option value="">${currentLang === 'km' ? 'គ្រប់ខេត្ត (All Provinces)' : 'All Provinces (គ្រប់ខេត្ត)'}</option>`;
+
+                provinces.forEach(p => {
+                    const label = currentLang === 'km' ? `${p.name_km} (${p.name_en})` : `${p.name_en} (${p.name_km})`;
+                    const opt1 = new Option(label, p.name_en);
+                    const opt2 = new Option(label, p.name_en);
+                    originSelect.add(opt1);
+                    destSelect.add(opt2);
+                });
+            }
+
+            // Parse URL query params if present (e.g. ?origin=Phnom%20Penh&dest=Siem%20Reap)
+            function parseUrlParams() {
+                const params = new URLSearchParams(window.location.search);
+                const orig = params.get('origin') || params.get('from');
+                const dest = params.get('dest') || params.get('to');
+                const q = params.get('q') || params.get('search');
+
+                if (orig) originSelect.value = orig;
+                if (dest) destSelect.value = dest;
+                if (q) keywordInput.value = q;
+            }
+
+            // Bind Event Listeners
+            function bindEvents() {
+                btnSearch.addEventListener('click', () => fetchTrips());
+                btnSwap.addEventListener('click', swapProvinces);
+                sortSelect.addEventListener('change', () => renderTrips(applyFilters(allTrips)));
+                chipWithPhoto.addEventListener('click', togglePhotoFilter);
+                langToggleBtn.addEventListener('click', toggleLanguage);
+
+                if (mobileMenuBtn && navLinks) {
+                    mobileMenuBtn.addEventListener('click', () => {
+                        navLinks.classList.toggle('active');
+                    });
+                }
+
+                // Quick Route Pills
+                document.querySelectorAll('.route-pill').forEach(pill => {
+                    if (pill.id === 'chip-with-photo') return;
+                    pill.addEventListener('click', () => {
+                        document.querySelectorAll('.route-pill').forEach(p => {
+                            if (p.id !== 'chip-with-photo') p.classList.remove('active');
+                        });
+                        pill.classList.add('active');
+
+                        const origId = pill.getAttribute('data-orig');
+                        const destId = pill.getAttribute('data-dest');
+
+                        if (origId && destId) {
+                            const pOrig = provinces.find(p => p.id === origId);
+                            const pDest = provinces.find(p => p.id === destId);
+                            if (pOrig) originSelect.value = pOrig.name_en;
+                            if (pDest) destSelect.value = pDest.name_en;
+                        } else {
+                            originSelect.value = '';
+                            destSelect.value = '';
+                        }
+                        fetchTrips();
+                    });
+                });
+
+                // Modal Close
+                modalCloseBtn.addEventListener('click', closeModal);
+                bookingModal.addEventListener('click', (e) => {
+                    if (e.target === bookingModal) closeModal();
+                });
+                modalBtnOpenApp.addEventListener('click', () => {
+                    if (activeSelectedTrip) {
+                        const deepLink = `mytravel://trip/${activeSelectedTrip.id}`;
+                        window.location.href = deepLink;
+                        setTimeout(() => {
+                            window.location.href = '/#download';
+                        }, 1200);
+                    }
+                });
+            }
+
+            // Swap Origin and Destination
+            function swapProvinces() {
+                const temp = originSelect.value;
+                originSelect.value = destSelect.value;
+                destSelect.value = temp;
+                fetchTrips();
+            }
+
+            // Toggle Photo Only Filter
+            function togglePhotoFilter() {
+                filterWithPhotoOnly = !filterWithPhotoOnly;
+                chipWithPhoto.classList.toggle('active', filterWithPhotoOnly);
+                renderTrips(applyFilters(allTrips));
+            }
+
+            // Language Toggle
+            function toggleLanguage() {
+                currentLang = currentLang === 'en' ? 'km' : 'en';
+                localStorage.setItem('mytravel_lang', currentLang);
+                updateLanguage(currentLang);
+                populateDropdowns();
+                renderTrips(applyFilters(allTrips));
+            }
+
+            function updateLanguage(lang) {
+                const dict = I18N_TRIPS[lang] || I18N_TRIPS.en;
+                langBtnText.textContent = lang === 'en' ? 'ភាសាខ្មែរ' : 'English';
+
+                document.querySelectorAll('[data-i18n]').forEach(el => {
+                    const key = el.getAttribute('data-i18n');
+                    if (dict[key]) {
+                        el.textContent = dict[key];
+                    }
+                });
+            }
+
+            // Fetch Trips from Backend API
+            async function fetchTrips() {
+                tripsContainer.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 4rem 1rem;">
+                        <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 2.5rem; color: var(--accent-taxi); margin-bottom: 1rem;"></i>
+                        <p style="font-weight: 700; color: var(--accent-dark);">${currentLang === 'km' ? 'កំពុងទាញយកទិន្នន័យជើងដំណើរ...' : 'Loading trips across Cambodia...'}</p>
+                    </div>
+                `;
+
+                const orig = originSelect.value;
+                const dest = destSelect.value;
+                const kw = keywordInput.value.trim();
+
+                const params = new URLSearchParams();
+                if (orig) params.append('departure_province', orig);
+                if (dest) params.append('destination_province', dest);
+                if (kw) params.append('search', kw);
+
+                try {
+                    const response = await fetch(`/v1/api/travel/trips/public?${params.toString()}`);
+                    if (response.ok) {
+                        const dataRes = await response.json();
+                        if (Array.isArray(dataRes)) {
+                            allTrips = dataRes;
+                        } else if (dataRes && Array.isArray(dataRes.trips)) {
+                            allTrips = dataRes.trips;
+                        } else {
+                            allTrips = [];
+                        }
+                    } else {
+                        allTrips = [];
+                    }
+                } catch (err) {
+                    console.warn('API error, falling back to showcase trips:', err);
+                    allTrips = [];
+                }
+
+                // If DB has 0 public trips (e.g. before drivers publish), load sample verified trips so visitors always have full rich experience
+                if (!allTrips || allTrips.length === 0) {
+                    allTrips = getDemoShowcaseTrips();
+                }
+
+                const filtered = applyFilters(allTrips);
+                renderTrips(filtered);
+            }
+
+            // Apply Client-Side Filters
+            function applyFilters(trips) {
+                const vType = vehicleSelect.value.toLowerCase();
+                const kw = keywordInput.value.trim().toLowerCase();
+
+                let res = trips.filter(t => {
+                    // Photo filter
+                    if (filterWithPhotoOnly) {
+                        const hasPhoto = t.vehicle && t.vehicle.image_urls && t.vehicle.image_urls.length > 0;
+                        if (!hasPhoto) return false;
+                    }
+                    // Vehicle type filter
+                    if (vType) {
+                        const tType = (t.vehicle && t.vehicle.type ? t.vehicle.type : '').toLowerCase();
+                        if (!tType.includes(vType)) return false;
+                    }
+                    // Keyword filter
+                    if (kw) {
+                        const driverName = (t.driver && t.driver.full_name ? t.driver.full_name : '').toLowerCase();
+                        const model = (t.vehicle && t.vehicle.model ? t.vehicle.model : '').toLowerCase();
+                        const plate = (t.vehicle && t.vehicle.plate_number ? t.vehicle.plate_number : '').toLowerCase();
+                        const orig = (t.departure_province || '').toLowerCase();
+                        const dest = (t.destination_province || '').toLowerCase();
+
+                        if (!driverName.includes(kw) && !model.includes(kw) && !plate.includes(kw) && !orig.includes(kw) && !dest.includes(kw)) {
+                            return false;
+                        }
+                    }
+                    return true;
+                });
+
+                // Sorting
+                const sortMode = sortSelect.value;
+                if (sortMode === 'time_asc') {
+                    res.sort((a, b) => new Date(a.departure_time) - new Date(b.departure_time));
+                } else if (sortMode === 'price_asc') {
+                    res.sort((a, b) => (a.price_per_seat || 0) - (b.price_per_seat || 0));
+                } else if (sortMode === 'seats_desc') {
+                    res.sort((a, b) => (b.available_seats || 0) - (a.available_seats || 0));
+                }
+
+                return res;
+            }
+
+            // Render Trips to Grid
+            function renderTrips(trips) {
+                tripsCountBadge.textContent = trips.length;
+
+                if (!trips || trips.length === 0) {
+                    renderEmptyState();
+                    return;
+                }
+
+                const dict = I18N_TRIPS[currentLang] || I18N_TRIPS.en;
+
+                tripsContainer.innerHTML = trips.map(trip => {
+                    const vehicle = trip.vehicle || {};
+                    const driver = trip.driver || {};
+                    const hasPhotos = vehicle.image_urls && vehicle.image_urls.length > 0;
+                    const heroPhoto = hasPhotos ? vehicle.image_urls[0] : '';
+                    const photoCount = hasPhotos ? vehicle.image_urls.length : 0;
+
+                    // Departure format
+                    const depDate = new Date(trip.departure_time);
+                    const timeStr = depDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+                    const dateStr = depDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+
+                    // Prices
+                    const usd = trip.price_per_seat ? parseFloat(trip.price_per_seat).toFixed(2) : '15.00';
+                    const khr = (parseFloat(usd) * 4100).toLocaleString('en-US');
+
+                    // Seats
+                    const availSeats = trip.available_seats !== undefined ? trip.available_seats : (trip.total_seats || 4);
+                    const totalSeats = trip.total_seats || 4;
+                    const isLowSeats = availSeats <= 2;
+
+                    // Status
+                    const isLive = trip.status === 'active';
+                    const statusClass = isLive ? 'status-active' : 'status-scheduled';
+                    const statusText = isLive 
+                        ? (currentLang === 'km' ? 'កំពុងដំណើរការ' : 'Active Driver')
+                        : (currentLang === 'km' ? 'តាមកាលវិភាគ' : 'Scheduled');
+
+                    return `
+                        <article class="trip-card" data-trip-id="${trip.id}">
+                            <div class="trip-card-photo-wrap">
+                                ${hasPhotos ? `
+                                    <img src="${heroPhoto}" alt="${vehicle.model || 'Trip Vehicle'}" class="trip-card-img" loading="lazy">
+                                    <div class="photo-verified-tag">
+                                        <i class="fa-solid fa-camera"></i>
+                                        <span>${dict.badge_verified_photo}</span>
+                                    </div>
+                                    ${photoCount > 1 ? `<div class="photo-count-tag"><i class="fa-solid fa-images"></i> ${photoCount}</div>` : ''}
+                                ` : `
+                                    <div class="no-photo-banner">
+                                        <i class="fa-solid fa-car-side no-photo-icon"></i>
+                                        <span style="font-weight: 700; font-size: 0.9rem; color: #FFFFFF;">${vehicle.model || 'Comfort Transport'}</span>
+                                        <span style="font-size: 0.75rem; color: #94A3B8;">${vehicle.plate_number || 'Phnom Penh'}</span>
+                                    </div>
+                                `}
+
+                                <div class="trip-status-tag ${statusClass}">
+                                    ${isLive ? '<span class="status-pulse-dot"></span>' : '<i class="fa-regular fa-clock"></i>'}
+                                    <span>${statusText}</span>
+                                </div>
+                            </div>
+
+                            <div class="trip-card-body">
+                                <div class="route-flow">
+                                    <div class="route-stop">
+                                        <div class="route-dot origin"><i class="fa-solid fa-circle"></i></div>
+                                        <div class="route-location-title">${trip.departure_province || 'Phnom Penh'}</div>
+                                        <div class="route-location-sub">${trip.departure_address || 'Central Station / Highway Terminal'}</div>
+                                        <div class="route-time-pill">
+                                            <i class="fa-regular fa-clock"></i> ${timeStr} • ${dateStr}
+                                        </div>
+                                    </div>
+
+                                    <div class="route-stop">
+                                        <div class="route-dot dest"><i class="fa-solid fa-flag-checkered"></i></div>
+                                        <div class="route-location-title">${trip.destination_province || 'Siem Reap'}</div>
+                                        <div class="route-location-sub">${trip.destination_address || 'Provincial City Hub'}</div>
+                                    </div>
+                                </div>
+
+                                <div class="specs-strip">
+                                    <div class="spec-item">
+                                        <span class="spec-label">${currentLang === 'km' ? 'រថយន្ត' : 'Vehicle'}</span>
+                                        <span class="spec-val"><i class="fa-solid fa-car"></i> ${vehicle.model || 'SUV'}</span>
+                                    </div>
+                                    <div class="spec-item">
+                                        <span class="spec-label">${currentLang === 'km' ? 'ស្លាកលេខ' : 'Plate No.'}</span>
+                                        <span class="spec-val" style="font-family: monospace;"><i class="fa-solid fa-id-card"></i> ${vehicle.plate_number || '2AB-0000'}</span>
+                                    </div>
+                                    <div class="spec-item">
+                                        <span class="spec-label">${currentLang === 'km' ? 'អ្នកបើកបរ' : 'Driver'}</span>
+                                        <span class="spec-val"><i class="fa-solid fa-user-check" style="color: #0284C7;"></i> ${driver.full_name || 'Verified Partner'}</span>
+                                    </div>
+                                    <div class="spec-item">
+                                        <span class="spec-label">${currentLang === 'km' ? 'ការវាយតម្លៃ' : 'Rating'}</span>
+                                        <span class="spec-val" style="color: #D97706;"><i class="fa-solid fa-star"></i> ${driver.rating_avg ? driver.rating_avg.toFixed(1) : '4.9'}</span>
+                                    </div>
+                                </div>
+
+                                <div class="trip-card-footer">
+                                    <div class="fare-block">
+                                        <div class="fare-usd">$${usd}</div>
+                                        <div class="fare-khr">៛${khr}</div>
+                                        <div class="seats-badge ${isLowSeats ? 'low' : ''}">
+                                            <i class="fa-solid fa-chair"></i>
+                                            <span>${availSeats} ${dict.txt_seats_left} (${totalSeats} ${dict.txt_all_seats})</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="card-actions">
+                                        <a href="/trips/${trip.id}" class="btn-card-detail" title="View Trip Details">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </a>
+                                        <button class="btn-card-book" onclick="openBookingModal('${trip.id}')">
+                                            <i class="fa-solid fa-ticket"></i>
+                                            <span>${dict.btn_book_seat}</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </article>
+                    `;
+                }).join('');
+            }
+
+            // Render Empty State
+            function renderEmptyState() {
+                const dict = I18N_TRIPS[currentLang] || I18N_TRIPS.en;
+                tripsContainer.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <i class="fa-solid fa-car-burst"></i>
+                        </div>
+                        <h3 class="empty-title">${dict.empty_title}</h3>
+                        <p class="empty-desc">${dict.empty_desc}</p>
+                        <button class="btn-card-book" style="margin: 0 auto;" onclick="resetFilters()">
+                            <i class="fa-solid fa-rotate-left"></i> ${dict.empty_btn_reset}
+                        </button>
+                    </div>
+                `;
+            }
+
+            // Reset filters
+            window.resetFilters = function() {
+                originSelect.value = '';
+                destSelect.value = '';
+                vehicleSelect.value = '';
+                keywordInput.value = '';
+                filterWithPhotoOnly = false;
+                chipWithPhoto.classList.remove('active');
+                document.querySelectorAll('.route-pill').forEach(p => {
+                    if (p.id !== 'chip-with-photo') p.classList.remove('active');
+                });
+                document.querySelector('.route-pill[data-orig=""]')?.classList.add('active');
+                fetchTrips();
+            };
+
+            // Open Booking Modal
+            window.openBookingModal = function(tripId) {
+                const trip = allTrips.find(t => t.id === tripId);
+                if (!trip) return;
+                activeSelectedTrip = trip;
+
+                const dict = I18N_TRIPS[currentLang] || I18N_TRIPS.en;
+                modalTripTitle.textContent = `${trip.departure_province} ➔ ${trip.destination_province}`;
+                modalTripDesc.textContent = `${currentLang === 'km' ? 'តម្លៃ' : 'Fare'}: $${parseFloat(trip.price_per_seat || 15).toFixed(2)} (${trip.available_seats || 4} ${dict.txt_seats_left}). ${dict.modal_badge}`;
+                modalBtnWebDetail.href = `/trips/${trip.id}`;
+
+                bookingModal.classList.add('active');
+            };
+
+            function closeModal() {
+                bookingModal.classList.remove('active');
+            }
+
+            // High-quality Demo Trips if DB has no published trips
+            function getDemoShowcaseTrips() {
+                const now = new Date();
+                const makeTrip = (offsetHours, orig, dest, highway, model, plate, seats, price, driverName, photos) => {
+                    const d = new Date(now.getTime() + offsetHours * 3600000);
+                    return {
+                        id: `demo-${orig.toLowerCase()}-${dest.toLowerCase()}-${offsetHours}`,
+                        departure_province: orig,
+                        destination_province: dest,
+                        departure_address: `Central Express Hub, ${orig}`,
+                        destination_address: `Provincial City Station, ${dest}`,
+                        departure_time: d.toISOString(),
+                        price_per_seat: price,
+                        available_seats: seats - 2,
+                        total_seats: seats,
+                        status: offsetHours <= 2 ? 'active' : 'scheduled',
+                        driver: {
+                            id: 'driver-demo',
+                            full_name: driverName,
+                            is_verified: true,
+                            rating_avg: 4.9,
+                            completed_trips: 182
+                        },
+                        vehicle: {
+                            id: 'veh-demo',
+                            type: seats > 7 ? 'van' : (seats > 4 ? 'suv' : 'sedan'),
+                            model: model,
+                            plate_number: plate,
+                            color: 'White Pearl',
+                            image_urls: photos
+                        }
+                    };
+                };
+
+                return [
+                    makeTrip(
+                        1.5, "Phnom Penh", "Siem Reap", "NR6", "Lexus RX330 Luxury", "2BC-9988", 5, 20.00, "Sokha Heng",
+                        [
+                            "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?q=80&w=800&auto=format&fit=crop",
+                            "https://images.unsplash.com/photo-1503376780353-7e6692767b70?q=80&w=800&auto=format&fit=crop"
+                        ]
+                    ),
+                    makeTrip(
+                        3.0, "Phnom Penh", "Preah Sihanouk", "Expressway E4", "Toyota Alphard VIP", "2AA-4433", 7, 25.00, "Virak Sam",
+                        [
+                            "https://images.unsplash.com/photo-1508974239320-0a029497e820?q=80&w=800&auto=format&fit=crop"
+                        ]
+                    ),
+                    makeTrip(
+                        4.5, "Phnom Penh", "Kampot", "NR3", "Toyota Prius Eco", "2BE-1122", 4, 12.00, "Chan Rith",
+                        [
+                            "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?q=80&w=800&auto=format&fit=crop"
+                        ]
+                    ),
+                    makeTrip(
+                        6.0, "Battambang", "Phnom Penh", "NR5", "Hyundai Starex Minivan", "3A-7890", 11, 15.00, "Vannak Touch",
+                        [
+                            "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?q=80&w=800&auto=format&fit=crop"
+                        ]
+                    ),
+                    makeTrip(
+                        8.0, "Siem Reap", "Battambang", "NR6 / NR5", "Toyota Highlander 4WD", "2C-3344", 6, 14.00, "Bunna Ly",
+                        [
+                            "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?q=80&w=800&auto=format&fit=crop"
+                        ]
+                    ),
+                    makeTrip(
+                        12.0, "Phnom Penh", "Kampong Cham", "NR7", "Lexus RX300", "2AB-5566", 5, 10.00, "Dara Phorn",
+                        []
+                    )
+                ];
+            }
+
+            // Start
+            init();
+        });
+    </script>
+</body>
+</html>

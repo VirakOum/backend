@@ -3,7 +3,7 @@ from decimal import Decimal
 from uuid import UUID
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 BookingPaymentMethod = Literal["cash", "aba", "wing"]
@@ -318,7 +318,17 @@ class TripVehicleInfo(BaseModel):
     plate_number: str
     color: str | None = None
     seat_type: int
+    image_urls: list[str] = Field(default_factory=list)
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("image_urls", mode="before")
+    @classmethod
+    def _validate_image_urls(cls, v: Any) -> list[str]:
+        if v is None:
+            return []
+        if isinstance(v, list):
+            return [str(item) for item in v if item]
+        return []
 
 
 class TripPromotionInfo(BaseModel):
