@@ -266,7 +266,7 @@ class TripCreate(BaseModel):
     return_departure_time: datetime | None = None
     promotion_label: str | None = Field(default=None, max_length=50)
     promotion_discount_percent: int | None = Field(default=None, ge=0, le=100)
-    price_per_seat: Decimal = Field(gt=0)
+    price_per_seat: Decimal = Field(gt=Decimal(0))
     currency: str = Field(default="KHR", pattern="^(KHR|USD|៛|\\$)$")
     total_seats: int = Field(gt=0)
     available_seats: int = Field(ge=0)
@@ -293,7 +293,7 @@ class TripUpdate(BaseModel):
     return_departure_time: datetime | None = None
     promotion_label: str | None = Field(default=None, max_length=50)
     promotion_discount_percent: int | None = Field(default=None, ge=0, le=100)
-    price_per_seat: Decimal | None = Field(default=None, gt=0)
+    price_per_seat: Decimal | None = Field(default=None, gt=Decimal(0))
     currency: str | None = Field(default=None, pattern="^(KHR|USD|៛|\\$)$")
     total_seats: int | None = Field(default=None, gt=0)
     available_seats: int | None = Field(default=None, ge=0)
@@ -395,7 +395,7 @@ class BookingCreate(BaseModel):
     trip_id: UUID
     seat_numbers: list[int] = Field(min_length=1)
     payment_method: BookingPaymentMethod = "cash"
-    total_price: Decimal | None = Field(default=None, gt=0)
+    total_price: Decimal | None = Field(default=None, gt=Decimal(0))
     currency: str | None = Field(default=None, pattern="^(KHR|USD|៛|\\$)$")
     status: str = Field(default="pending", pattern="^(pending|confirmed|cancelled)$")
 
@@ -501,7 +501,7 @@ class PaymentCreate(BaseModel):
     booking_id: UUID
     transaction_id: str = Field(min_length=1, max_length=100)
     payment_method: str = Field(min_length=1, max_length=20)
-    amount: Decimal = Field(gt=0)
+    amount: Decimal = Field(gt=Decimal(0))
     status: str = Field(default="pending", pattern="^(pending|success|failed)$")
     paid_at: datetime | None = None
 
