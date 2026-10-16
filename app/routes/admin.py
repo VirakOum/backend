@@ -316,7 +316,7 @@ def list_users(
     
     result = []
     for user in users:
-        user_data = {
+        user_data: dict[str, Any] = {
             "id": user.id,
             "phone": user.phone,
             "full_name": user.full_name,
