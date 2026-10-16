@@ -5,7 +5,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import select, func, or_
 from sqlalchemy.orm import Session
 
@@ -97,8 +97,7 @@ class AdminSettingsRead(BaseModel):
     driver_cash_debt_limit_khr: int
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class WalletSummaryRead(BaseModel):
     service_fee_owed_usd: float
@@ -245,8 +244,8 @@ def get_admin_summary(db: Session = Depends(get_db)) -> Any:
         )
     ).first()
     
-    total_owed_usd = float(wallets_sum[0] or 0.0)
-    total_owed_khr = int(wallets_sum[1] or 0)
+    total_owed_usd = float(wallets_sum[0] or 0.0) if wallets_sum else 0.0
+    total_owed_khr = int(wallets_sum[1] or 0) if wallets_sum else 0
     
     # Calculate trips operations stats directly from DB
     total_trips = db.execute(select(func.count(Trip.id))).scalar() or 0
@@ -259,8 +258,8 @@ def get_admin_summary(db: Session = Depends(get_db)) -> Any:
         )
     ).first()
     
-    tot_seats = seats_sum[0] or 0
-    avail_seats = seats_sum[1] or 0
+    tot_seats = int(seats_sum[0] or 0) if seats_sum else 0
+    avail_seats = int(seats_sum[1] or 0) if seats_sum else 0
     
     if tot_seats > 0:
         booked_seats = tot_seats - avail_seats
@@ -449,7 +448,7 @@ def change_membership(
     now = phnom_penh_now()
     for m in active_memberships:
         m.status = "expired"
-        m.expires_at = now
+        m.ends_at = now
         
     # Create new membership
     catalog = MEMBERSHIP_CATALOG[tier]
@@ -522,7 +521,7 @@ def get_trip_bookings(trip_id: uuid.UUID, db: Session = Depends(get_db)) -> Any:
             "id": b.id,
             "passenger_name": passenger.full_name if passenger else "Passenger",
             "passenger_phone": passenger.phone if passenger else "",
-            "seats_booked": b.seats_booked,
+            "seats_booked": len(b.seat_numbers) if b.seat_numbers else 0,
             "total_price": float(b.total_price or 0.0),
             "payment_method": b.payment_method or "CASH",
             "payment_status": b.payment_status or "PENDING",

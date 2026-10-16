@@ -338,10 +338,12 @@ def open_trip_universal_link(
         )
 
     vehicle = db.get(Vehicle, trip.vehicle_id) if trip.vehicle_id else None
-    vehicle_info = f"{vehicle.make} {vehicle.model}" if vehicle else "រថយន្តតាក់ស៊ីទំនើប"
+    vehicle_info = f"{vehicle.vehicle_type or ''} {vehicle.model or ''}".strip() if vehicle else ""
+    if not vehicle_info:
+        vehicle_info = "រថយន្តតាក់ស៊ីទំនើប"
     vehicle_photo = (
-        vehicle.photo_url
-        if (vehicle and vehicle.photo_url)
+        vehicle.image_urls[0]
+        if (vehicle and vehicle.image_urls and len(vehicle.image_urls) > 0)
         else "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?q=80&w=800&auto=format&fit=crop"
     )
 
