@@ -1807,6 +1807,7 @@ def get_public_trips(
 	db: Session = Depends(get_db),
 ) -> list[TripRead]:
 	_expire_stale_trips_and_bookings(db)
+	now_local = phnom_penh_now()
 	stmt = select(Trip).where(Trip.status.in_(["scheduled", "active"]))
 	if departure_province and departure_province.strip() and departure_province.strip().lower() != "all":
 		stmt = stmt.where(func.lower(Trip.departure_province) == departure_province.strip().lower())
@@ -1823,9 +1824,33 @@ def get_public_trips(
 				func.lower(User.full_name).like(term),
 			)
 		)
-	stmt = stmt.order_by(Trip.departure_time.asc()).limit(limit)
+	stmt = stmt.order_by(Trip.departure_time.asc()).limit(limit * 2)
 	trips = db.execute(stmt).scalars().all()
-	return [_build_trip_read(trip) for trip in trips]
+
+	valid_trips: list[Trip] = []
+	for trip in trips:
+		dep_local = _trip_departure_local(trip)
+		if dep_local is None:
+			continue
+		# Only non-expired trips:
+		# - Scheduled trips must have departure_time in the future (not passed)
+		# - Active trips must have active_until window >= now_local
+		if trip.status == "scheduled":
+			if dep_local < now_local:
+				continue
+		elif trip.status == "active":
+			active_until = _trip_active_until_local(trip)
+			if active_until is None or active_until < now_local:
+				continue
+		else:
+			continue
+
+		valid_trips.append(trip)
+		if len(valid_trips) >= limit:
+			break
+
+	return [_build_trip_read(trip) for trip in valid_trips]
+
 
 
 @router.get("/trips/search", response_model=list[TripRead])

@@ -364,6 +364,8 @@ def _render_trip_detail_page(
     verified_badge_html = ""
     if has_real_car_photo:
         verified_badge_html = '<span class="photo-verified-badge"><i class="fa-solid fa-camera"></i> រូបថតរថយន្តពិត</span>'
+    else:
+        verified_badge_html = '<span class="photo-verified-badge" style="border-color: rgba(255,200,61,0.5);"><i class="fa-solid fa-shield-halved"></i> រថយន្ត MyTravel</span>'
 
     html = f"""<!DOCTYPE html>
 <html lang="km">
@@ -887,15 +889,7 @@ def open_trip_universal_link(
     if has_real_car_photo:
         primary_photo = car_photos[0]
     else:
-        v_type = (vehicle.vehicle_type or "").lower() if vehicle else ""
-        if "van" in v_type or "hiace" in v_type:
-            primary_photo = "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?q=80&w=800&auto=format&fit=crop"
-        elif "bus" in v_type:
-            primary_photo = "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=800&auto=format&fit=crop"
-        elif "suv" in v_type:
-            primary_photo = "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?q=80&w=800&auto=format&fit=crop"
-        else:
-            primary_photo = "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?q=80&w=800&auto=format&fit=crop"
+        primary_photo = "https://mytravel.taxi/assets/default_car.jpg"
 
     return _render_trip_detail_page(
         trip=trip,

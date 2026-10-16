@@ -255,4 +255,54 @@ def test_render_trip_detail_page_with_car_photo():
     assert "/trips" in html
 
 
+def test_serve_default_car_asset():
+    response = client.get("/assets/default_car.jpg")
+    assert response.status_code == 200
+    assert "image" in response.headers["content-type"]
+
+
+def test_render_trip_detail_page_without_car_photo_uses_default_car_image():
+    from unittest.mock import MagicMock
+    from datetime import datetime
+    from app.routes.universal_links import _render_trip_detail_page
+
+    trip = MagicMock()
+    trip.id = uuid.uuid4()
+    trip.departure_province = "Phnom Penh"
+    trip.destination_province = "Svay Rieng"
+    trip.departure_address = "Central Market"
+    trip.destination_address = "Svay Rieng City Hub"
+    trip.departure_time = datetime(2026, 10, 20, 8, 0, 0)
+    trip.price_per_seat = 15.0
+    trip.available_seats = 3
+    trip.total_seats = 4
+
+    vehicle = MagicMock()
+    vehicle.model = "MG ZS"
+    vehicle.vehicle_type = "SUV"
+    vehicle.plate_number = "2BO-3101"
+    vehicle.color = "White"
+
+    driver = MagicMock()
+    driver.full_name = "TAXI 001"
+    driver.rating_avg = 4.9
+    driver.completed_trips = 40
+
+    res = _render_trip_detail_page(
+        trip=trip,
+        vehicle=vehicle,
+        driver=driver,
+        car_photos=[],
+        hero_photo="https://mytravel.taxi/assets/default_car.jpg",
+        has_real_car_photo=False,
+        app_deep_link=f"mytravel://trip/{trip.id}",
+        web_canonical_url=f"https://mytravel.taxi/trips/{trip.id}",
+    )
+    html = res.body.decode("utf-8")
+    assert "/assets/default_car.jpg" in html
+    assert "MG ZS" in html
+    assert "2BO-3101" in html
+
+
+
 
