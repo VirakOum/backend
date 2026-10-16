@@ -21,6 +21,7 @@ from ..models import (
     DriverMembership,
     AppRuntimeSetting,
     AppVersionConfig,
+    UniversalLinkConfig,
     SystemDiscountTicket,
     SystemAd,
     SystemMessage,
@@ -46,6 +47,11 @@ from ..schemas import (
     AppVersionConfigUpdate,
     AppVersionSimulateRequest,
     AppVersionSimulateResponse,
+    AndroidFingerprintItem,
+    UniversalLinkConfigRead,
+    UniversalLinkConfigUpdate,
+    UniversalLinkTestRequest,
+    UniversalLinkTestResponse,
 )
 from ..auth import hash_password, verify_password, issue_token
 from ..config import get_google_maps_api_key
@@ -1305,3 +1311,289 @@ def simulate_admin_app_version(payload: AppVersionSimulateRequest, db: Session =
         action=action,
         reason=reason,
     )
+
+
+# Universal Links & App Links Management
+
+DEFAULT_ANDROID_FINGERPRINTS = [
+    {
+        "fingerprint": "4B:33:E5:28:B3:A4:59:1A:D1:77:90:CD:9F:49:CB:47:EF:A9:9F:EF:D9:58:75:B7:29:3D:FE:87:E1:FE:47:73",
+        "label": "Google Play App Signing (Production)",
+        "type": "production",
+    },
+    {
+        "fingerprint": "0C:B8:64:C9:26:44:67:E9:21:9F:A5:F4:D2:0B:66:40:2F:1C:F2:B1:FA:05:2F:BF:42:6F:EF:40:6F:9D:ED:47",
+        "label": "Release Keystore (Keystone.jks)",
+        "type": "release",
+    },
+    {
+        "fingerprint": "ED:F9:37:D3:54:59:0B:A8:73:D3:8E:DD:AE:E3:7E:1A:D6:C8:33:CD:25:74:18:08:70:77:F3:EA:B9:37:DC:F8",
+        "label": "Local Debug Keystore",
+        "type": "debug",
+    },
+]
+
+DEFAULT_APPLE_PATHS = [
+    "/trips/*",
+    "/t/*",
+    "/news/*",
+    "/ads/*",
+    "/promotions/*",
+    "/travel/*",
+]
+
+
+def get_or_create_universal_link_config(db: Session) -> UniversalLinkConfig:
+    cfg = db.execute(select(UniversalLinkConfig).where(UniversalLinkConfig.key == "default")).scalars().first()
+    if not cfg:
+        cfg = UniversalLinkConfig(
+            key="default",
+            apple_team_id="3VMD59LYS6",
+            apple_bundle_id="com.kh.mytravel.app",
+            apple_paths=list(DEFAULT_APPLE_PATHS),
+            webcredentials_enabled=True,
+            android_package_name="com.kh.mytravel.mytravel",
+            android_sha256_fingerprints=list(DEFAULT_ANDROID_FINGERPRINTS),
+            primary_domain="mytravel.taxi",
+            custom_scheme="mytravel://",
+            fallback_url="https://mytravel.taxi/",
+            is_active=True,
+        )
+        db.add(cfg)
+        db.commit()
+        db.refresh(cfg)
+    return cfg
+
+
+def _format_universal_link_response(cfg: UniversalLinkConfig) -> UniversalLinkConfigRead:
+    apple_app_id = f"{cfg.apple_team_id}.{cfg.apple_bundle_id}"
+    domain = cfg.primary_domain or "mytravel.taxi"
+    fps: list[AndroidFingerprintItem] = []
+    for item in (cfg.android_sha256_fingerprints or []):
+        if isinstance(item, dict):
+            fps.append(AndroidFingerprintItem(
+                fingerprint=item.get("fingerprint", "").strip().upper(),
+                label=item.get("label", "Key Fingerprint"),
+                type=item.get("type", "production"),
+            ))
+        elif isinstance(item, str) and item.strip():
+            fps.append(AndroidFingerprintItem(
+                fingerprint=item.strip().upper(),
+                label="SHA-256 Fingerprint",
+                type="custom",
+            ))
+
+    verification_urls = {
+        "apple_aasa": f"https://{domain}/.well-known/apple-app-site-association",
+        "android_assetlinks": f"https://{domain}/.well-known/assetlinks.json",
+        "apple_aasa_local": "/.well-known/apple-app-site-association",
+        "android_assetlinks_local": "/.well-known/assetlinks.json",
+    }
+
+    return UniversalLinkConfigRead(
+        id=cfg.id,
+        key=cfg.key,
+        apple_team_id=cfg.apple_team_id,
+        apple_bundle_id=cfg.apple_bundle_id,
+        apple_app_id=apple_app_id,
+        apple_paths=cfg.apple_paths or list(DEFAULT_APPLE_PATHS),
+        webcredentials_enabled=cfg.webcredentials_enabled,
+        android_package_name=cfg.android_package_name,
+        android_sha256_fingerprints=fps,
+        primary_domain=domain,
+        custom_scheme=cfg.custom_scheme or "mytravel://",
+        fallback_url=cfg.fallback_url or "https://mytravel.taxi/",
+        is_active=cfg.is_active,
+        verification_urls=verification_urls,
+        created_at=cfg.created_at,
+        updated_at=cfg.updated_at,
+    )
+
+
+@router.get("/universal-links", response_model=UniversalLinkConfigRead)
+def get_admin_universal_links(db: Session = Depends(get_db)) -> Any:
+    cfg = get_or_create_universal_link_config(db)
+    return _format_universal_link_response(cfg)
+
+
+@router.post("/universal-links", response_model=UniversalLinkConfigRead)
+def update_admin_universal_links(payload: UniversalLinkConfigUpdate, db: Session = Depends(get_db)) -> Any:
+    cfg = get_or_create_universal_link_config(db)
+    cfg.apple_team_id = payload.apple_team_id.strip()
+    cfg.apple_bundle_id = payload.apple_bundle_id.strip()
+    cfg.apple_paths = [p.strip() for p in payload.apple_paths if p.strip()]
+    cfg.webcredentials_enabled = payload.webcredentials_enabled
+    cfg.android_package_name = payload.android_package_name.strip()
+
+    cleaned_fps = []
+    for fp_item in payload.android_sha256_fingerprints:
+        fp_str = fp_item.fingerprint.strip().upper()
+        if fp_str:
+            cleaned_fps.append({
+                "fingerprint": fp_str,
+                "label": fp_item.label.strip() or "Fingerprint",
+                "type": fp_item.type.strip() or "production",
+            })
+    cfg.android_sha256_fingerprints = cleaned_fps
+    cfg.primary_domain = payload.primary_domain.strip() or "mytravel.taxi"
+    cfg.custom_scheme = payload.custom_scheme.strip() or "mytravel://"
+    cfg.fallback_url = payload.fallback_url.strip() or "https://mytravel.taxi/"
+    cfg.is_active = payload.is_active
+    cfg.updated_at = phnom_penh_now()
+
+    db.commit()
+    db.refresh(cfg)
+    return _format_universal_link_response(cfg)
+
+
+@router.post("/universal-links/reset", response_model=UniversalLinkConfigRead)
+def reset_admin_universal_links(db: Session = Depends(get_db)) -> Any:
+    cfg = get_or_create_universal_link_config(db)
+    cfg.apple_team_id = "3VMD59LYS6"
+    cfg.apple_bundle_id = "com.kh.mytravel.app"
+    cfg.apple_paths = list(DEFAULT_APPLE_PATHS)
+    cfg.webcredentials_enabled = True
+    cfg.android_package_name = "com.kh.mytravel.mytravel"
+    cfg.android_sha256_fingerprints = list(DEFAULT_ANDROID_FINGERPRINTS)
+    cfg.primary_domain = "mytravel.taxi"
+    cfg.custom_scheme = "mytravel://"
+    cfg.fallback_url = "https://mytravel.taxi/"
+    cfg.is_active = True
+    cfg.updated_at = phnom_penh_now()
+
+    db.commit()
+    db.refresh(cfg)
+    return _format_universal_link_response(cfg)
+
+
+@router.post("/universal-links/test", response_model=UniversalLinkTestResponse)
+def test_admin_universal_link(payload: UniversalLinkTestRequest, db: Session = Depends(get_db)) -> Any:
+    cfg = get_or_create_universal_link_config(db)
+    domain = cfg.primary_domain or "mytravel.taxi"
+    raw_scheme = (cfg.custom_scheme or "mytravel").strip()
+    if "://" in raw_scheme:
+        scheme_prefix = raw_scheme.split("://")[0]
+    elif ":" in raw_scheme:
+        scheme_prefix = raw_scheme.split(":")[0]
+    else:
+        scheme_prefix = raw_scheme
+    scheme = f"{scheme_prefix}://"
+
+    target_type = payload.target_type
+    target_id = payload.target_id_or_path.strip()
+
+    metadata: dict[str, Any] = {}
+    share_title = "MyTravel Deep Link"
+    share_text = ""
+    status = "valid"
+
+    if target_type == "trip":
+        universal_url = f"https://{domain}/trips/{target_id}"
+        deep_link = f"{scheme}trip/{target_id}"
+        web_url = universal_url
+        try:
+            trip_uuid = uuid.UUID(target_id)
+            trip = db.get(Trip, trip_uuid)
+            if trip:
+                date_str = trip.departure_time.strftime("%Y-%m-%d") if trip.departure_time else "N/A"
+                time_str = trip.departure_time.strftime("%I:%M %p") if trip.departure_time else "N/A"
+                price_str = f"{int(trip.price_per_seat):,}" if trip.price_per_seat else "25,000"
+                avail = trip.available_seats if trip.available_seats is not None else 4
+                total = trip.total_seats if trip.total_seats is not None else 4
+
+                share_title = f"🚖 MyTravel Taxi - ការធ្វើដំណើរពី {trip.departure_province} ទៅ {trip.destination_province}"
+                share_text = (
+                    f"🚖 MyTravel Taxi - ការធ្វើដំណើរពី {trip.departure_province} ទៅ {trip.destination_province}\n"
+                    f"📅 កាលបរិច្ឆេទ: {date_str}\n"
+                    f"⏰ ម៉ោងចេញដំណើរ: {time_str}\n"
+                    f"💺 កៅអីនៅសល់: {avail}/{total}\n"
+                    f"💵 តម្លៃ: {price_str} ៛\n\n"
+                    f"កក់ ឬមើលព័ត៌មានលម្អិតការធ្វើដំណើរ:\n"
+                    f"{universal_url}"
+                )
+                metadata = {
+                    "departure": trip.departure_province,
+                    "destination": trip.destination_province,
+                    "price": trip.price_per_seat,
+                    "status": trip.status,
+                }
+            else:
+                status = "not_found"
+                share_title = "🚖 MyTravel Trip (Not Found)"
+                share_text = f"កក់ ឬមើលព័ត៌មានលម្អិតការធ្វើដំណើរ:\n{universal_url}"
+        except Exception:
+            status = "not_found"
+            share_text = f"កក់ ឬមើលព័ត៌មានលម្អិតការធ្វើដំណើរ:\n{universal_url}"
+
+    elif target_type == "news":
+        universal_url = f"https://{domain}/news/{target_id}"
+        deep_link = f"{scheme}news/{target_id}"
+        web_url = universal_url
+        try:
+            news_uuid = uuid.UUID(target_id)
+            article = db.get(NewsArticle, news_uuid)
+            if article:
+                share_title = f"📰 {article.title_kh or article.title}"
+                share_text = (
+                    f"📰 MyTravel News - {article.title_kh or article.title}\n"
+                    f"📢 ប្រភព: {article.source_name}\n"
+                    f"🏷️ ប្រភេទ: {article.category}\n\n"
+                    f"អានព័ត៌មានលម្អិត:\n"
+                    f"{universal_url}"
+                )
+                metadata = {
+                    "title": article.title,
+                    "title_kh": article.title_kh,
+                    "category": article.category,
+                    "source_name": article.source_name,
+                }
+            else:
+                status = "not_found"
+                share_text = f"អានព័ត៌មានលម្អិត:\n{universal_url}"
+        except Exception:
+            status = "not_found"
+            share_text = f"អានព័ត៌មានលម្អិត:\n{universal_url}"
+
+    elif target_type == "ad":
+        universal_url = f"https://{domain}/ads/{target_id}"
+        deep_link = f"{scheme}ad/{target_id}"
+        web_url = universal_url
+        try:
+            ad_uuid = uuid.UUID(target_id)
+            ad = db.get(SystemAd, ad_uuid)
+            if ad:
+                share_title = f"📢 {ad.title_kh or ad.title}"
+                share_text = (
+                    f"📢 MyTravel Promotion - {ad.title_kh or ad.title}\n"
+                    f"🔗 តំណភ្ជាប់:\n"
+                    f"{universal_url}"
+                )
+                metadata = {"title": ad.title, "link_url": ad.link_url}
+            else:
+                status = "not_found"
+                share_text = f"🔗 {universal_url}"
+        except Exception:
+            status = "not_found"
+            share_text = f"🔗 {universal_url}"
+
+    else:
+        clean_path = target_id.lstrip("/")
+        universal_url = f"https://{domain}/{clean_path}"
+        deep_link = f"{scheme}{clean_path}"
+        web_url = universal_url
+        status = "custom"
+        share_title = f"🌐 MyTravel Link - /{clean_path}"
+        share_text = f"🌐 MyTravel:\n{universal_url}"
+
+    return UniversalLinkTestResponse(
+        target_type=target_type,
+        target_id_or_path=target_id,
+        universal_link=universal_url,
+        app_deep_link=deep_link,
+        web_landing_url=web_url,
+        share_title=share_title,
+        share_text=share_text,
+        status=status,
+        metadata=metadata,
+    )
+

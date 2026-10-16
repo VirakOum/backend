@@ -166,6 +166,10 @@
                     <i class="fa-solid fa-code-branch nav-icon"></i>
                     <span data-i18n="nav_app_versions">App Version Control</span>
                 </a>
+                <a href="#universal-links" class="nav-item" data-tab="universal-links">
+                    <i class="fa-solid fa-link nav-icon"></i>
+                    <span data-i18n="nav_universal_links">Universal &amp; App Links</span>
+                </a>
             </nav>
 
             <div class="sidebar-footer">
@@ -439,6 +443,17 @@
                     <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                         <h2 id="page-trip-route-title" class="headline-md" style="margin:0; font-family: var(--font-display); font-weight: 800; color: var(--color-primary);">—</h2>
                         <span id="page-trip-status-badge" class="ticket-status-badge">scheduled</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-secondary" id="btn-copy-trip-universal-link" style="padding: 0.5rem 0.9rem; font-size: 0.85rem;" title="Copy Universal Link (https://mytravel.taxi/trips/{id})">
+                            <i class="fa-solid fa-link"></i> <span>Copy Universal Link</span>
+                        </button>
+                        <a id="btn-view-trip-landing" href="#" target="_blank" class="btn btn-secondary" style="padding: 0.5rem 0.9rem; font-size: 0.85rem; text-decoration: none;" title="Open Public Landing Web Page">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i> <span>View Landing</span>
+                        </a>
+                        <button type="button" class="btn btn-primary" id="btn-share-trip-card" style="padding: 0.5rem 0.9rem; font-size: 0.85rem;" title="Copy Formatted Social Share Message">
+                            <i class="fa-solid fa-share-nodes"></i> <span>Share Card</span>
+                        </button>
                     </div>
                 </div>
 
@@ -777,7 +792,8 @@
                                 <tr>
                                     <th>Banner Image</th>
                                     <th>Ad Title</th>
-                                    <th>Action Link</th>
+                                    <th>Target Link</th>
+                                    <th>Universal Link</th>
                                     <th>Status</th>
                                     <th class="text-right">Action</th>
                                 </tr>
@@ -1433,6 +1449,315 @@
                             <button type="button" class="btn btn-secondary" id="btn-preview-sim-modal" style="display: none;">
                                 <i class="fa-solid fa-eye"></i> <span>Preview Dialog</span>
                             </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Universal Links & App Links Management -->
+            <section id="tab-universal-links" class="tab-pane">
+                <!-- KPI Status Bar -->
+                <div class="kpi-grid">
+                    <div class="kpi-card gradient-card">
+                        <div class="kpi-card-header">
+                            <span class="kpi-label">Android App Links</span>
+                            <i class="fa-brands fa-android kpi-icon"></i>
+                        </div>
+                        <div class="kpi-value" id="kpi-ul-android-count">3 Keys</div>
+                        <div class="kpi-meta" id="kpi-ul-android-pkg">com.kh.mytravel.mytravel</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-card-header">
+                            <span class="kpi-label">Apple Universal Links</span>
+                            <i class="fa-brands fa-apple kpi-icon"></i>
+                        </div>
+                        <div class="kpi-value" id="kpi-ul-apple-status" style="color: #3DDC84;">ONLINE</div>
+                        <div class="kpi-meta" id="kpi-ul-apple-id">3VMD59LYS6.com.kh.mytravel.app</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-card-header">
+                            <span class="kpi-label">Primary Domain</span>
+                            <i class="fa-solid fa-globe kpi-icon"></i>
+                        </div>
+                        <div class="kpi-value" id="kpi-ul-domain" style="font-size: 1.25rem; font-weight: 700;">mytravel.taxi</div>
+                        <div class="kpi-meta" id="kpi-ul-scheme">Scheme: mytravel://</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-card-header">
+                            <span class="kpi-label">Routing Status</span>
+                            <i class="fa-solid fa-shield-check kpi-icon"></i>
+                        </div>
+                        <div class="kpi-value" style="color: var(--color-primary);">ACTIVE</div>
+                        <div class="kpi-meta">/.well-known Handlers Ready</div>
+                    </div>
+                </div>
+
+                <!-- Live Endpoints Verification Links Banner -->
+                <div class="content-card" style="margin-bottom: var(--spacing-lg); background: linear-gradient(135deg, rgba(255, 200, 61, 0.08) 0%, rgba(30, 41, 59, 0.5) 100%); border: 1px solid rgba(255, 200, 61, 0.2);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(255,200,61,0.2); display: flex; align-items: center; justify-content: center; color: var(--color-primary); font-size: 1.3rem;">
+                                <i class="fa-solid fa-circle-check"></i>
+                            </div>
+                            <div>
+                                <h3 style="margin: 0; font-size: 1.05rem; font-weight: 800;">Public .well-known Verification Endpoints</h3>
+                                <p style="margin: 2px 0 0 0; font-size: 0.8rem; color: var(--color-text-secondary);">Directly inspect and verify the public JSON endpoints served for Google Play and iOS verification</p>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <a id="btn-verify-assetlinks" href="/.well-known/assetlinks.json" target="_blank" class="btn btn-secondary" style="font-size: 0.82rem; padding: 0.5rem 0.9rem;">
+                                <i class="fa-brands fa-android" style="color: #3DDC84;"></i> <span>assetlinks.json</span> <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.7rem; margin-left: 4px;"></i>
+                            </a>
+                            <a id="btn-verify-aasa" href="/.well-known/apple-app-site-association" target="_blank" class="btn btn-secondary" style="font-size: 0.82rem; padding: 0.5rem 0.9rem;">
+                                <i class="fa-brands fa-apple" style="color: #A2AAAD;"></i> <span>apple-app-site-association</span> <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.7rem; margin-left: 4px;"></i>
+                            </a>
+                            <button type="button" class="btn btn-secondary" id="btn-refresh-universal-links">
+                                <i class="fa-solid fa-rotate"></i> <span>Refresh</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Platform Settings Grid -->
+                <div class="layout-grid" style="grid-template-columns: 1fr 1fr; gap: var(--spacing-lg);">
+                    <!-- Android App Links Config Card -->
+                    <div class="content-card">
+                        <div class="card-header" style="display: flex; align-items: center; justify-content: space-between;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <i class="fa-brands fa-android" style="font-size: 1.6rem; color: #3DDC84;"></i>
+                                <div>
+                                    <h2 class="headline-sm">Android Digital Asset Links</h2>
+                                    <p class="body-sm" style="color: var(--color-text-secondary); margin: 0;">/.well-known/assetlinks.json</p>
+                                </div>
+                            </div>
+                            <span class="badge" id="badge-android-ul-status" style="background: rgba(61, 220, 132, 0.2); color: #3DDC84; font-weight: 700; padding: 4px 10px; border-radius: 8px;">Active</span>
+                        </div>
+
+                        <form id="form-universal-android" class="settings-form" style="margin-top: 1rem;">
+                            <div class="form-group">
+                                <label for="ul-android-package-name">Android Application ID / Package Name</label>
+                                <input type="text" id="ul-android-package-name" class="search-input" value="com.kh.mytravel.mytravel" required>
+                                <p class="input-desc" style="font-size: 0.75rem; color: var(--color-text-secondary); margin-top: 4px;">Matches the applicationId in build.gradle (<code>com.kh.mytravel.mytravel</code>)</p>
+                            </div>
+
+                            <div class="form-group">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                    <label style="margin-bottom: 0;">SHA-256 Certificate Fingerprints</label>
+                                    <span id="fp-count-badge" style="font-size: 0.75rem; background: var(--color-surface-container); padding: 2px 8px; border-radius: 6px; color: var(--color-primary); font-weight: 700;">3 Keys Active</span>
+                                </div>
+                                <p class="input-desc" style="font-size: 0.75rem; color: var(--color-text-secondary); margin-bottom: 8px;">Includes Google Play App Signing key, Local Release Keystore, and Debug Keystore.</p>
+
+                                <!-- Fingerprints List Container -->
+                                <div id="fingerprints-list-container" style="display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto; padding-right: 4px; margin-bottom: 12px;">
+                                    <!-- Rendered dynamically by JS -->
+                                </div>
+
+                                <!-- Add New Fingerprint Box -->
+                                <div style="background: rgba(255,255,255,0.02); border: 1px dashed var(--color-surface-container); border-radius: 12px; padding: 12px;">
+                                    <span style="font-size: 0.8rem; font-weight: 700; color: var(--color-primary); display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+                                        <i class="fa-solid fa-plus-circle"></i> Add SHA-256 Certificate Fingerprint
+                                    </span>
+                                    <div style="display: grid; grid-template-columns: 1fr 140px; gap: 8px; margin-bottom: 8px;">
+                                        <input type="text" id="new-fp-label" class="search-input" placeholder="Label (e.g. Google Play App Signing)" style="font-size: 0.82rem; padding: 0.45rem 0.8rem;">
+                                        <select id="new-fp-type" class="search-input" style="font-size: 0.82rem; padding: 0.45rem 0.8rem;">
+                                            <option value="production">Production</option>
+                                            <option value="release">Release</option>
+                                            <option value="debug">Debug</option>
+                                            <option value="custom">Custom</option>
+                                        </select>
+                                    </div>
+                                    <div style="display: flex; gap: 8px;">
+                                        <input type="text" id="new-fp-val" class="search-input" placeholder="4B:33:E5:28:B3:A4:59:1A:D1:77:90:CD:9F:49:CB:47:EF:A9:9F:EF:D9:58:75:B7:29:3D:FE:87:E1:FE:47:73" style="font-family: monospace; font-size: 0.78rem; padding: 0.45rem 0.8rem; flex-grow: 1;">
+                                        <button type="button" class="btn btn-secondary" id="btn-add-fp" style="padding: 0.45rem 0.9rem; font-size: 0.82rem; white-space: nowrap;">
+                                            <i class="fa-solid fa-plus"></i> Add
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-actions" style="margin-top: 1rem;">
+                                <button type="button" class="btn btn-primary" id="btn-save-universal-android">
+                                    <i class="fa-solid fa-floppy-disk"></i> <span>Save Android AssetLinks</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- iOS Universal Links Config Card -->
+                    <div class="content-card">
+                        <div class="card-header" style="display: flex; align-items: center; justify-content: space-between;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <i class="fa-brands fa-apple" style="font-size: 1.8rem; color: #A2AAAD;"></i>
+                                <div>
+                                    <h2 class="headline-sm">Apple Universal Links (AASA)</h2>
+                                    <p class="body-sm" style="color: var(--color-text-secondary); margin: 0;">/.well-known/apple-app-site-association</p>
+                                </div>
+                            </div>
+                            <span class="badge" id="badge-ios-ul-status" style="background: rgba(162, 170, 173, 0.2); color: #E5E9EC; font-weight: 700; padding: 4px 10px; border-radius: 8px;">Active</span>
+                        </div>
+
+                        <form id="form-universal-ios" class="settings-form" style="margin-top: 1rem;">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="ul-apple-team-id">Apple Developer Team ID</label>
+                                    <input type="text" id="ul-apple-team-id" class="search-input" value="3VMD59LYS6" placeholder="e.g. 3VMD59LYS6" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="ul-apple-bundle-id">App Bundle Identifier</label>
+                                    <input type="text" id="ul-apple-bundle-id" class="search-input" value="com.kh.mytravel.app" placeholder="e.g. com.kh.mytravel.app" required>
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="background: rgba(255,255,255,0.02); padding: 10px 14px; border-radius: 10px; border: 1px solid var(--color-surface-container);">
+                                <label style="font-size: 0.78rem; text-transform: uppercase; color: var(--color-text-secondary); margin-bottom: 2px;">Combined Apple AppID</label>
+                                <div id="preview-apple-app-id" style="font-family: monospace; font-size: 0.95rem; font-weight: 700; color: var(--color-primary);">3VMD59LYS6.com.kh.mytravel.app</div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="ul-apple-paths">Handled Universal Link Paths (One per line)</label>
+                                <textarea id="ul-apple-paths" class="search-input" rows="5" style="font-family: monospace; font-size: 0.82rem;" placeholder="/trips/*&#10;/t/*&#10;/news/*&#10;/ads/*&#10;/promotions/*&#10;/travel/*"></textarea>
+                                <p class="input-desc" style="font-size: 0.75rem; color: var(--color-text-secondary); margin-top: 4px;">Universal Link route patterns handled by iOS client.</p>
+                            </div>
+
+                            <div class="form-group toggle-group">
+                                <div class="toggle-label-wrap">
+                                    <label for="ul-webcredentials-toggle">Enable Shared Web Credentials</label>
+                                    <p class="input-desc">Allows iOS Keychain password autofill across web and app</p>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="ul-webcredentials-toggle" checked>
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+
+                            <div class="form-actions" style="margin-top: 1rem;">
+                                <button type="button" class="btn btn-primary" id="btn-save-universal-ios">
+                                    <i class="fa-solid fa-floppy-disk"></i> <span>Save Apple AASA Settings</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Domain, Scheme & Routing Base Configuration Card -->
+                <div class="content-card" style="margin-top: var(--spacing-lg);">
+                    <div class="card-header">
+                        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <i class="fa-solid fa-sliders" style="font-size: 1.4rem; color: var(--color-primary);"></i>
+                                <div>
+                                    <h2 class="headline-sm">Domain, App Scheme &amp; Fallback Rules</h2>
+                                    <p class="body-sm" style="color: var(--color-text-secondary); margin: 0;">Configure base hostname, custom protocol scheme, and fallback destinations</p>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-secondary" id="btn-reset-universal-defaults" style="color: var(--color-danger); border-color: rgba(228, 86, 63, 0.4);">
+                                <i class="fa-solid fa-arrow-rotate-left"></i> <span>Reset Factory Defaults</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <form id="form-universal-domain" class="settings-form" style="margin-top: 1rem;">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="ul-primary-domain">Primary Canonical Domain</label>
+                                <input type="text" id="ul-primary-domain" class="search-input" value="mytravel.taxi" placeholder="mytravel.taxi" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="ul-custom-scheme">Custom App Scheme</label>
+                                <input type="text" id="ul-custom-scheme" class="search-input" value="mytravel://" placeholder="mytravel://" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="ul-fallback-url">Fallback Web Destination URL</label>
+                                <input type="url" id="ul-fallback-url" class="search-input" value="https://mytravel.taxi/" placeholder="https://mytravel.taxi/" required>
+                            </div>
+                        </div>
+                        <div class="form-actions" style="margin-top: 0.5rem;">
+                            <button type="button" class="btn btn-primary" id="btn-save-universal-domain">
+                                <i class="fa-solid fa-save"></i> <span>Save Domain &amp; Scheme Config</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Interactive Universal Link Generator & Social Share Simulator -->
+                <div class="content-card" style="margin-top: var(--spacing-lg);">
+                    <div class="card-header">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <i class="fa-solid fa-flask" style="font-size: 1.4rem; color: var(--color-primary);"></i>
+                            <div>
+                                <h2 class="headline-sm">Universal Link Generator &amp; Social Share Simulator</h2>
+                                <p class="body-sm" style="color: var(--color-text-secondary); margin: 0;">Generate verified links, test in-browser landing cards, and copy driver/passenger share templates</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="padding: 1rem 0;">
+                        <div style="display: grid; grid-template-columns: 160px 1fr 140px; gap: 1rem; align-items: flex-end; margin-bottom: 1.5rem;" class="sim-controls-grid">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="sim-link-type" style="font-weight: 600;">Link Type</label>
+                                <select id="sim-link-type" class="search-input" style="padding: 0.6rem 1rem;">
+                                    <option value="trip">🚖 Trip</option>
+                                    <option value="news">📰 News Article</option>
+                                    <option value="ad">📢 Banner Ad</option>
+                                    <option value="custom">🌐 Custom Route</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="sim-link-target" style="font-weight: 600; display: flex; justify-content: space-between;">
+                                    <span id="sim-target-label">Trip UUID or Quick Selection</span>
+                                    <span id="sim-quick-pick-wrap" style="font-size: 0.75rem; color: var(--color-primary); cursor: pointer;"><i class="fa-solid fa-bolt"></i> Pick from Recent</span>
+                                </label>
+                                <input type="text" id="sim-link-target" class="search-input" placeholder="Paste Trip UUID or select from recent..." style="padding: 0.6rem 1rem;">
+                            </div>
+                            <button type="button" class="btn btn-primary" id="btn-generate-sim-link" style="padding: 0.65rem 1.4rem;">
+                                <i class="fa-solid fa-bolt"></i> <span>Generate Link</span>
+                            </button>
+                        </div>
+
+                        <!-- Generated Link Results Box -->
+                        <div id="sim-link-results" style="display: none; background: rgba(255,255,255,0.03); border: 1px solid var(--color-surface-container); border-radius: 16px; padding: 1.25rem;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;" class="sim-results-grid">
+                                <!-- Left Column: Link URLs -->
+                                <div style="display: flex; flex-direction: column; gap: 12px;">
+                                    <div>
+                                        <span style="font-size: 0.75rem; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase;">Universal Link (HTTPS - iOS & Android)</span>
+                                        <div style="display: flex; gap: 8px; margin-top: 4px;">
+                                            <input type="text" id="res-universal-link" readonly class="search-input" style="font-family: monospace; font-size: 0.85rem; padding: 0.5rem 0.8rem; background: rgba(0,0,0,0.2);">
+                                            <button type="button" class="btn btn-secondary" id="btn-copy-sim-universal" title="Copy Universal Link">
+                                                <i class="fa-solid fa-copy"></i>
+                                            </button>
+                                            <a id="btn-open-sim-landing" href="#" target="_blank" class="btn btn-secondary" title="Open Public Landing Page in New Tab">
+                                                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <span style="font-size: 0.75rem; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase;">App Scheme Deep Link</span>
+                                        <div style="display: flex; gap: 8px; margin-top: 4px;">
+                                            <input type="text" id="res-deep-link" readonly class="search-input" style="font-family: monospace; font-size: 0.85rem; padding: 0.5rem 0.8rem; background: rgba(0,0,0,0.2);">
+                                            <button type="button" class="btn btn-secondary" id="btn-copy-sim-deep" title="Copy Deep Link Scheme">
+                                                <i class="fa-solid fa-copy"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div id="sim-status-badge-wrap" style="margin-top: 4px;">
+                                        <span class="badge" id="sim-record-status-badge" style="background: rgba(31, 168, 108, 0.2); color: #1FA86C; font-weight: 700;">Record Verified</span>
+                                    </div>
+                                </div>
+
+                                <!-- Right Column: Formatted Social Share Message Preview -->
+                                <div style="background: rgba(0, 0, 0, 0.25); border: 1px solid var(--color-surface-container); border-radius: 12px; padding: 14px; display: flex; flex-direction: column;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                        <span style="font-size: 0.78rem; font-weight: 700; color: var(--color-primary);"><i class="fa-solid fa-share-nodes"></i> Share Message Preview (Telegram / Facebook / SMS)</span>
+                                        <button type="button" class="btn btn-chip" id="btn-copy-sim-share" title="Copy Share Message">
+                                            <i class="fa-solid fa-copy"></i> <span>Copy Text</span>
+                                        </button>
+                                    </div>
+                                    <textarea id="res-share-text" readonly rows="7" style="width: 100%; border: none; background: transparent; color: #F8FAFC; font-family: 'Kantumruy Pro', sans-serif; font-size: 0.82rem; line-height: 1.5; resize: none;"></textarea>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

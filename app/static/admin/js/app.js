@@ -95,6 +95,9 @@ document.addEventListener('DOMContentLoaded', () => {
             nav_app_versions: "App Version Control",
             title_app_versions: "App Version Control",
             subtitle_app_versions: "Control minimum and latest app versions, enforce updates, and publish release notes for Android & iOS",
+            nav_universal_links: "Universal & App Links",
+            title_universal_links: "Universal & App Links Configuration",
+            subtitle_universal_links: "Manage Android AssetLinks fingerprints, Apple Universal Links AASA, domain mappings, and test mobile deep linking",
             table_brand: "Make / Brand",
             table_model_name: "Model Name",
             table_display_name: "Display Name",
@@ -259,6 +262,9 @@ document.addEventListener('DOMContentLoaded', () => {
             nav_app_versions: "ការគ្រប់គ្រងកំណែកម្មវិធី",
             title_app_versions: "ការគ្រប់គ្រងកំណែកម្មវិធី",
             subtitle_app_versions: "គ្រប់គ្រងកំណែអប្បបរមា និងចុងក្រោយ បង្ខំបច្ចុប្បន្នភាព និងកំណត់ចំណាំការចេញផ្សាយសម្រាប់ Android និង iOS",
+            nav_universal_links: "តំណភ្ជាប់ App & Universal Links",
+            title_universal_links: "ការកំណត់រចនាសម្ព័ន្ធ Universal & App Links",
+            subtitle_universal_links: "គ្រប់គ្រង Android AssetLinks fingerprints, Apple Universal Links AASA, ដែន Domain និងសាកល្បង deep linking",
             table_brand: "ម៉ាក / ផលិតករ",
             table_model_name: "ឈ្មោះម៉ូដែល",
             table_display_name: "ឈ្មោះបង្ហាញពេញ",
@@ -830,6 +836,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (activeTabId === 'app-versions') {
                 loadAppVersions();
             }
+
+            // Trigger universal links load
+            if (activeTabId === 'universal-links') {
+                loadUniversalLinks();
+            }
         });
     });
 
@@ -1231,7 +1242,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                         <div class="ticket-footer-row">
                             <span class="ticket-price">៛${trip.price_per_seat.toLocaleString()}</span>
-                            <span class="ticket-status-badge status-${trip.status}">${trip.status}</span>
+                            <div style="display:flex; gap:6px; align-items:center;">
+                                <button type="button" class="btn btn-chip" title="Copy Universal Link" style="padding: 4px 8px; font-size: 0.75rem;" onclick="event.stopPropagation(); copyUniversalLink('trip', '${trip.id}')"><i class="fa-solid fa-link"></i></button>
+                                <span class="ticket-status-badge status-${trip.status}">${trip.status}</span>
+                            </div>
                         </div>
                     </div>
 
@@ -1458,6 +1472,20 @@ document.addEventListener('DOMContentLoaded', () => {
             initPageDetailMap(lat, lng);
         }, 150);
 
+        // Wire Header Universal Link & Share Actions
+        const btnCopyTripUniversal = document.getElementById('btn-copy-trip-universal-link');
+        if (btnCopyTripUniversal) {
+            btnCopyTripUniversal.onclick = () => copyUniversalLink('trip', trip.id);
+        }
+        const btnViewTripLanding = document.getElementById('btn-view-trip-landing');
+        if (btnViewTripLanding) {
+            btnViewTripLanding.href = `/trips/${trip.id}`;
+        }
+        const btnShareTripCard = document.getElementById('btn-share-trip-card');
+        if (btnShareTripCard) {
+            btnShareTripCard.onclick = () => shareTripCard(trip.id);
+        }
+
         // Fetch & Render Bookings
         loadTripBookings(trip.id);
     };
@@ -1678,7 +1706,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 openTripDetailPage(tripId);
             }
         } else {
-            const nav = document.querySelector(`.sidebar-nav-item[data-tab="${hash}"]`);
+            const nav = document.querySelector(`.sidebar-nav-item[data-tab="${hash}"]`) || document.querySelector(`.nav-item[data-tab="${hash}"]`);
             if (nav) {
                 nav.click();
             }
@@ -2553,9 +2581,9 @@ document.addEventListener('DOMContentLoaded', () => {
             adsTableBody.innerHTML = '';
             
             if (!Array.isArray(ads)) {
-                adsTableBody.innerHTML = `<tr><td colspan="5" class="text-center" style="padding:2rem; color:var(--color-danger);">Failed to load banner ads.</td></tr>`;
+                adsTableBody.innerHTML = `<tr><td colspan="6" class="text-center" style="padding:2rem; color:var(--color-danger);">Failed to load banner ads.</td></tr>`;
             } else if (ads.length === 0) {
-                adsTableBody.innerHTML = `<tr><td colspan="5" class="text-center" style="padding:2rem;">No banner ads found.</td></tr>`;
+                adsTableBody.innerHTML = `<tr><td colspan="6" class="text-center" style="padding:2rem;">No banner ads found.</td></tr>`;
             } else {
                 ads.forEach(ad => {
                     const tr = document.createElement('tr');
@@ -2566,6 +2594,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         ? (currentLanguage === 'en' ? 'Active' : 'សកម្ម') 
                         : (currentLanguage === 'en' ? 'Inactive' : 'មិនសកម្ម');
                     const statusClass = ad.is_active ? 'status-active' : 'status-cancelled';
+                    const uniLink = `https://mytravel.taxi/ads/${ad.id}`;
 
                     tr.innerHTML = `
                         <td>
@@ -2576,6 +2605,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             <small style="color:var(--color-on-surface-variant); font-size:0.65rem;">${descText}</small>
                         </td>
                         <td style="font-family:monospace; font-size:0.7rem;">${ad.link_url || '—'}</td>
+                        <td>
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <span style="font-family:monospace; font-size:0.7rem; color:var(--color-primary);">${uniLink}</span>
+                                <button type="button" class="btn btn-chip" style="padding: 2px 6px; font-size: 0.7rem;" title="Copy Universal Link" onclick="copyUniversalLink('ad', '${ad.id}')">
+                                    <i class="fa-solid fa-copy"></i>
+                                </button>
+                            </div>
+                        </td>
                         <td>
                             <span class="ticket-status-badge ${statusClass}">${statusText}</span>
                         </td>
@@ -2986,6 +3023,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span class="ticket-status-badge ${statusClass}">${statusText}</span>
                     </td>
                     <td class="text-right" style="white-space: nowrap;">
+                        <button type="button" class="btn btn-chip" onclick="copyUniversalLink('news', '${article.id}')" style="margin-right: 4px;" title="Copy Universal Link">
+                            <i class="fa-solid fa-link"></i>
+                        </button>
+                        <a href="/news/${article.id}" target="_blank" class="btn btn-chip" style="margin-right: 4px; text-decoration: none;" title="View Landing Page">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                        </a>
                         ${linkBtn}
                         <button class="btn btn-chip" onclick="toggleNewsActive('${article.id}')" style="margin-right: 4px;" title="Toggle Visibility">
                             <i class="fa-solid ${article.is_active ? 'fa-eye-slash' : 'fa-eye'}"></i>
@@ -4013,6 +4056,585 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // ==========================================
+    // Universal Links & App Links Management
+    // ==========================================
+    let currentUniversalConfig = null;
+    let currentFingerprints = [];
+
+    // Global helper: Copy Universal Link to clipboard with toast notification
+    window.copyUniversalLink = async (type, id) => {
+        const domain = (currentUniversalConfig && currentUniversalConfig.primary_domain) ? currentUniversalConfig.primary_domain : 'mytravel.taxi';
+        let path = '';
+        if (type === 'trip') path = `/trips/${id}`;
+        else if (type === 'news') path = `/news/${id}`;
+        else if (type === 'ad') path = `/ads/${id}`;
+        else path = `/${String(id).replace(/^\//, '')}`;
+        
+        const fullUrl = `https://${domain}${path}`;
+        try {
+            await navigator.clipboard.writeText(fullUrl);
+            showToast(currentLanguage === 'en' 
+                ? `Universal Link copied: ${fullUrl}` 
+                : `បានចម្លងតំណភ្ជាប់ Universal Link: ${fullUrl}`);
+        } catch (e) {
+            prompt(currentLanguage === 'en' ? 'Copy Universal Link:' : 'ចម្លងតំណភ្ជាប់ Universal Link:', fullUrl);
+        }
+    };
+
+    // Global helper: Generate and copy formatted social share card message
+    window.shareTripCard = async (tripId) => {
+        try {
+            const resp = await fetch(`${API_BASE}/universal-links/test`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ type: 'trip', target: tripId })
+            });
+            if (resp.ok) {
+                const data = await resp.json();
+                if (data.share_text) {
+                    await navigator.clipboard.writeText(data.share_text);
+                    showToast(currentLanguage === 'en'
+                        ? 'Trip share card copied to clipboard!'
+                        : 'បានចម្លងសារចែករំលែកការធ្វើដំណើរទៅកាន់ក្ដារតម្បៀតខ្ទាស់!');
+                    return;
+                }
+            }
+            // Fallback
+            window.copyUniversalLink('trip', tripId);
+        } catch (err) {
+            console.error('Error generating share card:', err);
+            window.copyUniversalLink('trip', tripId);
+        }
+    };
+
+    // Load Universal Links Config from Server
+    async function loadUniversalLinks() {
+        try {
+            const resp = await fetch(`${API_BASE}/universal-links`, { headers: getAuthHeaders() });
+            if (!resp.ok) return;
+            const data = await resp.json();
+            currentUniversalConfig = data;
+            currentFingerprints = Array.isArray(data.android_fingerprints) ? [...data.android_fingerprints] : [];
+
+            // Update KPI cards
+            const kpiAndroidCount = document.getElementById('kpi-ul-android-count');
+            if (kpiAndroidCount) kpiAndroidCount.textContent = `${currentFingerprints.length} Keys`;
+            const kpiAndroidPkg = document.getElementById('kpi-ul-android-pkg');
+            if (kpiAndroidPkg) kpiAndroidPkg.textContent = data.android_package_name || 'com.kh.mytravel.mytravel';
+
+            const kpiAppleId = document.getElementById('kpi-ul-apple-id');
+            if (kpiAppleId) kpiAppleId.textContent = `${data.apple_team_id}.${data.apple_bundle_id}`;
+
+            const kpiDomain = document.getElementById('kpi-ul-domain');
+            if (kpiDomain) kpiDomain.textContent = data.primary_domain || 'mytravel.taxi';
+            const kpiScheme = document.getElementById('kpi-ul-scheme');
+            if (kpiScheme) kpiScheme.textContent = `Scheme: ${data.custom_scheme || 'mytravel://'}`;
+
+            // Populate Android form
+            const pkgInput = document.getElementById('ul-android-package-name');
+            if (pkgInput) pkgInput.value = data.android_package_name || 'com.kh.mytravel.mytravel';
+            renderFingerprintsList();
+
+            // Populate iOS form
+            const teamIdInput = document.getElementById('ul-apple-team-id');
+            if (teamIdInput) teamIdInput.value = data.apple_team_id || '3VMD59LYS6';
+            const bundleIdInput = document.getElementById('ul-apple-bundle-id');
+            if (bundleIdInput) bundleIdInput.value = data.apple_bundle_id || 'com.kh.mytravel.app';
+            updateAppleAppIdPreview();
+
+            const pathsInput = document.getElementById('ul-apple-paths');
+            if (pathsInput && Array.isArray(data.apple_paths)) {
+                pathsInput.value = data.apple_paths.join('\n');
+            }
+
+            const webCredsToggle = document.getElementById('ul-webcredentials-toggle');
+            if (webCredsToggle) webCredsToggle.checked = Boolean(data.apple_webcredentials_enabled);
+
+            // Populate Domain & Scheme form
+            const domainInput = document.getElementById('ul-primary-domain');
+            if (domainInput) domainInput.value = data.primary_domain || 'mytravel.taxi';
+            const schemeInput = document.getElementById('ul-custom-scheme');
+            if (schemeInput) schemeInput.value = data.custom_scheme || 'mytravel://';
+            const fallbackInput = document.getElementById('ul-fallback-url');
+            if (fallbackInput) fallbackInput.value = data.fallback_url || 'https://mytravel.taxi/';
+
+        } catch (err) {
+            console.error('Error loading universal links config:', err);
+        }
+    }
+
+    function updateAppleAppIdPreview() {
+        const teamId = (document.getElementById('ul-apple-team-id')?.value || '').trim();
+        const bundleId = (document.getElementById('ul-apple-bundle-id')?.value || '').trim();
+        const previewEl = document.getElementById('preview-apple-app-id');
+        if (previewEl) {
+            previewEl.textContent = `${teamId || 'TEAMID'}.${bundleId || 'bundle.id'}`;
+        }
+    }
+
+    const appleTeamIdInput = document.getElementById('ul-apple-team-id');
+    const appleBundleIdInput = document.getElementById('ul-apple-bundle-id');
+    if (appleTeamIdInput) appleTeamIdInput.addEventListener('input', updateAppleAppIdPreview);
+    if (appleBundleIdInput) appleBundleIdInput.addEventListener('input', updateAppleAppIdPreview);
+
+    // Render Fingerprints list
+    function renderFingerprintsList() {
+        const container = document.getElementById('fingerprints-list-container');
+        const badge = document.getElementById('fp-count-badge');
+        if (badge) badge.textContent = `${currentFingerprints.length} Keys Active`;
+        if (!container) return;
+        container.innerHTML = '';
+
+        if (currentFingerprints.length === 0) {
+            container.innerHTML = `
+                <div style="padding: 1rem; text-align: center; color: var(--color-text-secondary); font-size: 0.82rem; background: rgba(255,255,255,0.02); border-radius: 8px;">
+                    No SHA-256 fingerprints added. Add a key below to enable Android App Links.
+                </div>
+            `;
+            return;
+        }
+
+        const typeColorMap = {
+            'production': { bg: 'rgba(61, 220, 132, 0.15)', color: '#3DDC84', label: 'Play Store' },
+            'release': { bg: 'rgba(56, 189, 248, 0.15)', color: '#38BDF8', label: 'Release' },
+            'debug': { bg: 'rgba(255, 200, 61, 0.15)', color: '#FFC83D', label: 'Debug' },
+            'custom': { bg: 'rgba(168, 85, 247, 0.15)', color: '#C084FC', label: 'Custom' }
+        };
+
+        currentFingerprints.forEach((item, idx) => {
+            const card = document.createElement('div');
+            card.style.cssText = 'background: rgba(255,255,255,0.03); border: 1px solid var(--color-surface-container); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px;';
+            
+            const typeInfo = typeColorMap[item.key_type] || typeColorMap['custom'];
+
+            card.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 0.7rem; font-weight: 800; padding: 2px 7px; border-radius: 6px; background: ${typeInfo.bg}; color: ${typeInfo.color}; text-transform: uppercase;">
+                            ${typeInfo.label}
+                        </span>
+                        <span style="font-size: 0.82rem; font-weight: 700; color: #F8FAFC;">
+                            ${escapeHtml(item.label || 'SHA-256 Key')}
+                        </span>
+                    </div>
+                    <div style="display: flex; gap: 4px;">
+                        <button type="button" class="btn btn-chip" style="padding: 2px 6px; font-size: 0.72rem;" title="Copy Fingerprint" onclick="window.copyFingerprintVal(${idx})">
+                            <i class="fa-solid fa-copy"></i>
+                        </button>
+                        <button type="button" class="btn btn-chip danger" style="padding: 2px 6px; font-size: 0.72rem;" title="Delete Fingerprint" onclick="window.deleteFingerprint(${idx})">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                <div style="font-family: monospace; font-size: 0.74rem; color: var(--color-text-secondary); word-break: break-all; background: rgba(0,0,0,0.25); padding: 5px 8px; border-radius: 6px;">
+                    ${escapeHtml(item.sha256_fingerprint)}
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    window.copyFingerprintVal = (idx) => {
+        const item = currentFingerprints[idx];
+        if (item && item.sha256_fingerprint) {
+            navigator.clipboard.writeText(item.sha256_fingerprint);
+            showToast(currentLanguage === 'en' ? 'Fingerprint copied to clipboard.' : 'បានចម្លង Fingerprint ទៅកាន់ក្ដារតម្បៀតខ្ទាស់។');
+        }
+    };
+
+    window.deleteFingerprint = (idx) => {
+        if (idx >= 0 && idx < currentFingerprints.length) {
+            currentFingerprints.splice(idx, 1);
+            renderFingerprintsList();
+            showToast(currentLanguage === 'en' ? 'Fingerprint removed. Click Save to persist.' : 'បានលុប Fingerprint។ ចុច Save ដើម្បីរក្សាទុក។');
+        }
+    };
+
+    // Add New Fingerprint Button Handler
+    const btnAddFp = document.getElementById('btn-add-fp');
+    if (btnAddFp) {
+        btnAddFp.addEventListener('click', () => {
+            const valInput = document.getElementById('new-fp-val');
+            const labelInput = document.getElementById('new-fp-label');
+            const typeInput = document.getElementById('new-fp-type');
+
+            const rawVal = (valInput ? valInput.value : '').trim().toUpperCase();
+            const label = (labelInput ? labelInput.value : '').trim() || 'Custom Key';
+            const keyType = typeInput ? typeInput.value : 'custom';
+
+            if (!rawVal) {
+                showToast(currentLanguage === 'en' ? 'Please enter a SHA-256 fingerprint.' : 'សូមបញ្ចូល SHA-256 fingerprint។', true);
+                return;
+            }
+
+            // Normalization: 64 hex chars with or without colons
+            let cleaned = rawVal.replace(/[^0-9A-F]/g, '');
+            if (cleaned.length !== 64) {
+                showToast(currentLanguage === 'en' ? 'Invalid SHA-256 fingerprint (must be 32 hex bytes / 64 characters).' : 'SHA-256 fingerprint មិនត្រឹមត្រូវ (ត្រូវតែមាន 64 តួអក្សរ hex)។', true);
+                return;
+            }
+
+            // Format with colons
+            const formatted = cleaned.match(/.{1,2}/g).join(':');
+
+            // Check if already exists
+            const exists = currentFingerprints.some(f => f.sha256_fingerprint === formatted);
+            if (exists) {
+                showToast(currentLanguage === 'en' ? 'Fingerprint already exists in the list.' : 'Fingerprint នេះមានរួចហើយនៅក្នុងបញ្ជី។', true);
+                return;
+            }
+
+            currentFingerprints.push({
+                sha256_fingerprint: formatted,
+                label: label,
+                key_type: keyType
+            });
+
+            if (valInput) valInput.value = '';
+            if (labelInput) labelInput.value = '';
+            renderFingerprintsList();
+            showToast(currentLanguage === 'en' ? 'Fingerprint added! Remember to save changes.' : 'បានបន្ថែម Fingerprint! កុំភ្លេចចុច Save ដើម្បីរក្សាទុក។');
+        });
+    }
+
+    // Save Android Configuration
+    const btnSaveAndroid = document.getElementById('btn-save-universal-android');
+    if (btnSaveAndroid) {
+        btnSaveAndroid.addEventListener('click', async () => {
+            const pkg = (document.getElementById('ul-android-package-name')?.value || '').trim();
+            if (!pkg) {
+                showToast(currentLanguage === 'en' ? 'Android package name is required.' : 'តម្រូវឱ្យមានឈ្មោះកញ្ចប់ Android។', true);
+                return;
+            }
+
+            try {
+                btnSaveAndroid.disabled = true;
+                const resp = await fetch(`${API_BASE}/universal-links`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        android_package_name: pkg,
+                        android_fingerprints: currentFingerprints
+                    })
+                });
+
+                if (resp.ok) {
+                    const data = await resp.json();
+                    currentUniversalConfig = data;
+                    showToast(currentLanguage === 'en' 
+                        ? 'Android AssetLinks configuration saved successfully!' 
+                        : 'បានរក្សាទុកការកំណត់ Android AssetLinks ដោយជោគជ័យ!');
+                    loadUniversalLinks();
+                } else {
+                    const err = await resp.json();
+                    showToast(err.detail || 'Failed to save Android configuration.', true);
+                }
+            } catch (err) {
+                console.error('Error saving Android universal links:', err);
+                showToast('Network error saving Android config.', true);
+            } finally {
+                btnSaveAndroid.disabled = false;
+            }
+        });
+    }
+
+    // Save iOS Configuration
+    const btnSaveIOS = document.getElementById('btn-save-universal-ios');
+    if (btnSaveIOS) {
+        btnSaveIOS.addEventListener('click', async () => {
+            const teamId = (document.getElementById('ul-apple-team-id')?.value || '').trim();
+            const bundleId = (document.getElementById('ul-apple-bundle-id')?.value || '').trim();
+            const rawPaths = (document.getElementById('ul-apple-paths')?.value || '').split('\n');
+            const paths = rawPaths.map(p => p.trim()).filter(Boolean);
+            const webCreds = Boolean(document.getElementById('ul-webcredentials-toggle')?.checked);
+
+            if (!teamId || !bundleId) {
+                showToast(currentLanguage === 'en' ? 'Apple Team ID and Bundle ID are required.' : 'តម្រូវឱ្យមាន Apple Team ID និង Bundle ID។', true);
+                return;
+            }
+
+            try {
+                btnSaveIOS.disabled = true;
+                const resp = await fetch(`${API_BASE}/universal-links`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        apple_team_id: teamId,
+                        apple_bundle_id: bundleId,
+                        apple_paths: paths,
+                        apple_webcredentials_enabled: webCreds
+                    })
+                });
+
+                if (resp.ok) {
+                    const data = await resp.json();
+                    currentUniversalConfig = data;
+                    showToast(currentLanguage === 'en'
+                        ? 'Apple Universal Links (AASA) configuration saved successfully!'
+                        : 'បានរក្សាទុកការកំណត់ Apple Universal Links (AASA) ដោយជោគជ័យ!');
+                    loadUniversalLinks();
+                } else {
+                    const err = await resp.json();
+                    showToast(err.detail || 'Failed to save Apple configuration.', true);
+                }
+            } catch (err) {
+                console.error('Error saving Apple universal links:', err);
+                showToast('Network error saving Apple config.', true);
+            } finally {
+                btnSaveIOS.disabled = false;
+            }
+        });
+    }
+
+    // Save Domain & Scheme Configuration
+    const btnSaveDomain = document.getElementById('btn-save-universal-domain');
+    if (btnSaveDomain) {
+        btnSaveDomain.addEventListener('click', async () => {
+            const domain = (document.getElementById('ul-primary-domain')?.value || '').trim();
+            const scheme = (document.getElementById('ul-custom-scheme')?.value || '').trim();
+            const fallback = (document.getElementById('ul-fallback-url')?.value || '').trim();
+
+            if (!domain || !scheme) {
+                showToast(currentLanguage === 'en' ? 'Domain and custom scheme are required.' : 'តម្រូវឱ្យមានឈ្មោះ Domain និង Scheme។', true);
+                return;
+            }
+
+            try {
+                btnSaveDomain.disabled = true;
+                const resp = await fetch(`${API_BASE}/universal-links`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        primary_domain: domain,
+                        custom_scheme: scheme,
+                        fallback_url: fallback
+                    })
+                });
+
+                if (resp.ok) {
+                    const data = await resp.json();
+                    currentUniversalConfig = data;
+                    showToast(currentLanguage === 'en'
+                        ? 'Domain & Scheme settings saved successfully!'
+                        : 'បានរក្សាទុកការកំណត់ Domain & Scheme ដោយជោគជ័យ!');
+                    loadUniversalLinks();
+                } else {
+                    const err = await resp.json();
+                    showToast(err.detail || 'Failed to save Domain & Scheme.', true);
+                }
+            } catch (err) {
+                console.error('Error saving Domain & Scheme:', err);
+                showToast('Network error saving config.', true);
+            } finally {
+                btnSaveDomain.disabled = false;
+            }
+        });
+    }
+
+    // Reset Factory Defaults
+    const btnResetDefaults = document.getElementById('btn-reset-universal-defaults');
+    if (btnResetDefaults) {
+        btnResetDefaults.addEventListener('click', async () => {
+            const confirmed = confirm(currentLanguage === 'en'
+                ? 'Reset Universal Links & App Links configuration back to factory production defaults?'
+                : 'កំណត់រចនាសម្ព័ន្ធ Universal Links & App Links ត្រឡប់ទៅការកំណត់ដើមរបស់រោងចក្រវិញ?');
+            if (!confirmed) return;
+
+            try {
+                const resp = await fetch(`${API_BASE}/universal-links/reset`, {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
+                if (resp.ok) {
+                    showToast(currentLanguage === 'en' ? 'Configuration reset to defaults.' : 'បានកំណត់ការកំណត់រចនាសម្ព័ន្ធទៅលំនាំដើមវិញ។');
+                    loadUniversalLinks();
+                } else {
+                    showToast('Failed to reset configuration.', true);
+                }
+            } catch (err) {
+                console.error('Error resetting universal links config:', err);
+                showToast('Network error resetting config.', true);
+            }
+        });
+    }
+
+    // Refresh Button in banner
+    const btnRefreshUniversal = document.getElementById('btn-refresh-universal-links');
+    if (btnRefreshUniversal) {
+        btnRefreshUniversal.addEventListener('click', () => {
+            loadUniversalLinks();
+            showToast(currentLanguage === 'en' ? 'Universal Links refreshed.' : 'បានទាញយកទិន្នន័យ Universal Links ឡើងវិញ។');
+        });
+    }
+
+    // Simulator: Type switcher and quick pick
+    const simTypeSelect = document.getElementById('sim-link-type');
+    const simTargetInput = document.getElementById('sim-link-target');
+    const simTargetLabel = document.getElementById('sim-target-label');
+    const simQuickPickWrap = document.getElementById('sim-quick-pick-wrap');
+
+    if (simTypeSelect) {
+        simTypeSelect.addEventListener('change', () => {
+            const val = simTypeSelect.value;
+            if (val === 'trip') {
+                if (simTargetLabel) simTargetLabel.textContent = 'Trip UUID or Quick Selection';
+                if (simTargetInput) simTargetInput.placeholder = 'Paste Trip UUID or pick recent...';
+            } else if (val === 'news') {
+                if (simTargetLabel) simTargetLabel.textContent = 'News Article UUID or Slug';
+                if (simTargetInput) simTargetInput.placeholder = 'Paste News UUID or pick recent...';
+            } else if (val === 'ad') {
+                if (simTargetLabel) simTargetLabel.textContent = 'Banner Ad UUID';
+                if (simTargetInput) simTargetInput.placeholder = 'Paste Ad UUID or pick recent...';
+            } else {
+                if (simTargetLabel) simTargetLabel.textContent = 'Custom Path';
+                if (simTargetInput) simTargetInput.placeholder = 'e.g. travel/promotions, booking/quick';
+            }
+        });
+    }
+
+    if (simQuickPickWrap) {
+        simQuickPickWrap.addEventListener('click', async () => {
+            const type = simTypeSelect ? simTypeSelect.value : 'trip';
+            if (type === 'trip') {
+                if (currentTrips && currentTrips.length > 0) {
+                    simTargetInput.value = currentTrips[0].id;
+                    showToast(currentLanguage === 'en' ? `Picked recent trip: ${currentTrips[0].departure_province} → ${currentTrips[0].destination_province}` : 'បានជ្រើសរើសជើងដំណើរថ្មីបំផុត។');
+                } else {
+                    try {
+                        const r = await fetch(`${API_BASE}/trips`);
+                        const trips = await r.json();
+                        if (trips && trips.length > 0) {
+                            simTargetInput.value = trips[0].id;
+                            showToast(`Picked trip: ${trips[0].id}`);
+                        }
+                    } catch (e) {}
+                }
+            } else if (type === 'news') {
+                try {
+                    const r = await fetch(`${API_BASE}/news`);
+                    const news = await r.json();
+                    if (news && news.length > 0) {
+                        simTargetInput.value = news[0].id;
+                        showToast(`Picked article: ${news[0].title_kh || news[0].title}`);
+                    }
+                } catch (e) {}
+            } else if (type === 'ad') {
+                try {
+                    const r = await fetch(`${API_BASE}/ads`);
+                    const ads = await r.json();
+                    if (ads && ads.length > 0) {
+                        simTargetInput.value = ads[0].id;
+                        showToast(`Picked banner ad: ${ads[0].title_kh || ads[0].title}`);
+                    }
+                } catch (e) {}
+            } else {
+                simTargetInput.value = 'trip/find-now';
+            }
+        });
+    }
+
+    // Run Simulator Link Generation
+    const btnGenSimLink = document.getElementById('btn-generate-sim-link');
+    if (btnGenSimLink) {
+        btnGenSimLink.addEventListener('click', async () => {
+            const type = simTypeSelect ? simTypeSelect.value : 'trip';
+            const target = (simTargetInput ? simTargetInput.value : '').trim();
+
+            if (!target) {
+                showToast(currentLanguage === 'en' ? 'Please enter or pick an ID or route.' : 'សូមបញ្ចូល ឬជ្រើសរើស ID ឬផ្លូវតំណ។', true);
+                return;
+            }
+
+            try {
+                btnGenSimLink.disabled = true;
+                const resp = await fetch(`${API_BASE}/universal-links/test`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ type: type, target: target })
+                });
+
+                if (resp.ok) {
+                    const data = await resp.json();
+                    const resultsEl = document.getElementById('sim-link-results');
+                    if (resultsEl) resultsEl.style.display = 'block';
+
+                    const resUni = document.getElementById('res-universal-link');
+                    if (resUni) resUni.value = data.universal_link;
+
+                    const resDeep = document.getElementById('res-deep-link');
+                    if (resDeep) resDeep.value = data.app_deep_link;
+
+                    const resShare = document.getElementById('res-share-text');
+                    if (resShare) resShare.value = data.share_text;
+
+                    const openLandingBtn = document.getElementById('btn-open-sim-landing');
+                    if (openLandingBtn) openLandingBtn.href = data.universal_link;
+
+                    const statusBadge = document.getElementById('sim-record-status-badge');
+                    if (statusBadge) {
+                        if (data.status === 'verified') {
+                            statusBadge.style.background = 'rgba(31, 168, 108, 0.2)';
+                            statusBadge.style.color = '#1FA86C';
+                            statusBadge.textContent = 'Record Verified';
+                        } else if (data.status === 'not_found') {
+                            statusBadge.style.background = 'rgba(239, 68, 68, 0.2)';
+                            statusBadge.style.color = '#EF4444';
+                            statusBadge.textContent = 'UUID Not Found in Database';
+                        } else {
+                            statusBadge.style.background = 'rgba(56, 189, 248, 0.2)';
+                            statusBadge.style.color = '#38BDF8';
+                            statusBadge.textContent = 'Custom Route Formatted';
+                        }
+                    }
+
+                    showToast(currentLanguage === 'en' ? 'Universal link generated successfully!' : 'បានបង្កើតតំណភ្ជាប់ Universal Link ដោយជោគជ័យ!');
+                } else {
+                    showToast('Failed to evaluate universal link simulation.', true);
+                }
+            } catch (err) {
+                console.error('Error in simulation:', err);
+                showToast('Network error evaluating simulation.', true);
+            } finally {
+                btnGenSimLink.disabled = false;
+            }
+        });
+    }
+
+    // Simulator Copy Buttons
+    const btnCopySimUniversal = document.getElementById('btn-copy-sim-universal');
+    if (btnCopySimUniversal) {
+        btnCopySimUniversal.addEventListener('click', () => {
+            const val = document.getElementById('res-universal-link')?.value;
+            if (val) {
+                navigator.clipboard.writeText(val);
+                showToast(currentLanguage === 'en' ? 'Universal Link copied!' : 'បានចម្លង Universal Link!');
+            }
+        });
+    }
+
+    const btnCopySimDeep = document.getElementById('btn-copy-sim-deep');
+    if (btnCopySimDeep) {
+        btnCopySimDeep.addEventListener('click', () => {
+            const val = document.getElementById('res-deep-link')?.value;
+            if (val) {
+                navigator.clipboard.writeText(val);
+                showToast(currentLanguage === 'en' ? 'App Scheme Deep Link copied!' : 'បានចម្លង Deep Link!');
+            }
+        });
+    }
+
+    const btnCopySimShare = document.getElementById('btn-copy-sim-share');
+    if (btnCopySimShare) {
+        btnCopySimShare.addEventListener('click', () => {
+            const val = document.getElementById('res-share-text')?.value;
+            if (val) {
+                navigator.clipboard.writeText(val);
+                showToast(currentLanguage === 'en' ? 'Share text message copied!' : 'បានចម្លងសារចែករំលែក!');
+            }
+        });
+    }
+
     // Check Auth on Startup
     if (checkAdminAuth()) {
         loadSummary().then(() => {
@@ -4021,6 +4643,7 @@ document.addEventListener('DOMContentLoaded', () => {
             loadVehicleModels();
             loadNewsArticles();
             loadAppVersions();
+            loadUniversalLinks();
         });
     }
 });

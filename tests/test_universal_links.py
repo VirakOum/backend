@@ -38,6 +38,7 @@ from sqlalchemy import ARRAY
 def compile_array_sqlite(type_, compiler, **kw):
     return "TEXT"
 
+import pytest
 from app.main import app
 from app.db import Base, get_db
 
@@ -55,8 +56,11 @@ def override_get_db() -> Session:
     finally:
         db.close()
 
-app.dependency_overrides[get_db] = override_get_db
-Base.metadata.create_all(bind=test_engine)
+@pytest.fixture(autouse=True)
+def setup_test_db():
+    app.dependency_overrides[get_db] = override_get_db
+    Base.metadata.create_all(bind=test_engine)
+    yield
 
 client = TestClient(app)
 
@@ -115,3 +119,68 @@ def test_ads_universal_link_fallback():
     response = client.get(f"/ads/{fake_id}", follow_redirects=False)
     assert response.status_code == 302
     assert response.headers["location"] == "https://mytravel.taxi/"
+
+
+def test_admin_universal_links_get_and_update():
+    # 1. GET initial configuration
+    get_res = client.get("/v1/api/travel/admin/universal-links")
+    assert get_res.status_code == 200
+    cfg = get_res.json()
+    assert cfg["apple_team_id"] == "3VMD59LYS6"
+    assert cfg["apple_bundle_id"] == "com.kh.mytravel.app"
+    assert cfg["apple_app_id"] == "3VMD59LYS6.com.kh.mytravel.app"
+    assert cfg["android_package_name"] == "com.kh.mytravel.mytravel"
+    assert len(cfg["android_sha256_fingerprints"]) >= 3
+    assert "verification_urls" in cfg
+
+    # 2. UPDATE with additional fingerprint
+    custom_fp = "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99"
+    new_fps = list(cfg["android_sha256_fingerprints"]) + [
+        {"fingerprint": custom_fp, "label": "QA Team Test Key", "type": "debug"}
+    ]
+    update_payload = {
+        "apple_team_id": "3VMD59LYS6",
+        "apple_bundle_id": "com.kh.mytravel.app",
+        "apple_paths": ["/trips/*", "/news/*", "/ads/*", "/custom/*"],
+        "webcredentials_enabled": True,
+        "android_package_name": "com.kh.mytravel.mytravel",
+        "android_sha256_fingerprints": new_fps,
+        "primary_domain": "mytravel.taxi",
+        "custom_scheme": "mytravel://",
+        "fallback_url": "https://mytravel.taxi/",
+        "is_active": True,
+    }
+    update_res = client.post("/v1/api/travel/admin/universal-links", json=update_payload)
+    assert update_res.status_code == 200
+    updated_cfg = update_res.json()
+    assert any(f["fingerprint"] == custom_fp for f in updated_cfg["android_sha256_fingerprints"])
+    assert "/custom/*" in updated_cfg["apple_paths"]
+
+    # 3. Verify /.well-known endpoints dynamically reflect updated config
+    asset_res = client.get("/.well-known/assetlinks.json")
+    assert asset_res.status_code == 200
+    asset_data = asset_res.json()
+    assert custom_fp in asset_data[0]["target"]["sha256_cert_fingerprints"]
+
+    aasa_res = client.get("/.well-known/apple-app-site-association")
+    assert aasa_res.status_code == 200
+    aasa_data = aasa_res.json()
+    assert "/custom/*" in aasa_data["applinks"]["details"][0]["paths"]
+
+    # 4. Test universal link test generator endpoint
+    test_req = {
+        "target_type": "trip",
+        "target_id_or_path": str(uuid.uuid4()),
+    }
+    test_res = client.post("/v1/api/travel/admin/universal-links/test", json=test_req)
+    assert test_res.status_code == 200
+    test_data = test_res.json()
+    assert "universal_link" in test_data
+    assert "https://mytravel.taxi/trips/" in test_data["universal_link"]
+    assert "mytravel://trip/" in test_data["app_deep_link"]
+    assert "share_text" in test_data
+
+    # 5. Reset to defaults
+    reset_res = client.post("/v1/api/travel/admin/universal-links/reset")
+    assert reset_res.status_code == 200
+

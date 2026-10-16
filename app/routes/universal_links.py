@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 from ..db import get_db
-from ..models import Trip, NewsArticle, SystemAd, Vehicle
+from ..models import Trip, NewsArticle, SystemAd, Vehicle, UniversalLinkConfig
 
 router = APIRouter(tags=["universal_links"])
 
@@ -51,16 +51,71 @@ ASSETLINKS_DATA = [
 ]
 
 
+def get_effective_aasa(db: Session | None = None) -> dict[str, Any]:
+    if db is not None:
+        try:
+            cfg = db.execute(select(UniversalLinkConfig).where(UniversalLinkConfig.key == "default")).scalars().first()
+            if cfg and cfg.is_active:
+                app_id = f"{cfg.apple_team_id}.{cfg.apple_bundle_id}"
+                data: dict[str, Any] = {
+                    "applinks": {
+                        "apps": [],
+                        "details": [
+                            {
+                                "appID": app_id,
+                                "paths": cfg.apple_paths or AASA_DATA["applinks"]["details"][0]["paths"],
+                            }
+                        ],
+                    }
+                }
+                if cfg.webcredentials_enabled:
+                    data["webcredentials"] = {"apps": [app_id]}
+                return data
+        except Exception:
+            pass
+    return AASA_DATA
+
+
+def get_effective_assetlinks(db: Session | None = None) -> list[dict[str, Any]]:
+    if db is not None:
+        try:
+            cfg = db.execute(select(UniversalLinkConfig).where(UniversalLinkConfig.key == "default")).scalars().first()
+            if cfg and cfg.is_active:
+                fps = []
+                for item in (cfg.android_sha256_fingerprints or []):
+                    if isinstance(item, dict) and item.get("fingerprint"):
+                        fps.append(item["fingerprint"].strip().upper())
+                    elif isinstance(item, str) and item.strip():
+                        fps.append(item.strip().upper())
+                if not fps:
+                    fps = ASSETLINKS_DATA[0]["target"]["sha256_cert_fingerprints"]
+                return [
+                    {
+                        "relation": ["delegate_permission/common.handle_all_urls"],
+                        "target": {
+                            "namespace": "android_app",
+                            "package_name": cfg.android_package_name or "com.kh.mytravel.mytravel",
+                            "sha256_cert_fingerprints": fps,
+                        },
+                    }
+                ]
+        except Exception:
+            pass
+    return ASSETLINKS_DATA
+
+
 @router.get("/.well-known/apple-app-site-association", include_in_schema=False)
 @router.get("/apple-app-site-association", include_in_schema=False)
-def get_apple_app_site_association() -> JSONResponse:
-    return JSONResponse(content=AASA_DATA, media_type="application/json")
+def get_apple_app_site_association(db: Session = Depends(get_db)) -> JSONResponse:
+    data = get_effective_aasa(db)
+    return JSONResponse(content=data, media_type="application/json")
 
 
 @router.get("/.well-known/assetlinks.json", include_in_schema=False)
 @router.get("/assetlinks.json", include_in_schema=False)
-def get_assetlinks() -> JSONResponse:
-    return JSONResponse(content=ASSETLINKS_DATA, media_type="application/json")
+def get_assetlinks(db: Session = Depends(get_db)) -> JSONResponse:
+    data = get_effective_assetlinks(db)
+    return JSONResponse(content=data, media_type="application/json")
 
 
 def _render_deep_link_page(

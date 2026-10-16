@@ -17,6 +17,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
+from typing import Any
 from datetime import date, datetime, time
 from zoneinfo import ZoneInfo
 
@@ -744,4 +745,54 @@ class AppVersionConfig(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, onupdate=phnom_penh_now, nullable=False)
+
+
+class UniversalLinkConfig(Base):
+    __tablename__ = "universal_link_configs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    key: Mapped[str] = mapped_column(String(50), unique=True, default="default", nullable=False)
+
+    # Apple Universal Links (AASA)
+    apple_team_id: Mapped[str] = mapped_column(String(50), default="3VMD59LYS6", nullable=False)
+    apple_bundle_id: Mapped[str] = mapped_column(String(100), default="com.kh.mytravel.app", nullable=False)
+    apple_paths: Mapped[Any] = mapped_column(
+        JSON,
+        default=lambda: ["/trips/*", "/t/*", "/news/*", "/ads/*", "/promotions/*", "/travel/*"],
+        nullable=False,
+    )
+    webcredentials_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # Android App Links (Digital Asset Links)
+    android_package_name: Mapped[str] = mapped_column(String(100), default="com.kh.mytravel.mytravel", nullable=False)
+    android_sha256_fingerprints: Mapped[Any] = mapped_column(
+        JSON,
+        default=lambda: [
+            {
+                "fingerprint": "4B:33:E5:28:B3:A4:59:1A:D1:77:90:CD:9F:49:CB:47:EF:A9:9F:EF:D9:58:75:B7:29:3D:FE:87:E1:FE:47:73",
+                "label": "Google Play App Signing (Production)",
+                "type": "production",
+            },
+            {
+                "fingerprint": "0C:B8:64:C9:26:44:67:E9:21:9F:A5:F4:D2:0B:66:40:2F:1C:F2:B1:FA:05:2F:BF:42:6F:EF:40:6F:9D:ED:47",
+                "label": "Release Keystore (Keystone.jks)",
+                "type": "release",
+            },
+            {
+                "fingerprint": "ED:F9:37:D3:54:59:0B:A8:73:D3:8E:DD:AE:E3:7E:1A:D6:C8:33:CD:25:74:18:08:70:77:F3:EA:B9:37:DC:F8",
+                "label": "Local Debug Keystore",
+                "type": "debug",
+            },
+        ],
+        nullable=False,
+    )
+
+    # General / Domain Routing
+    primary_domain: Mapped[str] = mapped_column(String(100), default="mytravel.taxi", nullable=False)
+    custom_scheme: Mapped[str] = mapped_column(String(50), default="mytravel://", nullable=False)
+    fallback_url: Mapped[str] = mapped_column(String(255), default="https://mytravel.taxi/", nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, onupdate=phnom_penh_now, nullable=False)
+
 

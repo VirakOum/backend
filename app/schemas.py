@@ -1023,3 +1023,61 @@ class AppVersionSimulateResponse(BaseModel):
     action: Literal["force_update", "optional_update", "continue"]
     reason: str
 
+
+class AndroidFingerprintItem(BaseModel):
+    fingerprint: str = Field(..., description="SHA-256 fingerprint in colon-separated format")
+    label: str = Field("Key Fingerprint", description="Human-readable label (e.g. Google Play App Signing)")
+    type: str = Field("production", description="production, release, debug, custom")
+
+
+class UniversalLinkConfigRead(BaseModel):
+    id: int | None = None
+    key: str = "default"
+    apple_team_id: str
+    apple_bundle_id: str
+    apple_app_id: str
+    apple_paths: list[str]
+    webcredentials_enabled: bool
+    android_package_name: str
+    android_sha256_fingerprints: list[AndroidFingerprintItem]
+    primary_domain: str
+    custom_scheme: str
+    fallback_url: str
+    is_active: bool
+    verification_urls: dict[str, str]
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UniversalLinkConfigUpdate(BaseModel):
+    apple_team_id: str = Field(..., max_length=50)
+    apple_bundle_id: str = Field(..., max_length=100)
+    apple_paths: list[str] = Field(default_factory=list)
+    webcredentials_enabled: bool = True
+    android_package_name: str = Field(..., max_length=100)
+    android_sha256_fingerprints: list[AndroidFingerprintItem] = Field(default_factory=list)
+    primary_domain: str = Field("mytravel.taxi", max_length=100)
+    custom_scheme: str = Field("mytravel://", max_length=50)
+    fallback_url: str = Field("https://mytravel.taxi/", max_length=255)
+    is_active: bool = True
+
+
+class UniversalLinkTestRequest(BaseModel):
+    target_type: Literal["trip", "news", "ad", "custom"]
+    target_id_or_path: str
+
+
+class UniversalLinkTestResponse(BaseModel):
+    target_type: str
+    target_id_or_path: str
+    universal_link: str
+    app_deep_link: str
+    web_landing_url: str
+    share_title: str
+    share_text: str
+    status: Literal["valid", "not_found", "custom"]
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
