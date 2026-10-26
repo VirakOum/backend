@@ -1,9 +1,17 @@
 import os
 import re
+import sys
+from pathlib import Path
 from base64 import b64decode
 from binascii import Error as Base64DecodeError
 from copy import deepcopy
 from typing import cast
+
+if __name__ == "__main__" and not __package__:
+	backend_root = Path(__file__).resolve().parents[2]
+	if str(backend_root) not in sys.path:
+		sys.path.insert(0, str(backend_root))
+	__package__ = "app.routes"
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, func, inspect, or_, and_, delete
@@ -3562,3 +3570,13 @@ def get_payment(
 	):
 		raise HTTPException(status_code=403, detail="You do not have access to this payment")
 	return PaymentRead.model_validate(payment)
+
+
+if __name__ == "__main__":
+	print(f"Travel router loaded successfully ({len(router.routes)} routes registered).")
+	if "--serve" in sys.argv:
+		import uvicorn
+		print("Starting API server on http://localhost:8000 ...")
+		uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+	else:
+		print("To run the full API server, use: uvicorn app.main:app --reload")
