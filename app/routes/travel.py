@@ -1699,7 +1699,7 @@ def get_public_vehicle_models(
 	else:
 		stmt = stmt.order_by(VehicleModel.sort_order.asc(), VehicleModel.brand.asc(), VehicleModel.model_name.asc())
 
-	return list(db.scalars(stmt).all())
+	return [VehicleModelRead.model_validate(item) for item in db.scalars(stmt).all()]
 
 
 @router.post("/trips", response_model=TripRead, status_code=status.HTTP_201_CREATED)
