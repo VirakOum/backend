@@ -86,6 +86,11 @@ from ..schemas import (
 	UserNotificationRead,
 	PaymentInstructionUploadRequest,
 	PaymentInstructionRead,
+	PaymentInstructionSourceType,
+	PaymentInstructionParseStatus,
+	BookingPaymentMethod,
+	BookingPaymentStatus,
+	BookingPickupStatus,
 	PaymentCreate,
 	PaymentRead,
 	PaymentStatusUpdate,
@@ -685,16 +690,22 @@ def _booking_payment_status(booking: Booking) -> str:
 	return booking.payment_status
 
 
-def _normalized_payment_method(value: str | None) -> str:
+def _normalized_payment_method(value: str | None) -> BookingPaymentMethod:
 	if value is None:
 		return "cash"
-	return LEGACY_PAYMENT_METHOD_MAP.get(value, value)
+	mapped = LEGACY_PAYMENT_METHOD_MAP.get(value, value)
+	if mapped in ("cash", "aba", "wing"):
+		return cast(BookingPaymentMethod, mapped)
+	return "cash"
 
 
-def _normalized_payment_status(value: str | None) -> str:
+def _normalized_payment_status(value: str | None) -> BookingPaymentStatus:
 	if value is None:
 		return "pending"
-	return LEGACY_PAYMENT_STATUS_MAP.get(value, value)
+	mapped = LEGACY_PAYMENT_STATUS_MAP.get(value, value)
+	if mapped in ("pending", "paid", "postpaid"):
+		return cast(BookingPaymentStatus, mapped)
+	return "pending"
 
 
 def _digital_payment_enabled(db: Session) -> bool:
@@ -796,12 +807,12 @@ def _build_payment_instruction_read(
 	return PaymentInstructionRead(
 		booking_id=booking.id,
 		trip_id=booking.trip_id,
-		source_type=instruction.source_type,
+		source_type=cast(PaymentInstructionSourceType, instruction.source_type),
 		deep_link_url=instruction.deep_link_url,
 		qr_image_url=instruction.qr_image_url,
 		qr_payload=instruction.qr_payload,
 		raw_message=instruction.raw_message,
-		parse_status=instruction.parse_status,
+		parse_status=cast(PaymentInstructionParseStatus, instruction.parse_status),
 		bank_provider=instruction.bank_provider,
 		payment_status=_normalized_payment_status(_booking_payment_status(booking)),
 		captured_at=instruction.captured_at,
@@ -843,7 +854,7 @@ def _build_booking_with_trip_read(booking: Booking) -> BookingWithTripRead:
 		currency=getattr(booking, "currency", None) or (getattr(booking.trip, "currency", DEFAULT_CURRENCY) if booking.trip else DEFAULT_CURRENCY) or DEFAULT_CURRENCY,
 		payment_method=_normalized_payment_method(booking.payment_method),
 		payment_status=_normalized_payment_status(_booking_payment_status(booking)),
-		pickup_status=booking.pickup_status,
+		pickup_status=cast(BookingPickupStatus, booking.pickup_status),
 		driver_arrived_at=booking.driver_arrived_at,
 		driver_requested_boarding_at=booking.driver_requested_boarding_at,
 		passenger_confirmed_boarding_at=booking.passenger_confirmed_boarding_at,

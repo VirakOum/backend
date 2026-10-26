@@ -424,6 +424,8 @@ class PaymentInstructionRead(BaseModel):
     captured_at: datetime | None = None
     expires_at: datetime | None = None
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class DriverArrivedRequest(BaseModel):
     source_type: PaymentInstructionSourceType | None = None
