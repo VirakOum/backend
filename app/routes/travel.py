@@ -3,6 +3,7 @@ import re
 from base64 import b64decode
 from binascii import Error as Base64DecodeError
 from copy import deepcopy
+from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, func, inspect, or_, and_, delete
@@ -94,6 +95,8 @@ from ..schemas import (
 	SupportTicketRead,
 	SystemMessageListResponse,
 	SystemMessageRead,
+	SystemMessageTargetRole,
+	SystemMessageType,
 	NewsArticleListResponse,
 	NewsArticleRead,
 	TrustedDeviceAuthRead,
@@ -3451,8 +3454,8 @@ def get_active_system_messages(
 			id=item.id,
 			title=item.title,
 			body=item.body,
-			target_role=item.target_role,
-			message_type=item.message_type,
+			target_role=cast(SystemMessageTargetRole, item.target_role),
+			message_type=cast(SystemMessageType, item.message_type),
 			is_active=item.is_active,
 			is_pinned=item.is_pinned,
 			broadcast_to_notifications=item.broadcast_to_notifications,
