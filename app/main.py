@@ -91,9 +91,21 @@ def _ensure_trip_live_location_columns() -> None:
         )
 
 
+def _ensure_telegram_otp_sessions_table() -> None:
+    inspector = inspect(engine)
+    if inspector.has_table("telegram_otp_sessions"):
+        return
+    try:
+        from .models import TelegramOtpSession
+        TelegramOtpSession.__table__.create(bind=engine, checkfirst=True)
+    except Exception:
+        pass
+
+
 @app.on_event("startup")
 def _apply_runtime_trip_schema_repairs() -> None:
     _ensure_trip_live_location_columns()
+    _ensure_telegram_otp_sessions_table()
 
 
 @app.on_event("startup")

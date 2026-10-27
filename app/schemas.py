@@ -178,6 +178,49 @@ class AuthResponse(BaseModel):
     trusted_device: TrustedDeviceAuthRead | None = None
 
 
+TelegramOtpPurpose = Literal["login", "signup", "reset_password"]
+TelegramOtpStatus = Literal["pending", "sent", "verified", "consumed", "expired"]
+
+
+class TelegramOtpRequest(BaseModel):
+    phone: str = Field(min_length=6, max_length=20)
+    purpose: TelegramOtpPurpose = "login"
+
+
+class TelegramOtpStartResponse(BaseModel):
+    session_token: str
+    phone: str
+    purpose: TelegramOtpPurpose
+    status: TelegramOtpStatus
+    telegram_bot_username: str
+    telegram_deep_link: str
+    expires_in_seconds: int = 300
+    demo_otp_code: str | None = None
+
+
+class TelegramOtpStatusResponse(BaseModel):
+    session_token: str
+    phone: str
+    purpose: TelegramOtpPurpose
+    status: TelegramOtpStatus
+    is_verified: bool
+    expires_in_seconds: int = 0
+
+
+class TelegramOtpVerifyRequest(BaseModel):
+    session_token: str = Field(min_length=8, max_length=64)
+    otp_code: str | None = Field(default=None, min_length=4, max_length=10)
+    full_name: str | None = Field(default=None, max_length=100)
+    role: str | None = Field(default=None, pattern="^(passenger|driver)$")
+    password: str | None = Field(default=None, min_length=8, max_length=128)
+    new_password: str | None = Field(default=None, min_length=8, max_length=128)
+    avatar_url: str | None = None
+    device_id: str | None = Field(default=None, min_length=1, max_length=255)
+    device_platform: str | None = Field(default=None, min_length=1, max_length=30)
+    device_name: str | None = Field(default=None, max_length=120)
+
+
+
 class VehicleCreate(BaseModel):
     plate_number: str = Field(min_length=1, max_length=20)
     seat_type: int = Field(gt=0)
@@ -788,6 +831,8 @@ class DriverMembershipSummary(BaseModel):
     next_billing_at: datetime | None = None
     status: DriverMembershipStatus = "active"
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class DriverWalletSummary(BaseModel):
     service_fee_owed_usd: float = 0.0
@@ -819,6 +864,8 @@ class DriverDailyFeeSummaryRead(BaseModel):
     service_fee_khr: int = 0
     membership_label: str
     invoice_status: DriverInvoiceStatus = "pending"
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DriverInvoiceSummaryRead(BaseModel):

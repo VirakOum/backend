@@ -796,3 +796,21 @@ class UniversalLinkConfig(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, onupdate=phnom_penh_now, nullable=False)
 
 
+class TelegramOtpSession(Base):
+    __tablename__ = "telegram_otp_sessions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    session_token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+    phone: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    purpose: Mapped[str] = mapped_column(String(30), default="login", nullable=False)  # 'login', 'signup', 'reset_password'
+    otp_code: Mapped[str] = mapped_column(String(10), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False, index=True)  # 'pending', 'sent', 'verified', 'consumed', 'expired'
+    telegram_chat_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    telegram_username: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=phnom_penh_now, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+

@@ -33,6 +33,8 @@ from ..config import (
 	get_google_places_api_key,
 	get_google_places_api_key_android,
 	get_google_places_api_key_ios,
+	get_telegram_bot_token,
+	get_telegram_bot_username,
 )
 from ..db import get_db
 from ..models import (
@@ -51,6 +53,7 @@ from ..models import (
 	Payment,
 	SupportTicket,
 	SystemMessage,
+	TelegramOtpSession,
 	Trip,
 	TrustedDevice,
 	User,
@@ -113,6 +116,12 @@ from ..schemas import (
 	SystemMessageType,
 	NewsArticleListResponse,
 	NewsArticleRead,
+	TelegramOtpPurpose,
+	TelegramOtpRequest,
+	TelegramOtpStartResponse,
+	TelegramOtpStatus,
+	TelegramOtpStatusResponse,
+	TelegramOtpVerifyRequest,
 	TrustedDeviceAuthRead,
 	TrustedDeviceLoginRequest,
 	TripCreate,
@@ -1434,7 +1443,169 @@ def _create_boarding_confirmed_notification(db: Session, booking: Booking) -> No
 
 
 def _clean_phone(phone: str) -> str:
-	return phone.strip().replace(" ", "").replace("-", "")
+	digits = re.sub(r"\D", "", phone.strip())
+	if digits.startswith("855") and len(digits) >= 11:
+		return "0" + digits[3:]
+	return digits or phone.strip().replace(" ", "").replace("-", "")
+
+
+def _phone_matches_contact(expected_phone: str, contact_phone: str) -> bool:
+	clean_expected = _clean_phone(expected_phone)
+	clean_contact = _clean_phone(contact_phone)
+	if clean_expected == clean_contact:
+		return True
+	e_tail = clean_expected.lstrip("0")
+	c_tail = clean_contact.lstrip("0")
+	return bool(e_tail and e_tail == c_tail)
+
+
+def _send_telegram_bot_message(
+	bot_token: str,
+	chat_id: str | int,
+	text: str,
+	reply_markup: dict | None = None,
+) -> bool:
+	if not bot_token:
+		return False
+	try:
+		import httpx
+		payload: dict = {
+			"chat_id": chat_id,
+			"text": text,
+			"parse_mode": "HTML",
+		}
+		if reply_markup is not None:
+			payload["reply_markup"] = reply_markup
+		resp = httpx.post(
+			f"https://api.telegram.org/bot{bot_token}/sendMessage",
+			json=payload,
+			timeout=6.0,
+		)
+		return resp.status_code == 200
+	except Exception:
+		return False
+
+
+def _poll_telegram_bot_updates_for_session(
+	db: Session,
+	otp_session: TelegramOtpSession,
+) -> None:
+	"""If a webhook isn't configured, opportunistically check recent getUpdates from Telegram Bot API."""
+	bot_token = get_telegram_bot_token()
+	if not bot_token or otp_session.status in ("verified", "consumed", "expired"):
+		return
+	try:
+		import httpx
+		resp = httpx.get(
+			f"https://api.telegram.org/bot{bot_token}/getUpdates",
+			params={"limit": 30, "timeout": 0},
+			timeout=3.5,
+		)
+		if resp.status_code != 200:
+			return
+		data = resp.json()
+		for item in data.get("result", []):
+			_process_telegram_update_dict(db, item, bot_token)
+	except Exception:
+		pass
+
+
+def _process_telegram_update_dict(
+	db: Session,
+	update: dict,
+	bot_token: str,
+) -> bool:
+	message = update.get("message") or update.get("edited_message")
+	if not isinstance(message, dict):
+		return False
+	chat = message.get("chat") or {}
+	chat_id = str(chat.get("id") or "")
+	if not chat_id:
+		return False
+	from_user = message.get("from") or {}
+	username = from_user.get("username")
+	text = (message.get("text") or "").strip()
+	contact = message.get("contact")
+	now = phnom_penh_now()
+
+	# 1. Handle /start otp_<session_token>
+	if text.startswith("/start"):
+		parts = text.split(maxsplit=1)
+		arg = parts[1].strip() if len(parts) > 1 else ""
+		if arg.startswith("otp_"):
+			token_part = arg[4:].strip()
+			session = db.execute(
+				select(TelegramOtpSession).where(
+					TelegramOtpSession.session_token == token_part
+				)
+			).scalar_one_or_none()
+			if session and session.expires_at > now and session.status not in ("consumed", "expired"):
+				if session.telegram_chat_id != chat_id or session.status == "pending":
+					session.telegram_chat_id = chat_id
+					session.telegram_username = username
+					if session.status == "pending":
+						session.status = "sent"
+					db.commit()
+					msg_text = (
+						f"🚖 <b>MyTravel Verification / ផ្ទៀងផ្ទាត់គណនី</b>\n\n"
+						f"📱 Phone / លេខទូរស័ព្ទ: <code>{session.phone}</code>\n"
+						f"🔑 Your OTP Code / កូដផ្ទៀងផ្ទាត់របស់អ្នកគឺ:\n\n"
+						f"👉 <b><code>{session.otp_code}</code></b>\n\n"
+						f"💡 <i>You can copy this 6-digit code into the MyTravel app, or tap the button below to verify your phone number with 1 tap!</i>\n"
+						f"<i>អ្នកអាចបញ្ចូលកូដ ៦ ខ្ទង់នេះក្នុងកម្មវិធី ឬចុចប៊ូតុងខាងក្រោមដើម្បីផ្ទៀងផ្ទាត់ភ្លាមៗដោយមិនបាច់វាយកូដ!</i>"
+					)
+					reply_markup = {
+						"keyboard": [
+							[
+								{
+									"text": "✅ Verify Phone Number / ផ្ទៀងផ្ទាត់លេខទូរស័ព្ទភ្លាមៗ",
+									"request_contact": True,
+								}
+							]
+						],
+						"resize_keyboard": True,
+						"one_time_keyboard": True,
+					}
+					_send_telegram_bot_message(bot_token, chat_id, msg_text, reply_markup=reply_markup)
+				return True
+
+	# 2. Handle Contact Sharing for 1-Tap Verification (No typing digits!)
+	if isinstance(contact, dict) and contact.get("phone_number"):
+		shared_phone = str(contact.get("phone_number"))
+		# Find latest active session for this chat_id or matching phone
+		sessions = db.execute(
+			select(TelegramOtpSession)
+			.where(
+				TelegramOtpSession.status.in_(("pending", "sent")),
+				TelegramOtpSession.expires_at > now,
+			)
+			.order_by(TelegramOtpSession.created_at.desc())
+		).scalars().all()
+		for session in sessions:
+			if session.telegram_chat_id == chat_id or _phone_matches_contact(session.phone, shared_phone):
+				if _phone_matches_contact(session.phone, shared_phone):
+					session.status = "verified"
+					session.verified_at = now
+					session.telegram_chat_id = chat_id
+					session.telegram_username = username
+					db.commit()
+					_send_telegram_bot_message(
+						bot_token,
+						chat_id,
+						"✅ <b>Phone Verified! / ផ្ទៀងផ្ទាត់ជោគជ័យ!</b>\n\nYou can now return to the <b>MyTravel</b> app — it will log you in automatically.\nសូមត្រឡប់ទៅកាន់កម្មវិធី <b>MyTravel</b> វិញ។",
+						reply_markup={"remove_keyboard": True},
+					)
+					return True
+				else:
+					_send_telegram_bot_message(
+						bot_token,
+						chat_id,
+						f"⚠️ Your Telegram phone number (<code>{_clean_phone(shared_phone)}</code>) does not match <code>{session.phone}</code>.\nPlease use the OTP code: <b><code>{session.otp_code}</code></b>",
+						reply_markup={"remove_keyboard": True},
+					)
+					return False
+	return False
+
 
 
 @router.post("/auth/signup", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
@@ -1514,6 +1685,229 @@ def login_with_trusted_device(
 
 	token = issue_token(db, user)
 	return _build_auth_response(user, token)
+
+
+@router.post("/auth/telegram-otp/request", response_model=TelegramOtpStartResponse)
+def request_telegram_otp(
+	payload: TelegramOtpRequest,
+	db: Session = Depends(get_db),
+) -> TelegramOtpStartResponse:
+	import secrets as _secrets
+	clean_phone = _clean_phone(payload.phone)
+	if len(clean_phone) < 6:
+		raise HTTPException(status_code=422, detail="Invalid phone number")
+
+	existing_user = db.execute(select(User).where(User.phone == clean_phone)).scalar_one_or_none()
+	if payload.purpose == "login" and existing_user is None:
+		raise HTTPException(status_code=404, detail="Phone number not registered. Please sign up first.")
+	if payload.purpose == "reset_password" and existing_user is None:
+		raise HTTPException(status_code=404, detail="Phone number not found.")
+	if payload.purpose == "signup" and existing_user is not None:
+		raise HTTPException(status_code=409, detail="Phone already exists")
+
+	now = phnom_penh_now()
+	expires_at = now + timedelta(minutes=5)
+	session_token = _secrets.token_urlsafe(24)
+	otp_code = f"{_secrets.randbelow(900000) + 100000:06d}"
+
+	# Check if user already linked a telegram_chat_id in a previous session
+	prev_session = db.execute(
+		select(TelegramOtpSession)
+		.where(
+			TelegramOtpSession.phone == clean_phone,
+			TelegramOtpSession.telegram_chat_id.is_not(None),
+		)
+		.order_by(TelegramOtpSession.created_at.desc())
+		.limit(1)
+	).scalar_one_or_none()
+
+	known_chat_id = prev_session.telegram_chat_id if prev_session else None
+	initial_status: TelegramOtpStatus = "pending"
+
+	bot_token = get_telegram_bot_token()
+	bot_username = get_telegram_bot_username()
+
+	if known_chat_id and bot_token:
+		msg_text = (
+			f"🚖 <b>MyTravel Verification / ផ្ទៀងផ្ទាត់គណនី</b>\n\n"
+			f"📱 Phone / លេខទូរស័ព្ទ: <code>{clean_phone}</code>\n"
+			f"🔑 Your OTP Code / កូដផ្ទៀងផ្ទាត់របស់អ្នកគឺ:\n\n"
+			f"👉 <b><code>{otp_code}</code></b>\n\n"
+			f"<i>Valid for 5 minutes / មានសុពលភាព ៥ នាទី។</i>"
+		)
+		if _send_telegram_bot_message(bot_token, known_chat_id, msg_text):
+			initial_status = "sent"
+
+	otp_session = TelegramOtpSession(
+		session_token=session_token,
+		phone=clean_phone,
+		purpose=payload.purpose,
+		otp_code=otp_code,
+		status=initial_status,
+		telegram_chat_id=known_chat_id,
+		created_at=now,
+		expires_at=expires_at,
+	)
+	db.add(otp_session)
+	db.commit()
+
+	deep_link = f"https://t.me/{bot_username}?start=otp_{session_token}"
+	demo_otp = otp_code if not bot_token else None
+
+	return TelegramOtpStartResponse(
+		session_token=session_token,
+		phone=clean_phone,
+		purpose=payload.purpose,
+		status=initial_status,
+		telegram_bot_username=bot_username,
+		telegram_deep_link=deep_link,
+		expires_in_seconds=300,
+		demo_otp_code=demo_otp,
+	)
+
+
+@router.get("/auth/telegram-otp/status/{session_token}", response_model=TelegramOtpStatusResponse)
+def get_telegram_otp_status(
+	session_token: str,
+	db: Session = Depends(get_db),
+) -> TelegramOtpStatusResponse:
+	otp_session = db.execute(
+		select(TelegramOtpSession).where(TelegramOtpSession.session_token == session_token)
+	).scalar_one_or_none()
+	if otp_session is None:
+		raise HTTPException(status_code=404, detail="OTP session not found")
+
+	now = phnom_penh_now()
+	if otp_session.expires_at <= now and otp_session.status not in ("verified", "consumed"):
+		otp_session.status = "expired"
+		db.commit()
+	else:
+		_poll_telegram_bot_updates_for_session(db, otp_session)
+		db.refresh(otp_session)
+
+	remaining = max(0, int((otp_session.expires_at - now).total_seconds()))
+	return TelegramOtpStatusResponse(
+		session_token=otp_session.session_token,
+		phone=otp_session.phone,
+		purpose=cast(TelegramOtpPurpose, otp_session.purpose),
+		status=cast(TelegramOtpStatus, otp_session.status),
+		is_verified=otp_session.status == "verified",
+		expires_in_seconds=remaining,
+	)
+
+
+@router.post("/auth/telegram-otp/verify", response_model=AuthResponse)
+def verify_telegram_otp(
+	payload: TelegramOtpVerifyRequest,
+	db: Session = Depends(get_db),
+) -> AuthResponse:
+	otp_session = db.execute(
+		select(TelegramOtpSession).where(TelegramOtpSession.session_token == payload.session_token)
+	).scalar_one_or_none()
+	if otp_session is None:
+		raise HTTPException(status_code=404, detail="OTP session not found")
+
+	now = phnom_penh_now()
+	if otp_session.status == "consumed":
+		raise HTTPException(status_code=400, detail="OTP session already used")
+	if otp_session.expires_at <= now:
+		otp_session.status = "expired"
+		db.commit()
+		raise HTTPException(status_code=400, detail="OTP code has expired. Please request a new one.")
+
+	if otp_session.status != "verified":
+		_poll_telegram_bot_updates_for_session(db, otp_session)
+		db.refresh(otp_session)
+
+	if otp_session.status != "verified":
+		code_input = (payload.otp_code or "").strip()
+		if not code_input:
+			raise HTTPException(
+				status_code=400,
+				detail="Please enter the 6-digit OTP code from Telegram or tap Verify Phone in the Telegram bot.",
+			)
+		otp_session.attempts = int(otp_session.attempts or 0) + 1
+		if otp_session.attempts > 5:
+			otp_session.status = "expired"
+			db.commit()
+			raise HTTPException(status_code=400, detail="Too many failed attempts. Please request a new OTP.")
+		if code_input != otp_session.otp_code:
+			db.commit()
+			raise HTTPException(status_code=400, detail="Invalid OTP code. Please check Telegram and try again.")
+		otp_session.status = "verified"
+		otp_session.verified_at = now
+
+	clean_phone = otp_session.phone
+	user = db.execute(select(User).where(User.phone == clean_phone)).scalar_one_or_none()
+
+	if otp_session.purpose == "signup":
+		if user is not None:
+			raise HTTPException(status_code=409, detail="Phone already exists")
+		role = (payload.role or "passenger").strip()
+		if role not in ("passenger", "driver"):
+			role = "passenger"
+		full_name = (payload.full_name or "").strip() or f"Telegram User ({clean_phone[-4:]})"
+		if role == "driver" and (payload.avatar_url is None or not payload.avatar_url.strip()):
+			raise HTTPException(status_code=400, detail="Drivers must upload a face image")
+		raw_password = payload.password or payload.new_password or f"tg_{otp_session.session_token[:16]}"
+		user = User(
+			phone=clean_phone,
+			full_name=full_name,
+			role=role,
+			password_hash=hash_password(raw_password),
+			avatar_url=payload.avatar_url,
+			is_verified=True,
+		)
+		db.add(user)
+		db.flush()
+	elif otp_session.purpose == "reset_password":
+		if user is None:
+			raise HTTPException(status_code=404, detail="User not found")
+		new_pass = (payload.new_password or payload.password or "").strip()
+		if len(new_pass) < 8:
+			raise HTTPException(status_code=422, detail="New password must be at least 8 characters")
+		user.password_hash = hash_password(new_pass)
+		user.is_verified = True
+		db.add(user)
+	else:
+		# purpose == "login"
+		if user is None:
+			raise HTTPException(status_code=404, detail="Phone number not registered. Please sign up first.")
+		user.is_verified = True
+		db.add(user)
+
+	otp_session.status = "consumed"
+	db.commit()
+	db.refresh(user)
+
+	token = issue_token(db, user)
+	trusted_device = None
+	if payload.device_id and payload.device_platform:
+		device_secret = register_trusted_device(
+			db,
+			user=user,
+			device_id=payload.device_id,
+			device_platform=payload.device_platform,
+			device_name=payload.device_name,
+		)
+		if device_secret:
+			trusted_device = TrustedDeviceAuthRead(
+				device_secret=device_secret,
+				device_platform=payload.device_platform,
+				device_name=payload.device_name,
+			)
+	return _build_auth_response(user, token, trusted_device=trusted_device)
+
+
+@router.post("/auth/telegram-otp/webhook", include_in_schema=False)
+def telegram_bot_webhook(
+	update: dict,
+	db: Session = Depends(get_db),
+) -> dict:
+	bot_token = get_telegram_bot_token()
+	_process_telegram_update_dict(db, update, bot_token)
+	return {"ok": True}
+
 
 
 @router.get("/auth/me", response_model=UserRead)

@@ -56,3 +56,15 @@ DEFAULT_GOOGLE_MAPS_API_KEY = "AIzaSyDYkud0Ul72ok5DpRMLkGhPnZekJ1-7_P4"
 def get_google_maps_api_key() -> str:
     return _env_text("GOOGLE_MAPS_API_KEY") or DEFAULT_GOOGLE_MAPS_API_KEY
 
+
+def get_telegram_bot_token() -> str:
+    return _env_text("TELEGRAM_BOT_TOKEN")
+
+
+def get_telegram_bot_username() -> str:
+    return (
+        _env_text("TELEGRAM_BOT_USERNAME")
+        or _env_text("SUPPORT_TELEGRAM_USERNAME", "MyTravel_Taxi_bot")
+    ).lstrip("@")
+
+
