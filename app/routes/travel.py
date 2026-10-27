@@ -2349,24 +2349,35 @@ def update_trip_live_location(
 			detail="Live location updates allowed only for scheduled or active trips",
 		)
 
+	expires_at = payload.expires_at or (trip.departure_time + timedelta(hours=24))
 	trip.live_lat = payload.lat
 	trip.live_lng = payload.lng
 	trip.live_heading = payload.heading
 	trip.live_speed_kph = payload.speed_kph
 	trip.live_location_updated_at = phnom_penh_now()
-	trip.live_location_expires_at = payload.expires_at or (trip.departure_time + timedelta(hours=24))
+	trip.live_location_expires_at = expires_at
 	db.commit()
 	db.refresh(trip)
+
+	raw_lat = trip.live_lat
+	raw_lng = trip.live_lng
+	raw_speed = trip.live_speed_kph
+	raw_expires = trip.live_location_expires_at
+
+	lat = float(raw_lat) if raw_lat is not None else float(payload.lat)
+	lng = float(raw_lng) if raw_lng is not None else float(payload.lng)
+	speed_kph = float(raw_speed) if raw_speed is not None else (float(payload.speed_kph) if payload.speed_kph is not None else None)
+	final_expires_at = raw_expires if raw_expires is not None else expires_at
 
 	return TripLiveLocationResponse(
 		trip_id=trip.id,
 		driver_id=trip.driver_id,
-		lat=float(trip.live_lat),
-		lng=float(trip.live_lng),
+		lat=lat,
+		lng=lng,
 		heading=trip.live_heading,
-		speed_kph=float(trip.live_speed_kph) if trip.live_speed_kph is not None else None,
+		speed_kph=speed_kph,
 		updated_at=trip.live_location_updated_at,
-		expires_at=trip.live_location_expires_at,
+		expires_at=final_expires_at,
 		auto_repeat_weekly=trip.auto_repeat_weekly,
 	)
 
