@@ -1,6 +1,7 @@
 from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal, ROUND_HALF_UP
+from typing import Sequence, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
@@ -31,7 +32,11 @@ from ..schemas import (
     DriverDailyFeeSummaryRead,
     DriverFeeAggregate,
     DriverFeeSummaryResponse,
+    DriverInvoiceStatus,
     DriverInvoiceSummaryRead,
+    DriverInvoiceType,
+    DriverMembershipCode,
+    DriverMembershipStatus,
     DriverMembershipSummary,
     DriverWalletEntryRead,
     DriverWalletSummary,
@@ -120,7 +125,7 @@ def snapshot_booking_fees(db: Session, booking: Booking) -> None:
     else:
         code = membership.code
         label = membership.label
-        fee_usd = membership.service_fee_per_passenger_usd
+        fee_usd = Decimal(str(membership.service_fee_per_passenger_usd))
         fee_khr = membership.service_fee_per_passenger_khr
 
     passengers = len(booking.seat_numbers or [])
@@ -238,25 +243,30 @@ def evaluate_driver_wallet_lock(
 
 
 def _default_membership_summary() -> DriverMembershipSummary:
-    data = MEMBERSHIP_CATALOG["normal"]
     return DriverMembershipSummary(
-        code=data["code"],
-        label=data["label"],
-        monthly_subscription_usd=float(data["monthly_subscription_usd"]),
-        monthly_subscription_khr=data["monthly_subscription_khr"],
-        service_fee_per_passenger_usd=float(data["service_fee_per_passenger_usd"]),
-        service_fee_per_passenger_khr=data["service_fee_per_passenger_khr"],
-        verified_badge=data["verified_badge"],
-        priority_bookings=data["priority_bookings"],
-        status=data["status"],
+        code="normal",
+        label="Normal User",
+        monthly_subscription_usd=0.0,
+        monthly_subscription_khr=0,
+        service_fee_per_passenger_usd=1.0,
+        service_fee_per_passenger_khr=4000,
+        verified_badge=False,
+        priority_bookings=False,
+        status="active",
     )
 
 
 def _build_membership_summary(membership: DriverMembership | None) -> DriverMembershipSummary:
     if membership is None:
         return _default_membership_summary()
+    code = membership.code if membership.code in ("normal", "pro", "vip") else "normal"
+    status = (
+        membership.status
+        if membership.status in ("active", "expired", "cancelled", "scheduled")
+        else "active"
+    )
     return DriverMembershipSummary(
-        code=membership.code,
+        code=cast(DriverMembershipCode, code),
         label=membership.label,
         monthly_subscription_usd=_to_float(membership.monthly_subscription_usd),
         monthly_subscription_khr=_to_int(membership.monthly_subscription_khr),
@@ -266,7 +276,7 @@ def _build_membership_summary(membership: DriverMembership | None) -> DriverMemb
         priority_bookings=membership.priority_bookings,
         started_at=membership.started_at,
         next_billing_at=membership.next_billing_at,
-        status=membership.status,
+        status=cast(DriverMembershipStatus, status),
     )
 
 
@@ -297,7 +307,7 @@ def _aggregate_from_summaries(
 
 
 def _fallback_daily_summaries(
-    entries: list[DriverWalletEntry],
+    entries: Sequence[DriverWalletEntry],
     membership: DriverMembershipSummary,
 ) -> list[DriverDailyFeeSummaryRead]:
     grouped: dict[date, dict[str, int | Decimal]] = defaultdict(
@@ -320,12 +330,13 @@ def _fallback_daily_summaries(
 
     summaries: list[DriverDailyFeeSummaryRead] = []
     for summary_date, values in grouped.items():
+        fee_usd_decimal = Decimal(str(values["service_fee_usd"]))
         summaries.append(
             DriverDailyFeeSummaryRead(
                 date=summary_date,
                 completed_bookings=int(values["completed_bookings"]),
                 confirmed_passengers=int(values["confirmed_passengers"]),
-                service_fee_usd=float(_money(values["service_fee_usd"])),
+                service_fee_usd=float(_money(fee_usd_decimal)),
                 service_fee_khr=int(values["service_fee_khr"]),
                 membership_label=membership.label,
                 invoice_status="pending",
@@ -357,7 +368,12 @@ def _load_daily_summaries(
                 service_fee_usd=_to_float(row.service_fee_usd),
                 service_fee_khr=_to_int(row.service_fee_khr),
                 membership_label=row.membership_label,
-                invoice_status=row.invoice_status,
+                invoice_status=cast(
+                    DriverInvoiceStatus,
+                    row.invoice_status
+                    if row.invoice_status in ("pending", "issued", "paid", "overdue", "failed", "void")
+                    else "pending",
+                ),
             )
             for row in rows
         ]
@@ -384,8 +400,16 @@ def _load_invoices(db: Session, *, driver_id) -> list[DriverInvoiceSummaryRead]:
     return [
         DriverInvoiceSummaryRead(
             id=row.id,
-            type=row.type,
-            status=row.status,
+            type=cast(
+                DriverInvoiceType,
+                row.type if row.type in ("service_fee", "subscription") else "service_fee",
+            ),
+            status=cast(
+                DriverInvoiceStatus,
+                row.status
+                if row.status in ("pending", "issued", "paid", "overdue", "failed", "void")
+                else "pending",
+            ),
             period_label=row.period_label,
             total_usd=_to_float(row.total_usd),
             total_khr=_to_int(row.total_khr),
