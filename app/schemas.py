@@ -720,6 +720,8 @@ class UserNotificationRead(BaseModel):
     is_read: bool
     created_at: datetime
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class UserNotificationListResponse(BaseModel):
     unread_count: int

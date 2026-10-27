@@ -30,7 +30,6 @@ from ..auth import (
 	verify_password,
 )
 from ..config import (
-	ENABLE_DIGITAL_PAYMENT,
 	get_google_places_api_key,
 	get_google_places_api_key_android,
 	get_google_places_api_key_ios,
@@ -83,6 +82,7 @@ from ..schemas import (
 	BookingProximityRead,
 	BookingRead,
 	BoardingConfirmationRead,
+	BoardingConfirmationStatus,
 	BookingWithTripRead,
 	PushTokenRegisterRequest,
 	PushTokenRegisterResponse,
@@ -92,6 +92,7 @@ from ..schemas import (
 	NotificationPreferencesRead,
 	UserNotificationListResponse,
 	UserNotificationRead,
+	UserNotificationType,
 	PaymentInstructionUploadRequest,
 	PaymentInstructionRead,
 	PaymentInstructionSourceType,
@@ -450,8 +451,10 @@ def _ensure_next_repeated_trip(db: Session, trip: Trip, now_local: datetime) -> 
 
 	next_return_departure = None
 	if trip.has_return_schedule and trip.return_departure_time is not None:
-		delta = next_departure - _trip_departure_local(trip)
-		next_return_departure = trip.return_departure_time + delta
+		trip_departure = _trip_departure_local(trip)
+		if trip_departure is not None:
+			delta = next_departure - trip_departure
+			next_return_departure = trip.return_departure_time + delta
 
 	live_departure_lat = float(trip.departure_lat) if trip.departure_lat is not None else _stop_coordinate(trip.pickup_stop, "latitude")
 	live_departure_lng = float(trip.departure_lng) if trip.departure_lng is not None else _stop_coordinate(trip.pickup_stop, "longitude")
@@ -1200,7 +1203,7 @@ def _build_user_notification_read(notification: UserNotification) -> UserNotific
 	return UserNotificationRead(
 		id=notification.id,
 		user_id=notification.user_id,
-		type=notification.type,
+		type=cast(UserNotificationType, notification.type),
 		title=notification.title,
 		body=notification.body,
 		trip_id=notification.trip_id,
@@ -2058,9 +2061,16 @@ def _resolve_province_from_coords(lat: float, lng: float, db: Session) -> tuple[
         ).scalars().all()
     if not villages:
         return None, None, None, None
+    def _village_dist(v: Address) -> float:
+        v_lat = v.latitude
+        v_lng = v.longitude
+        if v_lat is None or v_lng is None:
+            return float("inf")
+        return _haversine_km(lat, lng, float(v_lat), float(v_lng))
+
     nearest_village = min(
         villages,
-        key=lambda v: _haversine_km(lat, lng, float(v.latitude), float(v.longitude)),
+        key=_village_dist,
     )
     commune = db.execute(select(Address).where(Address.code == nearest_village.parent_code)).scalar_one_or_none()
     district = db.execute(select(Address).where(Address.code == commune.parent_code)).scalar_one_or_none() if commune else None
@@ -2925,7 +2935,7 @@ def get_booking_proximity(
 		now=now,
 	)
 
-	if driver_location_fresh and target_lat is not None and target_lng is not None:
+	if driver_location_fresh and driver_lat is not None and driver_lng is not None and target_lat is not None and target_lng is not None:
 		distance = _haversine_meters(
 			float(driver_lat), float(driver_lng),
 			target_lat, target_lng,
@@ -2957,18 +2967,19 @@ def get_boarding_status(
 			raise HTTPException(status_code=403, detail="Access denied")
 
 	now = phnom_penh_now()
+	boarding_status: BoardingConfirmationStatus
 	if booking.passenger_confirmed_boarding_at is not None:
-		status = "confirmed"
+		boarding_status = "confirmed"
 	elif booking.driver_requested_boarding_at is not None:
 		if booking.boarding_confirmation_expires_at is not None and now > booking.boarding_confirmation_expires_at:
-			status = "expired"
+			boarding_status = "expired"
 		else:
-			status = "requested"
+			boarding_status = "requested"
 	else:
-		status = "none"
+		boarding_status = "none"
 
 	return BoardingConfirmationRead(
-		status=status,
+		status=boarding_status,
 		driver_requested_at=booking.driver_requested_boarding_at,
 		passenger_confirmed_at=booking.passenger_confirmed_boarding_at,
 		expires_at=booking.boarding_confirmation_expires_at,
