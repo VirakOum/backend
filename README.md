@@ -84,7 +84,24 @@ For local development, run Docker Compose with default host port bindings (`http
 docker compose up --build
 ```
 
-#### Production / Coolify Deployment Mode
+#### Development / Staging (`http://dev.mytravel.taxi`) on Coolify
+For pre-release testing on `http://dev.mytravel.taxi` (or `https://dev.mytravel.taxi`) alongside production on the same server (`168.144.106.84`), use the isolated dev compose file (uses separate `mytravel_dev` DB, `mytravel_dev_postgres_data` volume, and non-conflicting localhost ports `5434` / `6380`):
+
+Set **Docker Compose Location** in your Coolify Dev service settings to:
+```
+/docker-compose.dev.yml
+```
+And set the Domain in Coolify to:
+```
+http://dev.mytravel.taxi
+```
+
+Or run manually on the server:
+```bash
+docker compose -f docker-compose.dev.yml -p mytravel-dev up -d --build
+```
+
+#### Production / Coolify Deployment Mode (`https://mytravel.taxi`)
 For production deployment behind Coolify / Traefik reverse proxy:
 
 Set **Docker Compose Location** in Coolify settings to:

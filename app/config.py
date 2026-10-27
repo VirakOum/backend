@@ -68,3 +68,17 @@ def get_telegram_bot_username() -> str:
     ).lstrip("@")
 
 
+
+
+def get_app_env() -> str:
+    return _env_text("APP_ENV", "development").lower()
+
+
+def get_public_base_url() -> str:
+    explicit = _env_text("PUBLIC_BASE_URL").rstrip("/")
+    if explicit:
+        return explicit
+    env = get_app_env()
+    if env in {"dev", "development", "staging"}:
+        return "http://dev.mytravel.taxi"
+    return "https://mytravel.taxi"

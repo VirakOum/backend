@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 
+from .config import get_app_env, get_public_base_url
 from .db import engine, get_db
 from .version_control import check_version_response
 from .schemas import AppVersionCheckResponse
@@ -28,18 +29,19 @@ BASE_DIR = Path(__file__).resolve().parent
 STATIC_SITE_DIR = BASE_DIR / "static" / "site"
 STATIC_ADMIN_DIR = BASE_DIR / "static" / "admin"
 
-app = FastAPI(
-    title="Learning FastAPI",
-    version="0.1.0",
-    description="A small FastAPI starter for learning how to build APIs.",
-    root_path=root_path,
-    docs_url=None,
-    redoc_url=None,
-    openapi_url=None,
-    servers=[
+def _build_openapi_servers() -> list[dict[str, str]]:
+    default_servers = [
         {
             "url": "https://mytravel.taxi",
             "description": "Production server",
+        },
+        {
+            "url": "http://dev.mytravel.taxi",
+            "description": "Development / Staging server (HTTP)",
+        },
+        {
+            "url": "https://dev.mytravel.taxi",
+            "description": "Development / Staging server (HTTPS)",
         },
         {
             "url": "http://localhost:8000",
@@ -49,7 +51,26 @@ app = FastAPI(
             "url": "http://10.20.30.180:8000",
             "description": "Network development server",
         },
-    ],
+    ]
+    configured_base = os.getenv("PUBLIC_BASE_URL", "").strip().rstrip("/")
+    if not configured_base:
+        return default_servers
+    prioritized = [s for s in default_servers if s["url"] == configured_base]
+    others = [s for s in default_servers if s["url"] != configured_base]
+    if not prioritized:
+        prioritized = [{"url": configured_base, "description": f"Configured server ({get_app_env()})"}]
+    return prioritized + others
+
+
+app = FastAPI(
+    title="Learning FastAPI",
+    version="0.1.0",
+    description="A small FastAPI starter for learning how to build APIs.",
+    root_path=root_path,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+    servers=_build_openapi_servers(),
 )
 
 app.add_middleware(

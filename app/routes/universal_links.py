@@ -855,12 +855,31 @@ def _render_trip_detail_page(
     return HTMLResponse(content=html)
 
 
+def _resolve_base_url(request: Request | None = None) -> str:
+    if request is not None:
+        host = (
+            request.headers.get("x-forwarded-host")
+            or request.headers.get("host")
+            or ""
+        ).strip()
+        scheme = (
+            request.headers.get("x-forwarded-proto")
+            or request.url.scheme
+            or "http"
+        ).strip()
+        if host and "dev.mytravel.taxi" in host.lower():
+            return f"{scheme}://{host}".rstrip("/")
+    return "https://mytravel.taxi"
+
+
 @router.get("/trips/{trip_id}", response_class=HTMLResponse, include_in_schema=False)
 @router.get("/t/{trip_id}", response_class=HTMLResponse, include_in_schema=False)
 def open_trip_universal_link(
     trip_id: str,
+    request: Request = None,  # type: ignore[assignment]
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
+    base_url = _resolve_base_url(request)
     try:
         trip_uuid = uuid.UUID(trip_id)
     except Exception:
@@ -871,9 +890,9 @@ def open_trip_universal_link(
         return _render_deep_link_page(
             title="ដំណើរកម្សាន្តមិនត្រូវបានរកឃើញទេ",
             description="ដំណើរកម្សាន្តនេះប្រហែលជាត្រូវបានបញ្ចប់ ឬលុបចេញពីប្រព័ន្ធ។ សូមស្វែងរកជើងដំណើរថ្មីៗនៅលើ My Travel!",
-            image_url="https://mytravel.taxi/assets/logo.png",
+            image_url=f"{base_url}/assets/logo.png",
             app_deep_link=f"mytravel://trip/{trip_id}",
-            web_canonical_url=f"https://mytravel.taxi/trips/{trip_id}",
+            web_canonical_url=f"{base_url}/trips/{trip_id}",
             badge_text="My Travel Trip",
         )
 
@@ -890,7 +909,7 @@ def open_trip_universal_link(
     if has_real_car_photo:
         primary_photo = car_photos[0]
     else:
-        primary_photo = "https://mytravel.taxi/assets/default_car.jpg"
+        primary_photo = f"{base_url}/assets/default_car.jpg"
 
     return _render_trip_detail_page(
         trip=trip,
@@ -900,15 +919,17 @@ def open_trip_universal_link(
         hero_photo=primary_photo,
         has_real_car_photo=has_real_car_photo,
         app_deep_link=f"mytravel://trip/{trip_id}",
-        web_canonical_url=f"https://mytravel.taxi/trips/{trip_id}",
+        web_canonical_url=f"{base_url}/trips/{trip_id}",
     )
 
 
 @router.get("/news/{article_id}", response_class=HTMLResponse, include_in_schema=False)
 def open_news_universal_link(
     article_id: str,
+    request: Request = None,  # type: ignore[assignment]
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
+    base_url = _resolve_base_url(request)
     try:
         article_uuid = uuid.UUID(article_id)
     except Exception:
@@ -919,9 +940,9 @@ def open_news_universal_link(
         return _render_deep_link_page(
             title="ព័ត៌មានមិនត្រូវបានរកឃើញទេ",
             description="ព័ត៌មាននេះប្រហែលជាត្រូវបានលុបចេញពីប្រព័ន្ធ។ សូមពិនិត្យព័ត៌មានថ្មីៗនៅលើ My Travel!",
-            image_url="https://mytravel.taxi/assets/logo.png",
+            image_url=f"{base_url}/assets/logo.png",
             app_deep_link=f"mytravel://news/{article_id}",
-            web_canonical_url=f"https://mytravel.taxi/news/{article_id}",
+            web_canonical_url=f"{base_url}/news/{article_id}",
             badge_text="My Travel News",
         )
 
@@ -938,7 +959,7 @@ def open_news_universal_link(
         description=description,
         image_url=img_url,
         app_deep_link=f"mytravel://news/{article_id}",
-        web_canonical_url=f"https://mytravel.taxi/news/{article_id}",
+        web_canonical_url=f"{base_url}/news/{article_id}",
         badge_text=article.category or "ព័ត៌មានប្រព័ន្ធ",
     )
 
@@ -946,22 +967,24 @@ def open_news_universal_link(
 @router.get("/ads/{ad_id}", include_in_schema=False)
 def open_ad_universal_link(
     ad_id: str,
+    request: Request = None,  # type: ignore[assignment]
     db: Session = Depends(get_db),
 ) -> Any:
+    base_url = _resolve_base_url(request)
     try:
         ad_uuid = uuid.UUID(ad_id)
     except Exception:
-        return RedirectResponse(url="https://mytravel.taxi/", status_code=302)
+        return RedirectResponse(url=f"{base_url}/", status_code=302)
 
     ad = db.get(SystemAd, ad_uuid)
     if not ad:
-        return RedirectResponse(url="https://mytravel.taxi/", status_code=302)
+        return RedirectResponse(url=f"{base_url}/", status_code=302)
 
     target_url = (ad.link_url or "").strip()
     if target_url.startswith("http://") or target_url.startswith("https://"):
         return RedirectResponse(url=target_url, status_code=302)
     elif target_url.startswith("/"):
-        return RedirectResponse(url=f"https://mytravel.taxi{target_url}", status_code=302)
+        return RedirectResponse(url=f"{base_url}{target_url}", status_code=302)
     elif target_url:
-        return RedirectResponse(url=f"https://mytravel.taxi/{target_url}", status_code=302)
-    return RedirectResponse(url="https://mytravel.taxi/", status_code=302)
+        return RedirectResponse(url=f"{base_url}/{target_url}", status_code=302)
+    return RedirectResponse(url=f"{base_url}/", status_code=302)
