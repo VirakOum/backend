@@ -640,10 +640,54 @@
 
             <!-- Tab: Passengers -->
             <section id="tab-passengers" class="tab-pane">
-                <div class="search-bar-container">
-                    <div class="search-input-wrap">
+                <!-- Passenger Overview KPIs -->
+                <div class="kpi-grid mb-4" style="margin-bottom: var(--spacing-lg);">
+                    <div class="kpi-card gradient-card">
+                        <div class="kpi-card-header">
+                            <span class="kpi-label" data-i18n="kpi_passengers_total">Total Passengers</span>
+                            <i class="fa-solid fa-users kpi-icon"></i>
+                        </div>
+                        <div class="kpi-value" id="kpi-passengers-count">0</div>
+                        <div class="kpi-meta" data-i18n="kpi_passengers_sub">Registered Accounts</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-card-header">
+                            <span class="kpi-label" data-i18n="kpi_passengers_verified">Verified Passengers</span>
+                            <i class="fa-solid fa-user-check kpi-icon" style="color: var(--color-success);"></i>
+                        </div>
+                        <div class="kpi-value" id="kpi-passengers-verified">0</div>
+                        <div class="kpi-meta" data-i18n="kpi_verified_sub">Phone / Identity Verified</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-card-header">
+                            <span class="kpi-label" data-i18n="kpi_passengers_unverified">Unverified Accounts</span>
+                            <i class="fa-solid fa-user-clock kpi-icon" style="color: var(--color-warning);"></i>
+                        </div>
+                        <div class="kpi-value" id="kpi-passengers-unverified">0</div>
+                        <div class="kpi-meta" data-i18n="kpi_unverified_sub">Pending Verification</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-card-header">
+                            <span class="kpi-label" data-i18n="kpi_passengers_completed_bookings">Total Bookings Completed</span>
+                            <i class="fa-solid fa-ticket-simple kpi-icon"></i>
+                        </div>
+                        <div class="kpi-value" id="kpi-passengers-bookings">0</div>
+                        <div class="kpi-meta" data-i18n="kpi_bookings_sub">Completed Trips by Passengers</div>
+                    </div>
+                </div>
+
+                <div class="search-bar-container" style="display: flex; gap: var(--spacing-md); align-items: center; flex-wrap: wrap;">
+                    <div class="search-input-wrap" style="flex: 1; min-width: 260px;">
                         <i class="fa-solid fa-magnifying-glass search-icon"></i>
                         <input type="text" id="search-passengers" class="search-input" placeholder="Search passengers by name or phone..." data-i18n-placeholder="search_passengers_placeholder">
+                    </div>
+                    <div class="filter-actions" style="display: flex; gap: var(--spacing-xs); align-items: center;">
+                        <button class="btn btn-chip secondary active" id="btn-passenger-filter-all" data-passenger-filter="all" data-i18n="filter_all">All</button>
+                        <button class="btn btn-chip secondary" id="btn-passenger-filter-verified" data-passenger-filter="verified" data-i18n="filter_verified">Verified</button>
+                        <button class="btn btn-chip secondary" id="btn-passenger-filter-unverified" data-passenger-filter="unverified" data-i18n="filter_unverified">Unverified</button>
+                        <button class="btn btn-secondary" id="btn-refresh-passengers" title="Refresh passenger list" style="padding: 0.5rem 0.85rem;">
+                            <i class="fa-solid fa-rotate"></i>
+                        </button>
                     </div>
                 </div>
 
@@ -2099,6 +2143,102 @@
             <button class="btn btn-secondary" id="btn-close-preview" style="margin-top: 14px; width: 100%; justify-content: center;">
                 <i class="fa-solid fa-xmark"></i> <span>Close Preview</span>
             </button>
+        </div>
+    </div>
+
+    <!-- Modal: Passenger Details & Bookings History -->
+    <div class="modal-overlay" id="passenger-detail-modal">
+        <div class="modal-card" style="max-width: 860px; width: 92vw; max-height: 85vh; display: flex; flex-direction: column; padding: var(--spacing-lg);">
+            <div class="modal-header" style="padding-bottom: var(--spacing-md); margin-bottom: var(--spacing-md); border-bottom: 1px solid var(--color-surface-container);">
+                <div style="display: flex; align-items: center; gap: var(--spacing-md);">
+                    <div class="passenger-avatar-circle" id="detail-passenger-avatar" style="width: 48px; height: 48px; border-radius: 50%; background: var(--color-primary); color: white; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.2rem;">P</div>
+                    <div>
+                        <h2 id="detail-passenger-name" style="margin: 0; font-size: 1.3rem; color: var(--color-primary);">Passenger Name</h2>
+                        <div style="display: flex; gap: var(--spacing-sm); align-items: center; margin-top: 4px;">
+                            <span id="detail-passenger-phone" style="color: var(--color-text-secondary); font-size: 0.9rem;">012345678</span>
+                            <span class="status-pill active" id="detail-passenger-badge">Verified</span>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn-close" id="btn-close-passenger-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body" style="overflow-y: auto; flex-grow: 1; padding: 0;">
+                <!-- Summary Chips -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--spacing-sm); margin-bottom: var(--spacing-lg);">
+                    <div class="content-card" style="padding: var(--spacing-sm); text-align: center;">
+                        <span style="font-size: 0.75rem; color: var(--color-text-secondary); display: block;" data-i18n="table_rating">Rating</span>
+                        <strong id="detail-passenger-rating" style="font-size: 1.1rem; color: var(--color-primary);">5.0 ★</strong>
+                    </div>
+                    <div class="content-card" style="padding: var(--spacing-sm); text-align: center;">
+                        <span style="font-size: 0.75rem; color: var(--color-text-secondary); display: block;" data-i18n="table_bookings">Completed Bookings</span>
+                        <strong id="detail-passenger-bookings-count" style="font-size: 1.1rem; color: var(--color-primary);">0</strong>
+                    </div>
+                    <div class="content-card" style="padding: var(--spacing-sm); text-align: center;">
+                        <span style="font-size: 0.75rem; color: var(--color-text-secondary); display: block;" data-i18n="table_joined">Joined Date</span>
+                        <strong id="detail-passenger-joined" style="font-size: 0.95rem; color: var(--color-primary);">—</strong>
+                    </div>
+                </div>
+
+                <h3 style="font-size: 1.05rem; margin-bottom: var(--spacing-sm); color: var(--color-primary);" data-i18n="passenger_bookings_history">Booking History</h3>
+                <div class="table-responsive" style="max-height: 280px; overflow-y: auto; border: 1px solid var(--color-surface-container); border-radius: var(--radius-md);">
+                    <table class="data-table" style="margin: 0;">
+                        <thead>
+                            <tr>
+                                <th data-i18n="table_route">Route</th>
+                                <th data-i18n="table_driver">Driver</th>
+                                <th data-i18n="table_seats">Seats</th>
+                                <th data-i18n="table_total_price">Total</th>
+                                <th data-i18n="table_payment">Payment</th>
+                                <th data-i18n="table_status">Status</th>
+                                <th data-i18n="table_date">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detail-passenger-bookings-list">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer" style="margin-top: var(--spacing-md); padding-top: var(--spacing-md); border-top: 1px solid var(--color-surface-container); display: flex; justify-content: space-between; align-items: center;">
+                <button type="button" class="btn btn-chip danger" id="btn-modal-delete-passenger">
+                    <i class="fa-solid fa-trash-can"></i> <span data-i18n="btn_delete_passenger">Delete Passenger</span>
+                </button>
+                <div style="display: flex; gap: var(--spacing-sm);">
+                    <button type="button" class="btn btn-chip success" id="btn-modal-toggle-verify-passenger">
+                        <i class="fa-solid fa-check"></i> <span data-i18n="btn_toggle_verify">Toggle Verification</span>
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="btn-modal-close-passenger-footer" data-i18n="btn_close">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Confirm Delete Passenger -->
+    <div class="modal-overlay" id="confirm-delete-passenger-modal">
+        <div class="modal-card" style="max-width: 480px; padding: var(--spacing-xl); text-align: center;">
+            <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(239, 68, 68, 0.15); color: #EF4444; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; margin: 0 auto var(--spacing-md) auto;">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 style="font-size: 1.3rem; margin-bottom: var(--spacing-xs); color: var(--color-primary);" data-i18n="confirm_delete_passenger_title">Delete Passenger Account?</h3>
+            <p style="color: var(--color-text-secondary); font-size: 0.95rem; margin-bottom: var(--spacing-md);" id="delete-passenger-confirm-msg">
+                Are you sure you want to permanently delete this passenger? All bookings and personal records will be removed.
+            </p>
+            <div style="background: var(--color-surface-container-low); border: 1px solid var(--color-surface-container); border-radius: var(--radius-md); padding: var(--spacing-md); margin-bottom: var(--spacing-lg); text-align: left;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                    <span style="color: var(--color-text-secondary); font-size: 0.85rem;" data-i18n="table_name">Name:</span>
+                    <strong id="delete-passenger-name" style="font-size: 0.85rem;">—</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: var(--color-text-secondary); font-size: 0.85rem;" data-i18n="table_phone">Phone:</span>
+                    <strong id="delete-passenger-phone" style="font-size: 0.85rem;">—</strong>
+                </div>
+            </div>
+            <div style="display: flex; gap: var(--spacing-sm); justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary" id="btn-cancel-delete-passenger" data-i18n="btn_cancel">Cancel</button>
+                <button type="button" class="btn btn-danger" id="btn-confirm-delete-passenger">
+                    <i class="fa-solid fa-trash-can"></i> <span data-i18n="btn_confirm_delete">Delete Permanently</span>
+                </button>
+            </div>
         </div>
     </div>
 

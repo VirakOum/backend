@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field, ConfigDict
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func, or_, delete
 from sqlalchemy.orm import Session
 
 from ..db import get_db
@@ -16,9 +16,14 @@ from ..models import (
     VehicleModel,
     Trip,
     Booking,
+    BookingLiveLocation,
+    BookingPaymentInstruction,
+    Payment,
     DriverWallet,
     DriverWalletEntry,
     DriverMembership,
+    DriverDailyFeeSummary,
+    DriverInvoice,
     AppRuntimeSetting,
     AppVersionConfig,
     UniversalLinkConfig,
@@ -27,6 +32,12 @@ from ..models import (
     SystemMessage,
     NewsArticle,
     UserNotification,
+    UserPushToken,
+    AuthToken,
+    TrustedDevice,
+    NotificationPreference,
+    SupportTicket,
+    PassengerQuickPlace,
     phnom_penh_now
 )
 from ..schemas import (
@@ -176,6 +187,26 @@ class BookingAdminRead(BaseModel):
     payment_method: str
     payment_status: str
     status: str
+    created_at: datetime
+
+
+class PassengerBookingRead(BaseModel):
+    id: uuid.UUID
+    trip_id: uuid.UUID
+    departure_province: str
+    destination_province: str
+    departure_time: datetime
+    driver_name: str
+    driver_phone: str
+    vehicle_model: Optional[str] = None
+    vehicle_plate: Optional[str] = None
+    seat_numbers: List[int]
+    total_price: float
+    currency: str = "KHR"
+    payment_method: str
+    payment_status: str
+    status: str
+    pickup_status: str
     created_at: datetime
 
 
@@ -382,6 +413,118 @@ def toggle_verification(user_id: uuid.UUID, db: Session = Depends(get_db)) -> An
     db.commit()
     db.refresh(user)
     return {"message": "Verification status updated", "is_verified": user.is_verified}
+
+
+@router.get("/passengers/{passenger_id}/bookings", response_model=List[PassengerBookingRead])
+def get_passenger_bookings(passenger_id: uuid.UUID, db: Session = Depends(get_db)) -> Any:
+    passenger = db.get(User, passenger_id)
+    if not passenger:
+        raise HTTPException(status_code=404, detail="Passenger not found")
+    
+    bookings = db.execute(
+        select(Booking)
+        .where(Booking.passenger_id == passenger_id)
+        .order_by(Booking.created_at.desc())
+    ).scalars().all()
+    
+    result = []
+    for b in bookings:
+        trip = b.trip
+        driver = trip.driver if trip else None
+        vehicle = trip.vehicle if trip else None
+        result.append({
+            "id": b.id,
+            "trip_id": b.trip_id,
+            "departure_province": trip.departure_province if trip else "N/A",
+            "destination_province": trip.destination_province if trip else "N/A",
+            "departure_time": trip.departure_time if trip else b.created_at,
+            "driver_name": driver.full_name if driver else "Unknown Driver",
+            "driver_phone": driver.phone if driver else "N/A",
+            "vehicle_model": (vehicle.model if vehicle else None) or (vehicle.vehicle_type if vehicle else None) or "Sedan",
+            "vehicle_plate": vehicle.plate_number if vehicle else None,
+            "seat_numbers": b.seat_numbers or [],
+            "total_price": float(b.total_price),
+            "currency": b.currency or "KHR",
+            "payment_method": b.payment_method,
+            "payment_status": b.payment_status,
+            "status": b.status,
+            "pickup_status": b.pickup_status,
+            "created_at": b.created_at,
+        })
+    return result
+
+
+def _delete_admin_passenger_or_user(target_id: uuid.UUID, db: Session, passenger_only: bool = False) -> Any:
+    user = db.get(User, target_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if passenger_only and user.role != "passenger":
+        raise HTTPException(status_code=400, detail="Only passenger accounts can be deleted via passenger endpoint")
+
+    user_name = user.full_name
+    user_phone = user.phone
+    user_role = user.role
+
+    # 1. Handle bookings if user is passenger
+    bookings = db.execute(
+        select(Booking).where(Booking.passenger_id == user.id)
+    ).scalars().all()
+    booking_ids = [b.id for b in bookings]
+
+    for b in bookings:
+        if b.status not in ("cancelled", "completed") and b.trip and b.trip.status in ("scheduled", "active"):
+            seats_count = len(b.seat_numbers or [])
+            if seats_count > 0:
+                b.trip.available_seats = min(
+                    b.trip.total_seats,
+                    b.trip.available_seats + seats_count
+                )
+
+    if booking_ids:
+        db.execute(delete(BookingLiveLocation).where(BookingLiveLocation.booking_id.in_(booking_ids)))
+        db.execute(delete(BookingPaymentInstruction).where(BookingPaymentInstruction.booking_id.in_(booking_ids)))
+        db.execute(delete(Payment).where(Payment.booking_id.in_(booking_ids)))
+        db.execute(delete(DriverWalletEntry).where(DriverWalletEntry.booking_id.in_(booking_ids)))
+        db.execute(delete(Booking).where(Booking.id.in_(booking_ids)))
+
+    # 2. If user is driver, clean up driver specific relations
+    if user_role == "driver":
+        db.execute(delete(DriverWalletEntry).where(DriverWalletEntry.driver_id == user.id))
+        db.execute(delete(DriverDailyFeeSummary).where(DriverDailyFeeSummary.driver_id == user.id))
+        db.execute(delete(DriverInvoice).where(DriverInvoice.driver_id == user.id))
+        db.execute(delete(DriverMembership).where(DriverMembership.driver_id == user.id))
+        db.execute(delete(DriverWallet).where(DriverWallet.driver_id == user.id))
+        db.execute(delete(Vehicle).where(Vehicle.owner_id == user.id))
+
+    # 3. Clean up common child tables
+    db.execute(delete(PassengerQuickPlace).where(PassengerQuickPlace.user_id == user.id))
+    db.execute(delete(AuthToken).where(AuthToken.user_id == user.id))
+    db.execute(delete(TrustedDevice).where(TrustedDevice.user_id == user.id))
+    db.execute(delete(UserPushToken).where(UserPushToken.user_id == user.id))
+    db.execute(delete(UserNotification).where(UserNotification.user_id == user.id))
+    db.execute(delete(NotificationPreference).where(NotificationPreference.user_id == user.id))
+    db.execute(delete(SupportTicket).where(SupportTicket.user_id == user.id))
+
+    # 4. Remove user
+    db.delete(user)
+    db.commit()
+
+    return {
+        "status": "success",
+        "message": f"{user_role.capitalize()} {user_name} ({user_phone}) deleted successfully",
+        "id": str(target_id)
+    }
+
+
+@router.delete("/passengers/{passenger_id}", status_code=200)
+def delete_admin_passenger(passenger_id: uuid.UUID, db: Session = Depends(get_db)) -> Any:
+    return _delete_admin_passenger_or_user(passenger_id, db, passenger_only=True)
+
+
+@router.delete("/users/{user_id}", status_code=200)
+def delete_admin_user(user_id: uuid.UUID, db: Session = Depends(get_db)) -> Any:
+    return _delete_admin_passenger_or_user(user_id, db, passenger_only=False)
 
 
 @router.post("/users/{user_id}/toggle-wallet-lock")

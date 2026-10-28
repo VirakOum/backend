@@ -211,7 +211,40 @@ document.addEventListener('DOMContentLoaded', () => {
             txt_no_passengers: "No passengers found matching search criteria.",
             txt_seeding: "Seeding database, please wait...",
             txt_seeding_success: "Demo data seeded successfully!",
-            txt_seeding_error: "Failed to seed demo data."
+            txt_seeding_error: "Failed to seed demo data.",
+
+            // Passenger Management
+            kpi_passengers_total: "Total Passengers",
+            kpi_passengers_sub: "Registered Accounts",
+            kpi_passengers_verified: "Verified Passengers",
+            kpi_verified_sub: "Phone / Identity Verified",
+            kpi_passengers_unverified: "Unverified Accounts",
+            kpi_unverified_sub: "Pending Verification",
+            kpi_passengers_completed_bookings: "Total Bookings Completed",
+            kpi_bookings_sub: "Completed Trips by Passengers",
+            filter_all: "All",
+            filter_verified: "Verified",
+            filter_unverified: "Unverified",
+            btn_view_details: "View Details",
+            btn_delete: "Delete",
+            btn_delete_passenger: "Delete Passenger",
+            btn_toggle_verify: "Toggle Verification",
+            btn_confirm_delete: "Delete Permanently",
+            btn_cancel: "Cancel",
+            btn_close: "Close",
+            confirm_delete_passenger_title: "Delete Passenger Account?",
+            confirm_delete_passenger_msg: "Are you sure you want to permanently delete passenger {name} ({phone})? All associated bookings and data will be removed.",
+            toast_passenger_deleted: "Passenger account deleted successfully.",
+            toast_passenger_delete_failed: "Failed to delete passenger account.",
+            passenger_bookings_history: "Booking History",
+            txt_no_bookings: "No bookings found for this passenger.",
+            table_route: "Route",
+            table_driver: "Driver",
+            table_seats: "Seats",
+            table_total_price: "Total Price",
+            table_payment: "Payment",
+            table_status: "Status",
+            table_date: "Date"
         },
         km: {
             doc_title: "ម៉ាយ ត្រាវែល - ផ្ទាំងគ្រប់គ្រង",
@@ -378,7 +411,40 @@ document.addEventListener('DOMContentLoaded', () => {
             txt_no_passengers: "រកមិនឃើញអ្នកដំណើរដែលត្រូវគ្នានឹងការស្វែងរករបស់អ្នកឡើយ។",
             txt_seeding: "កំពុងបញ្ចូលទិន្នន័យសាកល្បង ម៉ាយ ត្រាវែល សូមរង់ចាំ...",
             txt_seeding_success: "បានបញ្ចូលទិន្នន័យសាកល្បងដោយជោគជ័យ!",
-            txt_seeding_error: "ការបញ្ចូលទិន្នន័យសាកល្បងបានបរាជ័យ។"
+            txt_seeding_error: "ការបញ្ចូលទិន្នន័យសាកល្បងបានបរាជ័យ។",
+
+            // Passenger Management
+            kpi_passengers_total: "អ្នកដំណើរទាំងអស់",
+            kpi_passengers_sub: "គណនីបានចុះឈ្មោះ",
+            kpi_passengers_verified: "អ្នកដំណើរផ្ទៀងផ្ទាត់រួច",
+            kpi_verified_sub: "លេខទូរស័ព្ទ/អត្តសញ្ញាណផ្ទៀងផ្ទាត់",
+            kpi_passengers_unverified: "គណនីមិនទាន់ផ្ទៀងផ្ទាត់",
+            kpi_unverified_sub: "រង់ចាំការផ្ទៀងផ្ទាត់",
+            kpi_passengers_completed_bookings: "ការកក់សរុបដែលបានបញ្ចប់",
+            kpi_bookings_sub: "ការធ្វើដំណើរបានជោគជ័យ",
+            filter_all: "ទាំងអស់",
+            filter_verified: "បានផ្ទៀងផ្ទាត់",
+            filter_unverified: "មិនទាន់ផ្ទៀងផ្ទាត់",
+            btn_view_details: "មើល",
+            btn_delete: "លុប",
+            btn_delete_passenger: "លុបអ្នកដំណើរ",
+            btn_toggle_verify: "ប្តូរស្ថានភាពផ្ទៀងផ្ទាត់",
+            btn_confirm_delete: "លុបជាអចិន្ត្រៃយ៍",
+            btn_cancel: "បោះបង់",
+            btn_close: "បិទ",
+            confirm_delete_passenger_title: "លុបគណនីអ្នកដំណើរ?",
+            confirm_delete_passenger_msg: "តើអ្នកពិតជាចង់លុបគណនីអ្នកដំណើរ {name} ({phone}) នេះជាអចិន្ត្រៃយ៍មែនទេ? រាល់ការកក់ និងទិន្នន័យពាក់ព័ន្ធនឹងត្រូវលុបចេញ។",
+            toast_passenger_deleted: "គណនីអ្នកដំណើរត្រូវបានលុបដោយជោគជ័យ។",
+            toast_passenger_delete_failed: "មិនអាចលុបគណនីអ្នកដំណើរបានទេ។",
+            passenger_bookings_history: "ប្រវត្តិការកក់",
+            txt_no_bookings: "មិនមានប្រវត្តិការកក់សម្រាប់អ្នកដំណើរនេះទេ។",
+            table_route: "ផ្លូវធ្វើដំណើរ",
+            table_driver: "អ្នកបើកបរ",
+            table_seats: "កៅអី",
+            table_total_price: "តម្លៃសរុប",
+            table_payment: "ការទូទាត់",
+            table_status: "ស្ថានភាព",
+            table_date: "កាលបរិច្ឆេទ"
         }
     };
 
@@ -795,6 +861,16 @@ document.addEventListener('DOMContentLoaded', () => {
             // Trigger trips load
             if (activeTabId === 'trips') {
                 loadTrips();
+            }
+
+            // Trigger drivers load
+            if (activeTabId === 'drivers') {
+                loadDrivers();
+            }
+
+            // Trigger passengers load
+            if (activeTabId === 'passengers') {
+                loadPassengers();
             }
 
             // Trigger revenue render
@@ -2153,28 +2229,59 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Passenger Management State
+    let passengerStatusFilter = 'all';
+    let pendingDeletePassengerId = null;
+    let selectedPassengerForModal = null;
+
     // Load Passengers
     async function loadPassengers() {
         try {
             const response = await fetch(`${API_BASE}/users?role=passenger`);
             currentPassengers = await response.json();
             passengerCurrentPage = 1;
+            updatePassengerKPIs();
             renderPassengers();
         } catch (error) {
             console.error('Error loading passengers:', error);
         }
     }
 
-    // Render Passengers list table with Pagination
+    function updatePassengerKPIs() {
+        const totalEl = document.getElementById('kpi-passengers-count');
+        const verifiedEl = document.getElementById('kpi-passengers-verified');
+        const unverifiedEl = document.getElementById('kpi-passengers-unverified');
+        const bookingsEl = document.getElementById('kpi-passengers-bookings');
+
+        if (!currentPassengers) return;
+
+        const total = currentPassengers.length;
+        const verified = currentPassengers.filter(p => p.is_verified).length;
+        const unverified = total - verified;
+        const bookings = currentPassengers.reduce((sum, p) => sum + (p.completed_trips || 0), 0);
+
+        if (totalEl) totalEl.textContent = total;
+        if (verifiedEl) verifiedEl.textContent = verified;
+        if (unverifiedEl) unverifiedEl.textContent = unverified;
+        if (bookingsEl) bookingsEl.textContent = bookings;
+    }
+
+    // Render Passengers list table with Pagination and Filters
     function renderPassengers() {
         passengersList.innerHTML = '';
-        const searchVal = searchPassengersInput.value.toLowerCase();
+        const searchVal = (searchPassengersInput ? searchPassengersInput.value : '').toLowerCase().trim();
         const dict = TRANSLATIONS[currentLanguage];
 
-        const filtered = currentPassengers.filter(passenger => 
-            passenger.full_name.toLowerCase().includes(searchVal) || 
-            passenger.phone.includes(searchVal)
-        );
+        const filtered = currentPassengers.filter(passenger => {
+            const matchesSearch = !searchVal || 
+                (passenger.full_name && passenger.full_name.toLowerCase().includes(searchVal)) || 
+                (passenger.phone && passenger.phone.includes(searchVal));
+            if (!matchesSearch) return false;
+
+            if (passengerStatusFilter === 'verified') return passenger.is_verified;
+            if (passengerStatusFilter === 'unverified') return !passenger.is_verified;
+            return true;
+        });
 
         const totalPages = Math.ceil(filtered.length / passengerPageSize) || 1;
         if (passengerCurrentPage > totalPages) {
@@ -2186,12 +2293,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (filtered.length === 0) {
             passengersList.innerHTML = `
                 <tr>
-                    <td colspan="7" class="text-center" style="padding: 2rem; color: var(--color-on-surface-variant);">
+                    <td colspan="7" class="text-center" style="padding: 2.5rem; color: var(--color-on-surface-variant);">
+                        <i class="fa-solid fa-users-slash" style="font-size: 1.8rem; margin-bottom: 0.5rem; display: block; opacity: 0.5;"></i>
                         ${dict.txt_no_passengers}
                     </td>
                 </tr>
             `;
-            document.getElementById('passengers-pagination').innerHTML = '';
+            const pagEl = document.getElementById('passengers-pagination');
+            if (pagEl) pagEl.innerHTML = '';
             return;
         }
 
@@ -2204,9 +2313,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 day: 'numeric'
             });
 
+            const initialLetter = p.full_name ? p.full_name.trim().charAt(0).toUpperCase() : 'P';
+
             tr.innerHTML = `
-                <td style="font-family: var(--font-display); font-weight:600; color:var(--color-primary);">${p.full_name}</td>
-                <td>${p.phone}</td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="display: inline-flex; width: 30px; height: 30px; border-radius: 50%; background: rgba(0, 42, 107, 0.08); color: var(--color-primary); font-weight: 700; align-items: center; justify-content: center; font-size: 0.8rem; flex-shrink: 0;">${escapeHtml(initialLetter)}</span>
+                        <span style="font-family: var(--font-display); font-weight: 600; color: var(--color-primary); cursor: pointer;" onclick="viewPassengerDetails('${p.id}')" title="${dict.btn_view_details}">${escapeHtml(p.full_name)}</span>
+                    </div>
+                </td>
+                <td><code style="font-family: monospace; font-size: 0.9rem;">${escapeHtml(p.phone)}</code></td>
                 <td>
                     <span class="status-pill ${p.is_verified ? 'active' : 'unverified'}">
                         ${p.is_verified ? `<i class="fa-solid fa-circle-check"></i> ${dict.status_verified}` : dict.status_unverified}
@@ -2215,9 +2331,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${p.rating_avg.toFixed(1)} <i class="fa-solid fa-star" style="color:var(--color-warning); font-size:0.75rem;"></i></td>
                 <td>${p.completed_trips} ${currentLanguage === 'en' ? 'bookings' : 'ការកក់'}</td>
                 <td>${dateStr}</td>
-                <td class="text-right">
-                    <button class="btn-chip ${p.is_verified ? 'danger' : 'success'}" onclick="toggleVerify('${p.id}')">
+                <td class="text-right" style="white-space: nowrap;">
+                    <button class="btn-chip secondary" onclick="viewPassengerDetails('${p.id}')" title="${dict.btn_view_details}">
+                        <i class="fa-solid fa-eye"></i> ${dict.btn_view_details}
+                    </button>
+                    <button class="btn-chip ${p.is_verified ? 'warning' : 'success'}" onclick="toggleVerify('${p.id}')" title="${p.is_verified ? dict.btn_unverify : dict.btn_verify}">
                         ${p.is_verified ? dict.btn_unverify : dict.btn_verify}
+                    </button>
+                    <button class="btn-chip danger" onclick="confirmDeletePassenger('${p.id}', '${escapeHtml(p.full_name)}', '${escapeHtml(p.phone)}')" title="${dict.btn_delete}">
+                        <i class="fa-solid fa-trash-can"></i> ${dict.btn_delete}
                     </button>
                 </td>
             `;
@@ -2230,6 +2352,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Passengers pagination button builder
     function renderPassengersPagination(totalCount) {
         const pagEl = document.getElementById('passengers-pagination');
+        if (!pagEl) return;
         pagEl.innerHTML = '';
         
         const totalPages = Math.ceil(totalCount / passengerPageSize) || 1;
@@ -2269,6 +2392,205 @@ document.addEventListener('DOMContentLoaded', () => {
         pagEl.appendChild(info);
         pagEl.appendChild(nextBtn);
     }
+
+    // Modal & Delete Handlers for Passenger Management
+    const passengerDetailModal = document.getElementById('passenger-detail-modal');
+    const confirmDeleteModal = document.getElementById('confirm-delete-passenger-modal');
+    const btnClosePassengerModal = document.getElementById('btn-close-passenger-modal');
+    const btnClosePassengerFooter = document.getElementById('btn-modal-close-passenger-footer');
+    const btnModalDeletePassenger = document.getElementById('btn-modal-delete-passenger');
+    const btnModalToggleVerify = document.getElementById('btn-modal-toggle-verify-passenger');
+    const btnCancelDeletePassenger = document.getElementById('btn-cancel-delete-passenger');
+    const btnConfirmDeletePassenger = document.getElementById('btn-confirm-delete-passenger');
+    const btnRefreshPassengers = document.getElementById('btn-refresh-passengers');
+
+    function closePassengerModals() {
+        if (passengerDetailModal) passengerDetailModal.classList.remove('active');
+        if (confirmDeleteModal) confirmDeleteModal.classList.remove('active');
+        pendingDeletePassengerId = null;
+    }
+
+    if (btnClosePassengerModal) btnClosePassengerModal.addEventListener('click', closePassengerModals);
+    if (btnClosePassengerFooter) btnClosePassengerFooter.addEventListener('click', closePassengerModals);
+    if (btnCancelDeletePassenger) btnCancelDeletePassenger.addEventListener('click', closePassengerModals);
+    if (passengerDetailModal) {
+        passengerDetailModal.addEventListener('click', (e) => {
+            if (e.target === passengerDetailModal) closePassengerModals();
+        });
+    }
+    if (confirmDeleteModal) {
+        confirmDeleteModal.addEventListener('click', (e) => {
+            if (e.target === confirmDeleteModal) closePassengerModals();
+        });
+    }
+
+    if (btnRefreshPassengers) {
+        btnRefreshPassengers.addEventListener('click', () => {
+            loadPassengers();
+            showToast(currentLanguage === 'en' ? 'Passenger list refreshed' : 'បញ្ជីអ្នកដំណើរត្រូវបានធ្វើបច្ចុប្បន្នភាព');
+        });
+    }
+
+    // Filter chip listeners
+    document.querySelectorAll('[data-passenger-filter]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('[data-passenger-filter]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            passengerStatusFilter = btn.getAttribute('data-passenger-filter');
+            passengerCurrentPage = 1;
+            renderPassengers();
+        });
+    });
+
+    // Global Confirm Delete Passenger function
+    window.confirmDeletePassenger = (id, name, phone) => {
+        pendingDeletePassengerId = id;
+        const nameEl = document.getElementById('delete-passenger-name');
+        const phoneEl = document.getElementById('delete-passenger-phone');
+        const msgEl = document.getElementById('delete-passenger-confirm-msg');
+        const dict = TRANSLATIONS[currentLanguage];
+
+        if (nameEl) nameEl.textContent = name;
+        if (phoneEl) phoneEl.textContent = phone;
+        if (msgEl) {
+            msgEl.textContent = (dict.confirm_delete_passenger_msg || '')
+                .replace('{name}', name)
+                .replace('{phone}', phone);
+        }
+
+        if (confirmDeleteModal) {
+            confirmDeleteModal.classList.add('active');
+        }
+    };
+
+    // Execute Delete
+    if (btnConfirmDeletePassenger) {
+        btnConfirmDeletePassenger.addEventListener('click', async () => {
+            if (!pendingDeletePassengerId) return;
+            const dict = TRANSLATIONS[currentLanguage];
+            btnConfirmDeletePassenger.disabled = true;
+            btnConfirmDeletePassenger.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> ' + (dict.btn_confirm_delete || 'Deleting...');
+
+            try {
+                const response = await fetch(`${API_BASE}/passengers/${pendingDeletePassengerId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    showToast(dict.toast_passenger_deleted);
+                    closePassengerModals();
+                    await loadPassengers();
+                    loadSummary();
+                } else {
+                    const err = await response.json().catch(() => ({}));
+                    showToast(err.detail || dict.toast_passenger_delete_failed, true);
+                }
+            } catch (error) {
+                console.error('Error deleting passenger:', error);
+                showToast(dict.toast_passenger_delete_failed, true);
+            } finally {
+                btnConfirmDeletePassenger.disabled = false;
+                btnConfirmDeletePassenger.innerHTML = '<i class="fa-solid fa-trash-can"></i> <span>' + (dict.btn_confirm_delete || 'Delete Permanently') + '</span>';
+            }
+        });
+    }
+
+    // View Passenger Details Modal
+    window.viewPassengerDetails = async (passengerId) => {
+        const dict = TRANSLATIONS[currentLanguage];
+        const p = currentPassengers.find(item => item.id === passengerId);
+        if (!p) return;
+        selectedPassengerForModal = p;
+
+        const nameEl = document.getElementById('detail-passenger-name');
+        const phoneEl = document.getElementById('detail-passenger-phone');
+        const avatarEl = document.getElementById('detail-passenger-avatar');
+        const badgeEl = document.getElementById('detail-passenger-badge');
+        const ratingEl = document.getElementById('detail-passenger-rating');
+        const bookingsCountEl = document.getElementById('detail-passenger-bookings-count');
+        const joinedEl = document.getElementById('detail-passenger-joined');
+        const listEl = document.getElementById('detail-passenger-bookings-list');
+
+        if (nameEl) nameEl.textContent = p.full_name;
+        if (phoneEl) phoneEl.textContent = p.phone;
+        if (avatarEl) avatarEl.textContent = p.full_name ? p.full_name.trim().charAt(0).toUpperCase() : 'P';
+        if (badgeEl) {
+            badgeEl.className = `status-pill ${p.is_verified ? 'active' : 'unverified'}`;
+            badgeEl.innerHTML = p.is_verified ? `<i class="fa-solid fa-circle-check"></i> ${dict.status_verified}` : dict.status_unverified;
+        }
+        if (ratingEl) ratingEl.textContent = `${p.rating_avg.toFixed(1)} ★ (${p.rating_count || 0})`;
+        if (bookingsCountEl) bookingsCountEl.textContent = p.completed_trips || 0;
+        if (joinedEl) {
+            joinedEl.textContent = new Date(p.created_at).toLocaleDateString(currentLanguage === 'en' ? 'en-US' : 'km-KH', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+
+        // Action buttons inside modal
+        if (btnModalDeletePassenger) {
+            btnModalDeletePassenger.onclick = () => {
+                confirmDeletePassenger(p.id, p.full_name, p.phone);
+            };
+        }
+        if (btnModalToggleVerify) {
+            btnModalToggleVerify.onclick = async () => {
+                await toggleVerify(p.id);
+                // Refresh modal state
+                const updated = currentPassengers.find(item => item.id === passengerId);
+                if (updated && badgeEl) {
+                    badgeEl.className = `status-pill ${updated.is_verified ? 'active' : 'unverified'}`;
+                    badgeEl.innerHTML = updated.is_verified ? `<i class="fa-solid fa-circle-check"></i> ${dict.status_verified}` : dict.status_unverified;
+                }
+            };
+        }
+
+        if (listEl) {
+            listEl.innerHTML = `<tr><td colspan="7" class="text-center" style="padding: 1.5rem;"><i class="fa-solid fa-spinner fa-spin"></i> Loading bookings...</td></tr>`;
+        }
+
+        if (passengerDetailModal) {
+            passengerDetailModal.classList.add('active');
+        }
+
+        // Fetch bookings history
+        try {
+            const bRes = await fetch(`${API_BASE}/passengers/${passengerId}/bookings`);
+            if (bRes.ok) {
+                const bookings = await bRes.json();
+                if (bookings.length === 0) {
+                    listEl.innerHTML = `<tr><td colspan="7" class="text-center" style="padding: 1.5rem; color: var(--color-on-surface-variant);">${dict.txt_no_bookings}</td></tr>`;
+                } else {
+                    listEl.innerHTML = '';
+                    bookings.forEach(b => {
+                        const tr = document.createElement('tr');
+                        const bDate = new Date(b.created_at).toLocaleDateString(currentLanguage === 'en' ? 'en-US' : 'km-KH', {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        });
+                        tr.innerHTML = `
+                            <td style="font-weight: 600;">${escapeHtml(b.departure_province)} <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem; color: var(--color-primary);"></i> ${escapeHtml(b.destination_province)}</td>
+                            <td>${escapeHtml(b.driver_name)}<br><small style="color: var(--color-text-secondary);">${escapeHtml(b.driver_phone)}</small></td>
+                            <td>${b.seat_numbers.join(', ')}</td>
+                            <td><strong>៛${Number(b.total_price).toLocaleString()}</strong></td>
+                            <td><span class="status-pill ${b.payment_status === 'paid' ? 'active' : 'unverified'}">${escapeHtml(b.payment_method)} (${escapeHtml(b.payment_status)})</span></td>
+                            <td><span class="status-pill ${b.status === 'completed' || b.status === 'confirmed' ? 'active' : (b.status === 'cancelled' ? 'danger' : 'unverified')}">${escapeHtml(b.status)}</span></td>
+                            <td style="font-size: 0.8rem;">${bDate}</td>
+                        `;
+                        listEl.appendChild(tr);
+                    });
+                }
+            }
+        } catch (err) {
+            console.error('Error fetching passenger bookings:', err);
+            if (listEl) {
+                listEl.innerHTML = `<tr><td colspan="7" class="text-center" style="color: var(--color-error); padding: 1.5rem;">Failed to load booking history.</td></tr>`;
+            }
+        }
+    };
 
     // Toast Notifications
     function showToast(message, isError = false) {
