@@ -2332,14 +2332,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${p.completed_trips} ${currentLanguage === 'en' ? 'bookings' : 'ការកក់'}</td>
                 <td>${dateStr}</td>
                 <td class="text-right" style="white-space: nowrap;">
-                    <button class="btn-chip secondary" onclick="viewPassengerDetails('${p.id}')" title="${dict.btn_view_details}">
-                        <i class="fa-solid fa-eye"></i> ${dict.btn_view_details}
+                    <button class="btn-chip secondary" onclick="viewPassengerDetails('${p.id}')" title="${dict.btn_view_details || 'View'}">
+                        <i class="fa-solid fa-eye"></i> ${dict.btn_view_details || 'View'}
                     </button>
-                    <button class="btn-chip ${p.is_verified ? 'warning' : 'success'}" onclick="toggleVerify('${p.id}')" title="${p.is_verified ? dict.btn_unverify : dict.btn_verify}">
-                        ${p.is_verified ? dict.btn_unverify : dict.btn_verify}
+                    <button class="btn-chip ${p.is_verified ? 'warning' : 'success'}" onclick="toggleVerify('${p.id}')" title="${p.is_verified ? (dict.btn_unverify || 'Unverify') : (dict.btn_verify || 'Verify')}">
+                        ${p.is_verified ? (dict.btn_unverify || 'Unverify') : (dict.btn_verify || 'Verify')}
                     </button>
-                    <button class="btn-chip danger" onclick="confirmDeletePassenger('${p.id}', '${escapeHtml(p.full_name)}', '${escapeHtml(p.phone)}')" title="${dict.btn_delete}">
-                        <i class="fa-solid fa-trash-can"></i> ${dict.btn_delete}
+                    <button class="btn-chip danger" onclick="confirmDeletePassenger('${p.id}')" style="background: #ba1a1a !important; color: #ffffff !important; font-weight: 700; margin-left: 4px;" title="${dict.btn_delete || 'Delete'}">
+                        <i class="fa-solid fa-trash-can"></i> ${dict.btn_delete || 'Delete'}
                     </button>
                 </td>
             `;
@@ -2445,23 +2445,49 @@ document.addEventListener('DOMContentLoaded', () => {
     // Global Confirm Delete Passenger function
     window.confirmDeletePassenger = (id, name, phone) => {
         pendingDeletePassengerId = id;
+        const p = (currentPassengers || []).find(item => item.id === id);
+        const passengerName = name || (p ? p.full_name : 'Passenger');
+        const passengerPhone = phone || (p ? p.phone : '');
+        const dict = TRANSLATIONS[currentLanguage] || TRANSLATIONS.en;
+
         const nameEl = document.getElementById('delete-passenger-name');
         const phoneEl = document.getElementById('delete-passenger-phone');
         const msgEl = document.getElementById('delete-passenger-confirm-msg');
-        const dict = TRANSLATIONS[currentLanguage];
 
-        if (nameEl) nameEl.textContent = name;
-        if (phoneEl) phoneEl.textContent = phone;
+        if (nameEl) nameEl.textContent = passengerName;
+        if (phoneEl) phoneEl.textContent = passengerPhone;
         if (msgEl) {
-            msgEl.textContent = (dict.confirm_delete_passenger_msg || '')
-                .replace('{name}', name)
-                .replace('{phone}', phone);
+            msgEl.textContent = (dict.confirm_delete_passenger_msg || 'Are you sure you want to permanently delete passenger {name} ({phone})?')
+                .replace('{name}', passengerName)
+                .replace('{phone}', passengerPhone);
         }
 
         if (confirmDeleteModal) {
             confirmDeleteModal.classList.add('active');
+        } else {
+            // Direct browser confirmation fallback
+            const confirmPrompt = (dict.confirm_delete_passenger_msg || 'Are you sure you want to delete passenger {name} ({phone})?')
+                .replace('{name}', passengerName)
+                .replace('{phone}', passengerPhone);
+            if (window.confirm(confirmPrompt)) {
+                fetch(`${API_BASE}/passengers/${id}`, { method: 'DELETE' })
+                    .then(res => {
+                        if (res.ok) {
+                            showToast(dict.toast_passenger_deleted || 'Passenger deleted successfully.');
+                            loadPassengers();
+                            loadSummary();
+                        } else {
+                            showToast(dict.toast_passenger_delete_failed || 'Failed to delete passenger.', true);
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Delete error:', err);
+                        showToast(dict.toast_passenger_delete_failed || 'Failed to delete passenger.', true);
+                    });
+            }
         }
     };
+    window.deletePassenger = window.confirmDeletePassenger;
 
     // Execute Delete
     if (btnConfirmDeletePassenger) {
