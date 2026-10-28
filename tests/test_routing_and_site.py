@@ -69,6 +69,22 @@ def test_openapi_schema_contains_only_v1_api_paths():
         assert path.startswith("/v1/api"), f"Expected all API paths to start with /v1/api, found: {path}"
 
 
+def test_api_docs_endpoints():
+    for path in ["/api/docs", "/v1/api/docs", "/docs"]:
+        res = client.get(path)
+        assert res.status_code == 200, f"Failed for docs path {path}"
+        assert "SwaggerUIBundle" in res.text
+
+    for path in ["/api/openapi.json", "/v1/api/openapi.json", "/openapi.json"]:
+        res = client.get(path)
+        assert res.status_code == 200, f"Failed for openapi path {path}"
+
+    redirect_res = client.get("/api", follow_redirects=False)
+    assert redirect_res.status_code in (307, 302)
+    assert redirect_res.headers["location"] == "/api/docs"
+
+
+
 def test_favicon_and_assets_resolution():
     favicon_res = client.get("/favicon.ico")
     assert favicon_res.status_code == 200

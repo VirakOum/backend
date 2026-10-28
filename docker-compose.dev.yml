@@ -3,8 +3,8 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     command: redis-server --appendonly no --save "" --maxmemory 64mb --maxmemory-policy allkeys-lru
-    ports:
-      - "${DEV_REDIS_PORT:-127.0.0.1:6380}:6379"
+    expose:
+      - "6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -26,8 +26,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-mytravel_dev}
       POSTGRES_USER: ${POSTGRES_USER:-fastapi}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fastapi}
-    ports:
-      - "${DEV_DB_PORT:-127.0.0.1:5434}:5432"
+    expose:
+      - "5432"
     volumes:
       - mytravel_dev_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -80,9 +80,7 @@ services:
       - "coolify.managed=true"
       - "traefik.http.services.app.loadbalancer.server.port=8000"
     command: >
-      sh -c "alembic upgrade head &&
-      if [ \"$$SEED_DEMO_DATA\" = \"true\" ]; then python3 scripts/seed_demo_data.py || true; fi &&
-      uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers ${UVICORN_WORKERS:-2}"
+      sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers ${UVICORN_WORKERS:-2}"
     healthcheck:
       test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/api/health')\""]
       interval: 10s

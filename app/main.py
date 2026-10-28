@@ -127,6 +127,15 @@ def _ensure_telegram_otp_sessions_table() -> None:
 def _apply_runtime_trip_schema_repairs() -> None:
     _ensure_trip_live_location_columns()
     _ensure_telegram_otp_sessions_table()
+    if os.getenv("SEED_DEMO_DATA", "").strip().lower() in {"1", "true", "yes", "on"}:
+        try:
+            with engine.connect() as conn:
+                user_count = conn.execute(text("SELECT COUNT(*) FROM users")).scalar() or 0
+            if user_count == 0:
+                from scripts.seed_demo_data import seed
+                seed()
+        except Exception:
+            pass
 
 
 @app.on_event("startup")
@@ -200,13 +209,15 @@ def custom_openapi():
 app.openapi = custom_openapi
 
 
-# Custom Swagger UI & OpenAPI Endpoints (supporting both /v1/api/docs and /docs)
+# Custom Swagger UI & OpenAPI Endpoints (supporting /api/docs, /v1/api/docs, and /docs)
 @app.get("/v1/api/openapi.json", include_in_schema=False)
+@app.get("/api/openapi.json", include_in_schema=False)
 @app.get("/openapi.json", include_in_schema=False)
 def custom_openapi_json():
     return JSONResponse(app.openapi())
 
 
+@app.get("/api/docs", include_in_schema=False)
 @app.get("/v1/api/docs", include_in_schema=False)
 @app.get("/docs", include_in_schema=False)
 def custom_swagger_ui():
@@ -217,6 +228,7 @@ def custom_swagger_ui():
         swagger_css_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css",
     )
 
+@app.get("/api/redoc", include_in_schema=False)
 @app.get("/v1/api/redoc", include_in_schema=False)
 @app.get("/redoc", include_in_schema=False)
 def custom_redoc_ui():
@@ -225,6 +237,12 @@ def custom_redoc_ui():
         title=app.title + " - ReDoc",
         redoc_js_url="https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js",
     )
+
+@app.get("/api", include_in_schema=False)
+@app.get("/api/", include_in_schema=False)
+def api_root_redirect():
+    return RedirectResponse(url="/api/docs")
+
 
 # Static files and Admin Dashboard explicit route handlers
 @app.get("/css/{filename:path}", include_in_schema=False)
