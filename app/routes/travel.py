@@ -2157,6 +2157,11 @@ def get_telegram_otp_status(
 		db.refresh(otp_session)
 
 	existing_user = _find_user_by_phone(db, otp_session.phone) if otp_session.phone else None
+	is_preexisting = (
+		existing_user is not None
+		and otp_session.purpose != "signup"
+		and existing_user.created_at < otp_session.created_at
+	)
 	remaining = max(0, int((otp_session.expires_at - now).total_seconds()))
 	return TelegramOtpStatusResponse(
 		session_token=otp_session.session_token,
@@ -2164,7 +2169,7 @@ def get_telegram_otp_status(
 		purpose=cast(TelegramOtpPurpose, otp_session.purpose),
 		status=cast(TelegramOtpStatus, otp_session.status),
 		is_verified=otp_session.status == "verified",
-		user_exists=existing_user is not None,
+		user_exists=is_preexisting,
 		telegram_username=otp_session.telegram_username,
 		expires_in_seconds=remaining,
 	)
@@ -2239,30 +2244,30 @@ def verify_telegram_otp(
 		user.is_verified = True
 		db.add(user)
 	elif user is not None:
-		# Existing user: log them in seamlessly whether they initiated from Login or Sign Up
+		# Existing or pre-created user: log them in seamlessly and apply signup role/profile
 		if not getattr(user, "is_active", True):
 			raise HTTPException(
 				status_code=status.HTTP_403_FORBIDDEN,
 				detail="This account has been closed. Please contact support.",
 			)
 		user.is_verified = True
-		if payload.full_name and payload.full_name.strip() and user.full_name.startswith("Telegram User"):
-			user.full_name = payload.full_name.strip()
-		if payload.avatar_url and not user.avatar_url:
+		is_new_in_session = user.created_at >= otp_session.created_at
+		if payload.full_name and payload.full_name.strip():
+			if otp_session.purpose == "signup" or is_new_in_session or user.full_name.startswith("Telegram User"):
+				user.full_name = payload.full_name.strip()
+		if payload.avatar_url:
 			user.avatar_url = payload.avatar_url
-		if otp_session.purpose == "signup":
+		if otp_session.purpose == "signup" or is_new_in_session:
 			if payload.password and len(payload.password.strip()) >= 8:
 				user.password_hash = hash_password(payload.password.strip())
-			if payload.role == "driver" and user.avatar_url:
-				user.role = "driver"
+			if payload.role in ("passenger", "driver"):
+				user.role = payload.role
 		db.add(user)
 	else:
-		# New user: create account seamlessly whether they initiated from Sign Up or Login
+		# New user: create account seamlessly with selected role
 		role = (payload.role or "passenger").strip()
 		if role not in ("passenger", "driver"):
 			role = "passenger"
-		if role == "driver" and (payload.avatar_url is None or not payload.avatar_url.strip()):
-			raise HTTPException(status_code=400, detail="Drivers must upload a face image")
 		tg_name = (otp_session.telegram_username or "").strip()
 		full_name = (payload.full_name or "").strip() or tg_name or f"Telegram User ({clean_phone[-4:]})"
 		raw_password = (payload.password or payload.new_password or "").strip()
