@@ -1640,7 +1640,7 @@ def _poll_telegram_bot_updates(db: Session) -> None:
 		if resp.status_code == 409:
 			# A webhook was previously set on Telegram; if TELEGRAM_USE_WEBHOOK is not explicitly enabled,
 			# clear the stale webhook so getUpdates polling works out of the box.
-			if os.getenv("TELEGRAM_USE_WEBHOOK", "").strip().lower() not in {"1", "true", "yes", "on"}:
+			if os.getenv("TELEGRAM_USE_WEBHOOK", "").strip().lower() in {"0", "false", "no", "off"}:
 				httpx.post(
 					f"https://api.telegram.org/bot{bot_token}/deleteWebhook",
 					json={"drop_pending_updates": False},

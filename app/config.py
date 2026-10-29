@@ -51,6 +51,8 @@ def get_google_places_api_key_ios() -> str:
 
 
 DEFAULT_GOOGLE_MAPS_API_KEY = "AIzaSyDYkud0Ul72ok5DpRMLkGhPnZekJ1-7_P4"
+DEFAULT_TELEGRAM_BOT_TOKEN = "8731223056:AAEOyYcEtk6ZYeeD1m70ujd2jT3EvnOP_wY"
+DEFAULT_TELEGRAM_BOT_USERNAME = "MyTravel_Taxi_bot"
 
 
 def get_google_maps_api_key() -> str:
@@ -58,13 +60,13 @@ def get_google_maps_api_key() -> str:
 
 
 def get_telegram_bot_token() -> str:
-    return _env_text("TELEGRAM_BOT_TOKEN")
+    return _env_text("TELEGRAM_BOT_TOKEN") or DEFAULT_TELEGRAM_BOT_TOKEN
 
 
 def get_telegram_bot_username() -> str:
     return (
         _env_text("TELEGRAM_BOT_USERNAME")
-        or _env_text("SUPPORT_TELEGRAM_USERNAME", "MyTravel_Taxi_bot")
+        or DEFAULT_TELEGRAM_BOT_USERNAME
     ).lstrip("@")
 
 
