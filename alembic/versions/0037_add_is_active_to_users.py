@@ -23,3 +23,4 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_index("ix_users_is_active", table_name="users")
     op.drop_column("users", "is_active")
+
