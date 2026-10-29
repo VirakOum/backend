@@ -88,7 +88,7 @@ def test_api_docs_endpoints():
 def test_favicon_and_assets_resolution():
     favicon_res = client.get("/favicon.ico")
     assert favicon_res.status_code == 200
-    assert favicon_res.headers["content-type"] in ("image/png", "image/x-icon")
+    assert favicon_res.headers["content-type"] in ("image/png", "image/x-icon", "image/vnd.microsoft.icon")
 
     asset_res = client.get("/assets/logo.png")
     assert asset_res.status_code == 200

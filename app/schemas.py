@@ -184,7 +184,7 @@ TelegramOtpStatus = Literal["pending", "sent", "verified", "consumed", "expired"
 
 
 class TelegramOtpRequest(BaseModel):
-    phone: str = Field(min_length=6, max_length=20)
+    phone: str = Field(default="", max_length=24)
     purpose: TelegramOtpPurpose = "login"
 
 
@@ -195,6 +195,8 @@ class TelegramOtpStartResponse(BaseModel):
     status: TelegramOtpStatus
     telegram_bot_username: str
     telegram_deep_link: str
+    telegram_app_link: str | None = None
+    user_exists: bool = False
     expires_in_seconds: int = 300
     demo_otp_code: str | None = None
 
@@ -205,16 +207,19 @@ class TelegramOtpStatusResponse(BaseModel):
     purpose: TelegramOtpPurpose
     status: TelegramOtpStatus
     is_verified: bool
+    user_exists: bool = False
+    telegram_username: str | None = None
     expires_in_seconds: int = 0
 
 
 class TelegramOtpVerifyRequest(BaseModel):
     session_token: str = Field(min_length=8, max_length=64)
-    otp_code: str | None = Field(default=None, min_length=4, max_length=10)
+    phone: str | None = Field(default=None, max_length=24)
+    otp_code: str | None = Field(default=None, max_length=10)
     full_name: str | None = Field(default=None, max_length=100)
     role: str | None = Field(default=None, pattern="^(passenger|driver)$")
-    password: str | None = Field(default=None, min_length=8, max_length=128)
-    new_password: str | None = Field(default=None, min_length=8, max_length=128)
+    password: str | None = Field(default=None, max_length=128)
+    new_password: str | None = Field(default=None, max_length=128)
     avatar_url: str | None = None
     device_id: str | None = Field(default=None, min_length=1, max_length=255)
     device_platform: str | None = Field(default=None, min_length=1, max_length=30)
