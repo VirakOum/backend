@@ -1719,6 +1719,32 @@ def _ensure_background_telegram_poller(duration_seconds: float = 120.0) -> None:
 	t.start()
 
 
+def _ensure_user_from_telegram_session(db: Session, session: TelegramOtpSession) -> None:
+	"""Ensure a User row exists in DB immediately when Telegram verifies the session."""
+	if session.purpose not in ("login", "signup"):
+		return
+	clean_phone = _clean_phone(session.phone or "")
+	if len(clean_phone) < 6:
+		return
+	existing = _find_user_by_phone(db, clean_phone)
+	if existing is not None:
+		if not existing.is_verified:
+			existing.is_verified = True
+			db.add(existing)
+		return
+	tg_name = (session.telegram_username or "").strip()
+	full_name = tg_name or f"Telegram User ({clean_phone[-4:]})"
+	raw_password = f"tg_{session.session_token[:16]}"
+	new_user = User(
+		phone=clean_phone,
+		full_name=full_name,
+		role="passenger",
+		password_hash=hash_password(raw_password),
+		is_verified=True,
+	)
+	db.add(new_user)
+
+
 def _process_telegram_update_dict(
 	db: Session,
 	update: dict,
@@ -1762,6 +1788,7 @@ def _process_telegram_update_dict(
 					session.telegram_chat_id = chat_id
 					if display_name:
 						session.telegram_username = display_name
+					_ensure_user_from_telegram_session(db, session)
 					db.commit()
 					_answer_telegram_callback_query(
 						bot_token,
@@ -1919,6 +1946,7 @@ def _process_telegram_update_dict(
 				target_session.telegram_chat_id = chat_id
 				if display_name:
 					target_session.telegram_username = display_name
+				_ensure_user_from_telegram_session(db, target_session)
 				db.commit()
 				_send_telegram_bot_message(
 					bot_token,
@@ -2218,8 +2246,15 @@ def verify_telegram_otp(
 				detail="This account has been closed. Please contact support.",
 			)
 		user.is_verified = True
+		if payload.full_name and payload.full_name.strip() and user.full_name.startswith("Telegram User"):
+			user.full_name = payload.full_name.strip()
 		if payload.avatar_url and not user.avatar_url:
 			user.avatar_url = payload.avatar_url
+		if otp_session.purpose == "signup":
+			if payload.password and len(payload.password.strip()) >= 8:
+				user.password_hash = hash_password(payload.password.strip())
+			if payload.role == "driver" and user.avatar_url:
+				user.role = "driver"
 		db.add(user)
 	else:
 		# New user: create account seamlessly whether they initiated from Sign Up or Login
