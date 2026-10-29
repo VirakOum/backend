@@ -2199,16 +2199,100 @@
                     </table>
                 </div>
             </div>
-            <div class="modal-footer" style="margin-top: var(--spacing-md); padding-top: var(--spacing-md); border-top: 1px solid var(--color-surface-container); display: flex; justify-content: space-between; align-items: center;">
+            <div class="modal-footer" style="margin-top: var(--spacing-md); padding-top: var(--spacing-md); border-top: 1px solid var(--color-surface-container); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--spacing-sm);">
                 <button type="button" class="btn btn-chip danger" id="btn-modal-delete-passenger">
                     <i class="fa-solid fa-trash-can"></i> <span data-i18n="btn_delete_passenger">Delete Passenger</span>
                 </button>
-                <div style="display: flex; gap: var(--spacing-sm);">
+                <div style="display: flex; gap: var(--spacing-sm); align-items: center; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-chip secondary" id="btn-modal-edit-passenger">
+                        <i class="fa-solid fa-pen-to-square"></i> <span data-i18n="btn_edit">Edit</span>
+                    </button>
+                    <button type="button" class="btn btn-chip warning" id="btn-modal-close-passenger-account" style="background: #d97706 !important; color: #ffffff !important; font-weight: 700;">
+                        <i class="fa-solid fa-user-slash"></i> <span data-i18n="btn_close_account">Close Account</span>
+                    </button>
                     <button type="button" class="btn btn-chip success" id="btn-modal-toggle-verify-passenger">
                         <i class="fa-solid fa-check"></i> <span data-i18n="btn_toggle_verify">Toggle Verification</span>
                     </button>
                     <button type="button" class="btn btn-secondary" id="btn-modal-close-passenger-footer" data-i18n="btn_close">Close</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal: Edit Passenger -->
+    <div class="modal-overlay" id="edit-passenger-modal">
+        <div class="modal-card" style="max-width: 520px; width: 92vw; padding: var(--spacing-lg);">
+            <div class="modal-header" style="padding-bottom: var(--spacing-md); margin-bottom: var(--spacing-md); border-bottom: 1px solid var(--color-surface-container);">
+                <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                    <i class="fa-solid fa-user-pen" style="color: var(--color-primary); font-size: 1.3rem;"></i>
+                    <h3 style="margin: 0; font-size: 1.25rem; color: var(--color-primary);" data-i18n="edit_passenger_title">Edit Passenger</h3>
+                </div>
+                <button class="btn-close" id="btn-close-edit-passenger-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="edit-passenger-form" class="settings-form" onsubmit="return false;">
+                <input type="hidden" id="edit-passenger-id">
+                <div class="form-group">
+                    <label for="edit-passenger-name" data-i18n="table_name">Full Name</label>
+                    <input type="text" id="edit-passenger-name" class="search-input" style="padding-left: 1rem; width: 100%; border-radius: var(--radius-sm);" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-passenger-phone" data-i18n="table_phone">Phone Number</label>
+                    <input type="tel" id="edit-passenger-phone" class="search-input" style="padding-left: 1rem; width: 100%; border-radius: var(--radius-sm);" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-passenger-verified" data-i18n="table_verification">Verification Status</label>
+                    <select id="edit-passenger-verified" style="padding: 0.65rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--color-surface-container-high); background: var(--color-surface); font-family: inherit; font-size: 0.95rem;">
+                        <option value="true" data-i18n="status_verified">Verified</option>
+                        <option value="false" data-i18n="status_unverified">Unverified</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit-passenger-status" data-i18n="label_account_status">Account Status</label>
+                    <select id="edit-passenger-status" style="padding: 0.65rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--color-surface-container-high); background: var(--color-surface); font-family: inherit; font-size: 0.95rem;">
+                        <option value="true" data-i18n="account_active">Active (Open)</option>
+                        <option value="false" data-i18n="account_closed">Closed (Suspended)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit-passenger-password" data-i18n="label_password_optional">New Password (optional)</label>
+                    <input type="password" id="edit-passenger-password" class="search-input" placeholder="Leave blank to keep unchanged" data-i18n-placeholder="placeholder_password_unchanged" style="padding-left: 1rem; width: 100%; border-radius: var(--radius-sm);">
+                </div>
+                <div style="display: flex; gap: var(--spacing-sm); justify-content: flex-end; margin-top: var(--spacing-md); padding-top: var(--spacing-md); border-top: 1px solid var(--color-surface-container);">
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-edit-passenger" data-i18n="btn_cancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btn-save-edit-passenger">
+                        <i class="fa-solid fa-floppy-disk"></i> <span data-i18n="btn_save">Save Changes</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Confirm Close Passenger Account -->
+    <div class="modal-overlay" id="confirm-close-passenger-modal">
+        <div class="modal-card" style="max-width: 480px; padding: var(--spacing-xl); text-align: center;">
+            <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(245, 158, 11, 0.15); color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; margin: 0 auto var(--spacing-md) auto;">
+                <i class="fa-solid fa-user-slash"></i>
+            </div>
+            <h3 style="font-size: 1.3rem; margin-bottom: var(--spacing-xs); color: var(--color-primary);" data-i18n="confirm_close_passenger_title">Close Passenger Account?</h3>
+            <p style="color: var(--color-text-secondary); font-size: 0.95rem; margin-bottom: var(--spacing-md);" id="close-passenger-confirm-msg" data-i18n="confirm_close_passenger_msg">
+                Are you sure you want to close this passenger account? The passenger will be logged out of all devices and unable to make bookings until the account is reopened.
+            </p>
+            <div style="background: var(--color-surface-container-low); border: 1px solid var(--color-surface-container); border-radius: var(--radius-md); padding: var(--spacing-md); margin-bottom: var(--spacing-lg); text-align: left;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                    <span style="color: var(--color-text-secondary); font-size: 0.85rem;" data-i18n="table_name">Name:</span>
+                    <strong id="close-passenger-name" style="font-size: 0.85rem;">—</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: var(--color-text-secondary); font-size: 0.85rem;" data-i18n="table_phone">Phone:</span>
+                    <strong id="close-passenger-phone" style="font-size: 0.85rem;">—</strong>
+                </div>
+            </div>
+            <div style="display: flex; gap: var(--spacing-sm); justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary" id="btn-cancel-close-passenger" data-i18n="btn_cancel">Cancel</button>
+                <button type="button" class="btn btn-chip warning" id="btn-confirm-close-passenger" style="background: #d97706 !important; color: #ffffff !important; font-weight: 700; padding: 0.6rem 1.2rem; font-size: 0.9rem;">
+                    <i class="fa-solid fa-user-slash"></i> <span data-i18n="btn_close_account">Close Account</span>
+                </button>
             </div>
         </div>
     </div>
@@ -2248,6 +2332,6 @@
     <!-- Google Maps JavaScript API (Primary & Exclusive Map Engine) -->
     <script id="google-maps-js-sdk" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDYkud0Ul72ok5DpRMLkGhPnZekJ1-7_P4&libraries=places,geometry"></script>
     <!-- Custom JS -->
-    <script src="js/app.js?v=3.0"></script>
+    <script src="js/app.js?v=3.1"></script>
 </body>
 </html>

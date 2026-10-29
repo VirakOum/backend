@@ -125,7 +125,7 @@ def authenticate_trusted_device(
         return None
 
     user = db.get(User, trusted_device.user_id)
-    if user is None:
+    if user is None or not getattr(user, "is_active", True):
         return None
 
     trusted_device.last_seen_at = phnom_penh_now()
@@ -153,7 +153,7 @@ def get_current_user(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
     user = db.get(User, auth_token.user_id)
-    if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    if user is None or not getattr(user, "is_active", True):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token or account is closed")
 
     return user

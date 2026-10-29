@@ -131,6 +131,7 @@ class UserAdminRead(BaseModel):
     full_name: str
     role: str
     is_verified: bool
+    is_active: bool = True
     rating_avg: float
     rating_count: int
     completed_trips: int
@@ -138,6 +139,14 @@ class UserAdminRead(BaseModel):
     wallet: Optional[WalletSummaryRead] = None
     membership_code: Optional[str] = None
     membership_label: Optional[str] = None
+
+
+class PassengerAdminUpdate(BaseModel):
+    full_name: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    phone: Optional[str] = Field(default=None, min_length=6, max_length=20)
+    is_verified: Optional[bool] = None
+    is_active: Optional[bool] = None
+    password: Optional[str] = Field(default=None, min_length=6, max_length=128)
 
 class AdminSummaryResponse(BaseModel):
     total_drivers: int
@@ -352,6 +361,7 @@ def list_users(
             "full_name": user.full_name,
             "role": user.role,
             "is_verified": user.is_verified,
+            "is_active": getattr(user, "is_active", True),
             "rating_avg": float(user.rating_avg or 0.0),
             "rating_count": user.rating_count,
             "completed_trips": user.completed_trips,
@@ -525,6 +535,137 @@ def delete_admin_passenger(passenger_id: uuid.UUID, db: Session = Depends(get_db
 @router.delete("/users/{user_id}", status_code=200)
 def delete_admin_user(user_id: uuid.UUID, db: Session = Depends(get_db)) -> Any:
     return _delete_admin_passenger_or_user(user_id, db, passenger_only=False)
+
+@router.patch("/passengers/{passenger_id}", response_model=UserAdminRead)
+@router.put("/passengers/{passenger_id}", response_model=UserAdminRead)
+def update_admin_passenger(
+    passenger_id: uuid.UUID,
+    payload: PassengerAdminUpdate,
+    db: Session = Depends(get_db)
+) -> Any:
+    passenger = db.get(User, passenger_id)
+    if not passenger:
+        raise HTTPException(status_code=404, detail="Passenger not found")
+    if passenger.role != "passenger":
+        raise HTTPException(status_code=400, detail="Only passenger accounts can be updated via passenger endpoint")
+
+    if payload.phone is not None:
+        clean = payload.phone.strip()
+        existing = db.execute(
+            select(User).where(User.phone == clean, User.id != passenger_id)
+        ).scalar_one_or_none()
+        if existing:
+            raise HTTPException(status_code=400, detail="Phone number is already in use by another account")
+        passenger.phone = clean
+
+    if payload.full_name is not None:
+        name_clean = payload.full_name.strip()
+        if not name_clean:
+            raise HTTPException(status_code=400, detail="Name cannot be empty")
+        passenger.full_name = name_clean
+
+    if payload.is_verified is not None:
+        passenger.is_verified = payload.is_verified
+
+    if payload.is_active is not None:
+        passenger.is_active = payload.is_active
+        if not payload.is_active:
+            db.execute(delete(AuthToken).where(AuthToken.user_id == passenger.id))
+            db.execute(delete(TrustedDevice).where(TrustedDevice.user_id == passenger.id))
+
+    if payload.password is not None and payload.password.strip():
+        passenger.password_hash = hash_password(payload.password.strip())
+        db.execute(delete(AuthToken).where(AuthToken.user_id == passenger.id))
+
+    db.commit()
+    db.refresh(passenger)
+
+    return {
+        "id": passenger.id,
+        "phone": passenger.phone,
+        "full_name": passenger.full_name,
+        "role": passenger.role,
+        "is_verified": passenger.is_verified,
+        "is_active": getattr(passenger, "is_active", True),
+        "rating_avg": float(passenger.rating_avg or 0.0),
+        "rating_count": passenger.rating_count,
+        "completed_trips": passenger.completed_trips,
+        "created_at": passenger.created_at,
+        "wallet": None,
+        "membership_code": None,
+        "membership_label": None
+    }
+
+
+@router.post("/passengers/{passenger_id}/toggle-active")
+@router.post("/users/{passenger_id}/toggle-active")
+def toggle_active_admin_passenger(
+    passenger_id: uuid.UUID,
+    db: Session = Depends(get_db)
+) -> Any:
+    user = db.get(User, passenger_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    current_status = getattr(user, "is_active", True)
+    new_status = not current_status
+    user.is_active = new_status
+    if not new_status:
+        db.execute(delete(AuthToken).where(AuthToken.user_id == user.id))
+        db.execute(delete(TrustedDevice).where(TrustedDevice.user_id == user.id))
+
+    db.commit()
+    db.refresh(user)
+    action_text = "reopened" if new_status else "closed"
+    return {
+        "status": "success",
+        "message": f"Account {action_text} successfully",
+        "is_active": user.is_active,
+        "id": str(user.id)
+    }
+
+
+@router.post("/passengers/{passenger_id}/close-account")
+def close_admin_passenger_account(
+    passenger_id: uuid.UUID,
+    db: Session = Depends(get_db)
+) -> Any:
+    user = db.get(User, passenger_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.is_active = False
+    db.execute(delete(AuthToken).where(AuthToken.user_id == user.id))
+    db.execute(delete(TrustedDevice).where(TrustedDevice.user_id == user.id))
+    db.commit()
+    db.refresh(user)
+    return {
+        "status": "success",
+        "message": "Account closed successfully",
+        "is_active": False,
+        "id": str(user.id)
+    }
+
+
+@router.post("/passengers/{passenger_id}/reopen-account")
+def reopen_admin_passenger_account(
+    passenger_id: uuid.UUID,
+    db: Session = Depends(get_db)
+) -> Any:
+    user = db.get(User, passenger_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.is_active = True
+    db.commit()
+    db.refresh(user)
+    return {
+        "status": "success",
+        "message": "Account reopened successfully",
+        "is_active": True,
+        "id": str(user.id)
+    }
+
 
 
 @router.post("/users/{user_id}/toggle-wallet-lock")

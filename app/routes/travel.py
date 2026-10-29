@@ -1650,6 +1650,8 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> AuthResponse:
 	user = db.execute(select(User).where(User.phone == clean_phone)).scalar_one_or_none()
 	if user is None or not verify_password(payload.password, user.password_hash):
 		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid phone or password")
+	if not getattr(user, "is_active", True):
+		raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This account has been closed. Please contact support.")
 
 	token = issue_token(db, user)
 	trusted_device = None
@@ -1682,6 +1684,8 @@ def login_with_trusted_device(
 	)
 	if user is None:
 		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Trusted device login failed")
+	if not getattr(user, "is_active", True):
+		raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This account has been closed. Please contact support.")
 
 	token = issue_token(db, user)
 	return _build_auth_response(user, token)

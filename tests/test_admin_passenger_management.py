@@ -60,13 +60,6 @@ test_engine = create_engine(
 TestingSessionLocal = sessionmaker(bind=test_engine, autoflush=False, autocommit=False)
 
 
-@pytest.fixture(autouse=True)
-def setup_db():
-    Base.metadata.create_all(bind=test_engine)
-    yield
-    Base.metadata.drop_all(bind=test_engine)
-
-
 def override_get_db():
     db = TestingSessionLocal()
     try:
@@ -75,7 +68,17 @@ def override_get_db():
         db.close()
 
 
-app.dependency_overrides[get_db] = override_get_db
+@pytest.fixture(autouse=True)
+def setup_db():
+    prev_override = app.dependency_overrides.get(get_db)
+    app.dependency_overrides[get_db] = override_get_db
+    Base.metadata.create_all(bind=test_engine)
+    yield
+    Base.metadata.drop_all(bind=test_engine)
+    if prev_override is not None:
+        app.dependency_overrides[get_db] = prev_override
+    else:
+        app.dependency_overrides.pop(get_db, None)
 client = TestClient(app)
 
 
@@ -216,3 +219,94 @@ def test_passenger_not_found():
 
     bookings_res = client.get(f"/v1/api/travel/admin/passengers/{random_id}/bookings")
     assert bookings_res.status_code == 404
+
+
+
+def test_edit_passenger():
+    with TestingSessionLocal() as db:
+        passenger = User(
+            phone="012999001",
+            full_name="Original Name",
+            role="passenger",
+            password_hash=hash_password("Pass123!"),
+            is_verified=False,
+            is_active=True,
+        )
+        db.add(passenger)
+        db.commit()
+        db.refresh(passenger)
+        p_id = passenger.id
+
+    res = client.patch(f"/v1/api/travel/admin/passengers/{p_id}", json={
+        "full_name": "Updated Name",
+        "is_verified": True,
+        "phone": "012999002"
+    })
+    assert res.status_code == 200
+    data = res.json()
+    assert data["full_name"] == "Updated Name"
+    assert data["is_verified"] is True
+    assert data["phone"] == "012999002"
+
+    with TestingSessionLocal() as db:
+        p = db.get(User, p_id)
+        assert p.full_name == "Updated Name"
+        assert p.is_verified is True
+        assert p.phone == "012999002"
+
+
+def test_close_and_reopen_passenger_account():
+    with TestingSessionLocal() as db:
+        passenger = User(
+            phone="012888001",
+            full_name="Active Passenger",
+            role="passenger",
+            password_hash=hash_password("Pass123!"),
+            is_verified=True,
+            is_active=True,
+        )
+        db.add(passenger)
+        db.commit()
+        db.refresh(passenger)
+        p_id = passenger.id
+
+    # Verify initial login works
+    login_res = client.post("/v1/api/travel/auth/login", json={
+        "phone": "012888001",
+        "password": "Pass123!"
+    })
+    assert login_res.status_code == 200
+    token = login_res.json()["token"]
+
+    # Close account via admin endpoint
+    close_res = client.post(f"/v1/api/travel/admin/passengers/{p_id}/close-account")
+    assert close_res.status_code == 200
+    assert close_res.json()["is_active"] is False
+
+    # Check user is now is_active == False
+    with TestingSessionLocal() as db:
+        p = db.get(User, p_id)
+        assert p.is_active is False
+
+    # Old token should now fail
+    me_res = client.get("/v1/api/travel/users/me", headers={"Authorization": f"Bearer {token}"})
+    assert me_res.status_code == 401
+
+    # Login should now fail with 403 Forbidden
+    login_fail = client.post("/v1/api/travel/auth/login", json={
+        "phone": "012888001",
+        "password": "Pass123!"
+    })
+    assert login_fail.status_code == 403
+
+    # Reopen account
+    reopen_res = client.post(f"/v1/api/travel/admin/passengers/{p_id}/reopen-account")
+    assert reopen_res.status_code == 200
+    assert reopen_res.json()["is_active"] is True
+
+    # Login should now succeed again
+    login_again = client.post("/v1/api/travel/auth/login", json={
+        "phone": "012888001",
+        "password": "Pass123!"
+    })
+    assert login_again.status_code == 200

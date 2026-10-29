@@ -146,6 +146,7 @@ class UserRead(BaseModel):
     role: str
     avatar_url: str | None
     is_verified: bool
+    is_active: bool = True
     rating_avg: float = 0.0
     rating_count: int = 0
     completed_trips: int = 0

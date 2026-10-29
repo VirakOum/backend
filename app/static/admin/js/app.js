@@ -226,6 +226,26 @@ document.addEventListener('DOMContentLoaded', () => {
             filter_verified: "Verified",
             filter_unverified: "Unverified",
             btn_view_details: "View Details",
+            btn_edit: "Edit",
+            btn_edit_passenger: "Edit Passenger",
+            btn_close_account: "Close Account",
+            btn_reopen_account: "Reopen Account",
+            status_active: "Active",
+            status_closed: "Closed",
+            confirm_close_passenger_title: "Close Passenger Account?",
+            confirm_close_passenger_msg: "Are you sure you want to close this passenger account? The passenger will be logged out of all devices and unable to make bookings until the account is reopened.",
+            toast_passenger_updated: "Passenger account updated successfully.",
+            toast_passenger_update_failed: "Failed to update passenger account.",
+            toast_passenger_closed: "Passenger account closed successfully.",
+            toast_passenger_reopened: "Passenger account reopened successfully.",
+            edit_passenger_title: "Edit Passenger",
+            label_password_optional: "New Password (optional)",
+            placeholder_password_unchanged: "Leave blank to keep unchanged",
+            label_account_status: "Account Status",
+            account_active: "Active (Open)",
+            account_closed: "Closed (Suspended)",
+            btn_save: "Save Changes",
+
             btn_delete: "Delete",
             btn_delete_passenger: "Delete Passenger",
             btn_toggle_verify: "Toggle Verification",
@@ -426,6 +446,26 @@ document.addEventListener('DOMContentLoaded', () => {
             filter_verified: "បានផ្ទៀងផ្ទាត់",
             filter_unverified: "មិនទាន់ផ្ទៀងផ្ទាត់",
             btn_view_details: "មើល",
+            btn_edit: "កែប្រែ",
+            btn_edit_passenger: "កែប្រែព័ត៌មានអ្នកដំណើរ",
+            btn_close_account: "បិទគណនី",
+            btn_reopen_account: "បើកគណនីឡើងវិញ",
+            status_active: "ដំណើរការ",
+            status_closed: "បានបិទ",
+            confirm_close_passenger_title: "បិទគណនីអ្នកដំណើរ?",
+            confirm_close_passenger_msg: "តើអ្នកប្រាកដជាចង់បិទគណនីអ្នកដំណើរនេះមែនទេ? អ្នកដំណើរនឹងត្រូវបានចាកចេញពីឧបករណ៍ទាំងអស់ ហើយមិនអាចកក់ការធ្វើដំណើរបានទេ រហូតដល់គណនីត្រូវបានបើកឡើងវិញ។",
+            toast_passenger_updated: "បានធ្វើបច្ចុប្បន្នភាពព័ត៌មានអ្នកដំណើរដោយជោគជ័យ។",
+            toast_passenger_update_failed: "ការកែប្រែព័ត៌មានអ្នកដំណើរបានបរាជ័យ។",
+            toast_passenger_closed: "បានបិទគណនីអ្នកដំណើរដោយជោគជ័យ។",
+            toast_passenger_reopened: "បានបើកគណនីអ្នកដំណើរឡើងវិញដោយជោគជ័យ។",
+            edit_passenger_title: "កែប្រែព័ត៌មានអ្នកដំណើរ",
+            label_password_optional: "ពាក្យសម្ងាត់ថ្មី (មិនទាមទារ)",
+            placeholder_password_unchanged: "ទុកទទេបើមិនចង់ផ្លាស់ប្តូរ",
+            label_account_status: "ស្ថានភាពគណនី",
+            account_active: "ដំណើរការ (បើក)",
+            account_closed: "បានបិទ (ផ្អាក)",
+            btn_save: "រក្សាទុកការផ្លាស់ប្តូរ",
+
             btn_delete: "លុប",
             btn_delete_passenger: "លុបអ្នកដំណើរ",
             btn_toggle_verify: "ប្តូរស្ថានភាពផ្ទៀងផ្ទាត់",
@@ -2324,21 +2364,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 </td>
                 <td><code style="font-family: monospace; font-size: 0.9rem;">${escapeHtml(p.phone)}</code></td>
                 <td>
-                    <span class="status-pill ${p.is_verified ? 'active' : 'unverified'}">
-                        ${p.is_verified ? `<i class="fa-solid fa-circle-check"></i> ${dict.status_verified}` : dict.status_unverified}
-                    </span>
+                    <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap;">
+                        <span class="status-pill ${p.is_verified ? 'active' : 'unverified'}">
+                            ${p.is_verified ? `<i class="fa-solid fa-circle-check"></i> ${dict.status_verified}` : dict.status_unverified}
+                        </span>
+                        ${p.is_active === false ? `<span class="status-pill danger" style="margin-left: 2px;"><i class="fa-solid fa-lock"></i> ${dict.status_closed || 'Closed'}</span>` : ''}
+                    </div>
                 </td>
                 <td>${p.rating_avg.toFixed(1)} <i class="fa-solid fa-star" style="color:var(--color-warning); font-size:0.75rem;"></i></td>
                 <td>${p.completed_trips} ${currentLanguage === 'en' ? 'bookings' : 'ការកក់'}</td>
                 <td>${dateStr}</td>
                 <td class="text-right" style="white-space: nowrap;">
-                    <button class="btn-chip secondary" onclick="viewPassengerDetails('${p.id}')" title="${dict.btn_view_details || 'View'}">
-                        <i class="fa-solid fa-eye"></i> ${dict.btn_view_details || 'View'}
+                    <button class="btn-chip secondary" onclick="openEditPassengerModal('${p.id}')" title="${dict.btn_edit || 'Edit'}" style="margin-right: 4px;">
+                        <i class="fa-solid fa-pen-to-square"></i> ${dict.btn_edit || 'Edit'}
                     </button>
-                    <button class="btn-chip ${p.is_verified ? 'warning' : 'success'}" onclick="toggleVerify('${p.id}')" title="${p.is_verified ? (dict.btn_unverify || 'Unverify') : (dict.btn_verify || 'Verify')}">
-                        ${p.is_verified ? (dict.btn_unverify || 'Unverify') : (dict.btn_verify || 'Verify')}
-                    </button>
-                    <button class="btn-chip danger" onclick="confirmDeletePassenger('${p.id}')" style="background: #ba1a1a !important; color: #ffffff !important; font-weight: 700; margin-left: 4px;" title="${dict.btn_delete || 'Delete'}">
+                    ${p.is_active !== false ? `
+                        <button class="btn-chip warning" onclick="confirmClosePassengerAccount('${p.id}')" title="${dict.btn_close_account || 'Close Account'}" style="background: #d97706 !important; color: #ffffff !important; font-weight: 700; margin-right: 4px;">
+                            <i class="fa-solid fa-user-slash"></i> ${dict.btn_close_account || 'Close Account'}
+                        </button>
+                    ` : `
+                        <button class="btn-chip success" onclick="reopenPassengerAccount('${p.id}')" title="${dict.btn_reopen_account || 'Reopen Account'}" style="background: #2e7d32 !important; color: #ffffff !important; font-weight: 700; margin-right: 4px;">
+                            <i class="fa-solid fa-user-check"></i> ${dict.btn_reopen_account || 'Reopen'}
+                        </button>
+                    `}
+                    <button class="btn-chip danger" onclick="confirmDeletePassenger('${p.id}')" style="background: #ba1a1a !important; color: #ffffff !important; font-weight: 700;" title="${dict.btn_delete || 'Delete'}">
                         <i class="fa-solid fa-trash-can"></i> ${dict.btn_delete || 'Delete'}
                     </button>
                 </td>
@@ -2393,21 +2442,57 @@ document.addEventListener('DOMContentLoaded', () => {
         pagEl.appendChild(nextBtn);
     }
 
-    // Modal & Delete Handlers for Passenger Management
+    // Modal & Action Handlers for Passenger Management (Edit, Close, Delete, View)
     const passengerDetailModal = document.getElementById('passenger-detail-modal');
     const confirmDeleteModal = document.getElementById('confirm-delete-passenger-modal');
+    const editPassengerModal = document.getElementById('edit-passenger-modal');
+    const editPassengerForm = document.getElementById('edit-passenger-form');
+    const confirmCloseModal = document.getElementById('confirm-close-passenger-modal');
+
     const btnClosePassengerModal = document.getElementById('btn-close-passenger-modal');
     const btnClosePassengerFooter = document.getElementById('btn-modal-close-passenger-footer');
     const btnModalDeletePassenger = document.getElementById('btn-modal-delete-passenger');
     const btnModalToggleVerify = document.getElementById('btn-modal-toggle-verify-passenger');
+    const btnModalEditPassenger = document.getElementById('btn-modal-edit-passenger');
+    const btnModalClosePassengerAccount = document.getElementById('btn-modal-close-passenger-account');
+
+    const btnCloseEditPassengerModal = document.getElementById('btn-close-edit-passenger-modal');
+    const btnCancelEditPassenger = document.getElementById('btn-cancel-edit-passenger');
+    const btnSaveEditPassenger = document.getElementById('btn-save-edit-passenger');
+
+    const btnCancelClosePassenger = document.getElementById('btn-cancel-close-passenger');
+    const btnConfirmClosePassenger = document.getElementById('btn-confirm-close-passenger');
+
     const btnCancelDeletePassenger = document.getElementById('btn-cancel-delete-passenger');
     const btnConfirmDeletePassenger = document.getElementById('btn-confirm-delete-passenger');
     const btnRefreshPassengers = document.getElementById('btn-refresh-passengers');
 
+    let pendingClosePassengerId = null;
+    let pendingEditPassengerId = null;
+
     function closePassengerModals() {
         if (passengerDetailModal) passengerDetailModal.classList.remove('active');
         if (confirmDeleteModal) confirmDeleteModal.classList.remove('active');
+        if (editPassengerModal) editPassengerModal.classList.remove('active');
+        if (confirmCloseModal) confirmCloseModal.classList.remove('active');
         pendingDeletePassengerId = null;
+        pendingClosePassengerId = null;
+        pendingEditPassengerId = null;
+    }
+
+    if (btnCloseEditPassengerModal) btnCloseEditPassengerModal.addEventListener('click', closePassengerModals);
+    if (btnCancelEditPassenger) btnCancelEditPassenger.addEventListener('click', closePassengerModals);
+    if (btnCancelClosePassenger) btnCancelClosePassenger.addEventListener('click', closePassengerModals);
+
+    if (editPassengerModal) {
+        editPassengerModal.addEventListener('click', (e) => {
+            if (e.target === editPassengerModal) closePassengerModals();
+        });
+    }
+    if (confirmCloseModal) {
+        confirmCloseModal.addEventListener('click', (e) => {
+            if (e.target === confirmCloseModal) closePassengerModals();
+        });
     }
 
     if (btnClosePassengerModal) btnClosePassengerModal.addEventListener('click', closePassengerModals);
@@ -2489,6 +2574,168 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     window.deletePassenger = window.confirmDeletePassenger;
 
+
+    // Edit Passenger Modal Handler
+    window.openEditPassengerModal = (passengerId) => {
+        const p = (currentPassengers || []).find(item => item.id === passengerId);
+        if (!p) return;
+        pendingEditPassengerId = passengerId;
+
+        const idEl = document.getElementById('edit-passenger-id');
+        const nameEl = document.getElementById('edit-passenger-name');
+        const phoneEl = document.getElementById('edit-passenger-phone');
+        const verifiedEl = document.getElementById('edit-passenger-verified');
+        const statusEl = document.getElementById('edit-passenger-status');
+        const passEl = document.getElementById('edit-passenger-password');
+
+        if (idEl) idEl.value = p.id;
+        if (nameEl) nameEl.value = p.full_name || '';
+        if (phoneEl) phoneEl.value = p.phone || '';
+        if (verifiedEl) verifiedEl.value = p.is_verified ? 'true' : 'false';
+        if (statusEl) statusEl.value = p.is_active !== false ? 'true' : 'false';
+        if (passEl) passEl.value = '';
+
+        if (editPassengerModal) {
+            editPassengerModal.classList.add('active');
+        }
+    };
+
+    if (editPassengerForm) {
+        editPassengerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const dict = TRANSLATIONS[currentLanguage] || TRANSLATIONS.en;
+            const passengerId = document.getElementById('edit-passenger-id').value || pendingEditPassengerId;
+            if (!passengerId) return;
+
+            const fullName = (document.getElementById('edit-passenger-name').value || '').trim();
+            const phone = (document.getElementById('edit-passenger-phone').value || '').trim();
+            const isVerified = document.getElementById('edit-passenger-verified').value === 'true';
+            const isActive = document.getElementById('edit-passenger-status').value === 'true';
+            const password = (document.getElementById('edit-passenger-password').value || '').trim();
+
+            if (!fullName || !phone) {
+                showToast(currentLanguage === 'en' ? 'Name and phone are required' : 'សូមបញ្ចូលឈ្មោះ និងលេខទូរស័ព្ទ', true);
+                return;
+            }
+
+            const payload = {
+                full_name: fullName,
+                phone: phone,
+                is_verified: isVerified,
+                is_active: isActive
+            };
+            if (password) {
+                payload.password = password;
+            }
+
+            if (btnSaveEditPassenger) {
+                btnSaveEditPassenger.disabled = true;
+                btnSaveEditPassenger.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/passengers/${passengerId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    const updated = await response.json();
+                    const idx = currentPassengers.findIndex(item => item.id === passengerId);
+                    if (idx !== -1) {
+                        currentPassengers[idx] = { ...currentPassengers[idx], ...updated };
+                    }
+                    showToast(dict.toast_passenger_updated || 'Passenger updated successfully.');
+                    closePassengerModals();
+                    renderPassengers();
+                } else {
+                    const err = await response.json().catch(() => ({}));
+                    showToast(err.detail || dict.toast_passenger_update_failed || 'Failed to update passenger.', true);
+                }
+            } catch (err) {
+                console.error('Error updating passenger:', err);
+                showToast(dict.toast_passenger_update_failed || 'Failed to update passenger.', true);
+            } finally {
+                if (btnSaveEditPassenger) {
+                    btnSaveEditPassenger.disabled = false;
+                    btnSaveEditPassenger.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> <span>' + (dict.btn_save || 'Save Changes') + '</span>';
+                }
+            }
+        });
+    }
+
+    // Close Passenger Account Modal Handler
+    window.confirmClosePassengerAccount = (passengerId, name, phone) => {
+        pendingClosePassengerId = passengerId;
+        const p = (currentPassengers || []).find(item => item.id === passengerId);
+        const pName = name || (p ? p.full_name : 'Passenger');
+        const pPhone = phone || (p ? p.phone : '');
+
+        const nameEl = document.getElementById('close-passenger-name');
+        const phoneEl = document.getElementById('close-passenger-phone');
+        if (nameEl) nameEl.textContent = pName;
+        if (phoneEl) phoneEl.textContent = pPhone;
+
+        if (confirmCloseModal) {
+            confirmCloseModal.classList.add('active');
+        }
+    };
+
+    if (btnConfirmClosePassenger) {
+        btnConfirmClosePassenger.addEventListener('click', async () => {
+            if (!pendingClosePassengerId) return;
+            const dict = TRANSLATIONS[currentLanguage] || TRANSLATIONS.en;
+            btnConfirmClosePassenger.disabled = true;
+            btnConfirmClosePassenger.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> ' + (dict.btn_close_account || 'Closing...');
+
+            try {
+                const response = await fetch(`${API_BASE}/passengers/${pendingClosePassengerId}/close-account`, {
+                    method: 'POST'
+                });
+                if (response.ok) {
+                    const resData = await response.json();
+                    const p = (currentPassengers || []).find(item => item.id === pendingClosePassengerId);
+                    if (p) p.is_active = false;
+                    showToast(dict.toast_passenger_closed || 'Passenger account closed successfully.');
+                    closePassengerModals();
+                    renderPassengers();
+                } else {
+                    const err = await response.json().catch(() => ({}));
+                    showToast(err.detail || 'Failed to close account', true);
+                }
+            } catch (err) {
+                console.error('Error closing passenger account:', err);
+                showToast('Failed to close account', true);
+            } finally {
+                btnConfirmClosePassenger.disabled = false;
+                btnConfirmClosePassenger.innerHTML = '<i class="fa-solid fa-user-slash"></i> <span>' + (dict.btn_close_account || 'Close Account') + '</span>';
+            }
+        });
+    }
+
+    // Reopen Passenger Account Handler
+    window.reopenPassengerAccount = async (passengerId) => {
+        const dict = TRANSLATIONS[currentLanguage] || TRANSLATIONS.en;
+        try {
+            const response = await fetch(`${API_BASE}/passengers/${passengerId}/reopen-account`, {
+                method: 'POST'
+            });
+            if (response.ok) {
+                const p = (currentPassengers || []).find(item => item.id === passengerId);
+                if (p) p.is_active = true;
+                showToast(dict.toast_passenger_reopened || 'Passenger account reopened successfully.');
+                renderPassengers();
+            } else {
+                const err = await response.json().catch(() => ({}));
+                showToast(err.detail || 'Failed to reopen account', true);
+            }
+        } catch (err) {
+            console.error('Error reopening passenger account:', err);
+            showToast('Failed to reopen account', true);
+        }
+    };
+
     // Execute Delete
     if (btnConfirmDeletePassenger) {
         btnConfirmDeletePassenger.addEventListener('click', async () => {
@@ -2568,6 +2815,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (updated && badgeEl) {
                     badgeEl.className = `status-pill ${updated.is_verified ? 'active' : 'unverified'}`;
                     badgeEl.innerHTML = updated.is_verified ? `<i class="fa-solid fa-circle-check"></i> ${dict.status_verified}` : dict.status_unverified;
+                }
+            };
+        }
+
+        if (btnModalEditPassenger) {
+            btnModalEditPassenger.onclick = () => {
+                closePassengerModals();
+                openEditPassengerModal(p.id);
+            };
+        }
+
+        if (btnModalClosePassengerAccount) {
+            const isClosed = p.is_active === false;
+            btnModalClosePassengerAccount.className = `btn btn-chip ${isClosed ? 'success' : 'warning'}`;
+            btnModalClosePassengerAccount.style.background = isClosed ? '#2e7d32 !important' : '#d97706 !important';
+            btnModalClosePassengerAccount.style.color = '#ffffff !important';
+            btnModalClosePassengerAccount.style.fontWeight = '700';
+            btnModalClosePassengerAccount.innerHTML = `<i class="fa-solid ${isClosed ? 'fa-user-check' : 'fa-user-slash'}"></i> <span>${isClosed ? (dict.btn_reopen_account || 'Reopen Account') : (dict.btn_close_account || 'Close Account')}</span>`;
+            btnModalClosePassengerAccount.onclick = async () => {
+                if (isClosed) {
+                    await reopenPassengerAccount(p.id);
+                    const updated = currentPassengers.find(item => item.id === passengerId);
+                    if (updated) viewPassengerDetails(updated.id);
+                } else {
+                    confirmClosePassengerAccount(p.id, p.full_name, p.phone);
                 }
             };
         }
