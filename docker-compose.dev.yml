@@ -54,7 +54,7 @@ services:
         condition: service_healthy
     environment:
       APP_ENV: ${APP_ENV:-development}
-      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://dev.mytravel.taxi}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-https://dev.mytravel.taxi}
       SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
       DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-fastapi}:${POSTGRES_PASSWORD:-fastapi}@db:5432/${POSTGRES_DB:-mytravel_dev}}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
@@ -91,7 +91,7 @@ services:
     command: >
       sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers ${UVICORN_WORKERS:-2}"
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')\""]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/api/health')\""]
       interval: 10s
       timeout: 5s
       retries: 5
