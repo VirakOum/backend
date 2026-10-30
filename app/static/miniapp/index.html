@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>MyTravel Taxi | Telegram Mini App</title>
+    <!-- Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Kantumruy+Pro:ital,wght@0,400;0,600;0,700;1,400&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="css/miniapp.css">
+    <link rel="icon" type="image/png" href="/assets/logo.png">
+</head>
+<body>
+    <div id="app" class="app-wrapper">
+        <!-- Top Sticky Header -->
+        <header class="app-header">
+            <div class="header-left">
+                <div class="brand-logo">
+                    <img src="/assets/logo.png" alt="MyTravel" onerror="this.src='/favicon.ico'; this.onerror=null;">
+                    <div class="brand-text">
+                        <span class="brand-name">MY TRAVEL</span>
+                        <span class="brand-badge"><i class="fa-solid fa-circle text-success pulse-dot"></i> <span data-i18n="status_online">Online</span></span>
+                    </div>
+                </div>
+            </div>
+            <div class="header-right">
+                <button id="langToggleBtn" class="lang-pill" type="button" aria-label="Toggle Language">
+                    <i class="fa-solid fa-globe"></i>
+                    <span id="langLabel">ខ្មែរ</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- User Welcome Strip -->
+        <div class="user-greeting-strip" id="userGreetingStrip">
+            <div class="user-avatar" id="userAvatar">
+                <i class="fa-solid fa-user"></i>
+            </div>
+            <div class="user-info">
+                <div class="greeting-title" id="greetingTitle">
+                    <span data-i18n="greeting_hello">Hello</span>, <strong id="userName">Traveler</strong> 👋
+                </div>
+                <div class="greeting-sub" data-i18n="greeting_sub">Fast inter-province taxi & ride-booking</div>
+            </div>
+        </div>
+
+        <!-- Main Content Views -->
+        <main class="main-content">
+            <!-- TAB 1: BOOK RIDE (FAST FLOW) -->
+            <section id="tabBooking" class="tab-pane active">
+                <!-- Popular Route Quick Chips -->
+                <div class="popular-routes-section">
+                    <div class="section-label" data-i18n="popular_routes_label">🔥 Popular Routes / ខ្សែរត់ពេញនិយម:</div>
+                    <div class="popular-chips-scroller">
+                        <button type="button" class="route-chip active" data-from="Phnom Penh" data-to="Siem Reap">
+                            <span>Phnom Penh ⇄ Siem Reap</span>
+                        </button>
+                        <button type="button" class="route-chip" data-from="Phnom Penh" data-to="Preah Sihanouk">
+                            <span>Phnom Penh ⇄ Sihanoukville</span>
+                        </button>
+                        <button type="button" class="route-chip" data-from="Phnom Penh" data-to="Battambang">
+                            <span>Phnom Penh ⇄ Battambang</span>
+                        </button>
+                        <button type="button" class="route-chip" data-from="Phnom Penh" data-to="Kampot">
+                            <span>Phnom Penh ⇄ Kampot</span>
+                        </button>
+                        <button type="button" class="route-chip" data-from="Phnom Penh" data-to="Banteay Meanchey">
+                            <span>Phnom Penh ⇄ Poipet</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Search Box Card -->
+                <div class="search-card">
+                    <div class="route-inputs-wrapper">
+                        <!-- Origin Input -->
+                        <div class="route-field">
+                            <div class="field-icon origin-icon">
+                                <i class="fa-solid fa-circle-dot"></i>
+                            </div>
+                            <div class="field-body">
+                                <label for="departureSelect" data-i18n="label_from">From / ពីខេត្ត</label>
+                                <select id="departureSelect" class="route-select">
+                                    <option value="Phnom Penh" selected>Phnom Penh (រាជធានីភ្នំពេញ)</option>
+                                    <option value="Siem Reap">Siem Reap (សៀមរាប)</option>
+                                    <option value="Preah Sihanouk">Preah Sihanouk (ព្រះសីហនុ / កំពង់សោម)</option>
+                                    <option value="Battambang">Battambang (បាត់ដំបង)</option>
+                                    <option value="Kampot">Kampot (កំពត)</option>
+                                    <option value="Banteay Meanchey">Banteay Meanchey (ប៉ោយប៉ែត)</option>
+                                    <option value="Kampong Cham">Kampong Cham (កំពង់ចាម)</option>
+                                    <option value="Kandal">Kandal (កណ្តាល)</option>
+                                    <option value="Koh Kong">Koh Kong (កោះកុង)</option>
+                                    <option value="Pursat">Pursat (ពោធិ៍សាត់)</option>
+                                    <option value="Kampong Chhnang">Kampong Chhnang (កំពង់ឆ្នាំង)</option>
+                                    <option value="Kampong Speu">Kampong Speu (កំពង់ស្ពឺ)</option>
+                                    <option value="Takeo">Takeo (តាកែវ)</option>
+                                    <option value="Prey Veng">Prey Veng (ព្រៃវែង)</option>
+                                    <option value="Svay Rieng">Svay Rieng (ស្វាយរៀង)</option>
+                                    <option value="Kratie">Kratie (ក្រចេះ)</option>
+                                    <option value="Stung Treng">Stung Treng (ស្ទឹងត្រែង)</option>
+                                    <option value="Ratanakiri">Ratanakiri (រតនគិរី)</option>
+                                    <option value="Mondulkiri">Mondulkiri (មណ្ឌលគិរី)</option>
+                                    <option value="Preah Vihear">Preah Vihear (ព្រះវិហារ)</option>
+                                    <option value="Oddar Meanchey">Oddar Meanchey (ឧត្តរមានជ័យ)</option>
+                                    <option value="Kep">Kep (កែប)</option>
+                                    <option value="Pailin">Pailin (ប៉ៃលិន)</option>
+                                    <option value="Tboung Khmum">Tboung Khmum (ត្បូងឃ្មុំ)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Swap Button -->
+                        <div class="swap-action-container">
+                            <button type="button" id="swapProvincesBtn" class="swap-btn" title="Swap Route" aria-label="Swap Route">
+                                <i class="fa-solid fa-arrow-down-up-across-line"></i>
+                            </button>
+                        </div>
+
+                        <!-- Destination Input -->
+                        <div class="route-field">
+                            <div class="field-icon dest-icon">
+                                <i class="fa-solid fa-location-dot"></i>
+                            </div>
+                            <div class="field-body">
+                                <label for="destinationSelect" data-i18n="label_to">To / ទៅកាន់ខេត្ត</label>
+                                <select id="destinationSelect" class="route-select">
+                                    <option value="Siem Reap" selected>Siem Reap (សៀមរាប)</option>
+                                    <option value="Phnom Penh">Phnom Penh (រាជធានីភ្នំពេញ)</option>
+                                    <option value="Preah Sihanouk">Preah Sihanouk (ព្រះសីហនុ / កំពង់សោម)</option>
+                                    <option value="Battambang">Battambang (បាត់ដំបង)</option>
+                                    <option value="Kampot">Kampot (កំពត)</option>
+                                    <option value="Banteay Meanchey">Banteay Meanchey (ប៉ោយប៉ែត)</option>
+                                    <option value="Kampong Cham">Kampong Cham (កំពង់ចាម)</option>
+                                    <option value="Kandal">Kandal (កណ្តាល)</option>
+                                    <option value="Koh Kong">Koh Kong (កោះកុង)</option>
+                                    <option value="Pursat">Pursat (ពោធិ៍សាត់)</option>
+                                    <option value="Kampong Chhnang">Kampong Chhnang (កំពង់ឆ្នាំង)</option>
+                                    <option value="Kampong Speu">Kampong Speu (កំពង់ស្ពឺ)</option>
+                                    <option value="Takeo">Takeo (តាកែវ)</option>
+                                    <option value="Prey Veng">Prey Veng (ព្រៃវែង)</option>
+                                    <option value="Svay Rieng">Svay Rieng (ស្វាយរៀង)</option>
+                                    <option value="Kratie">Kratie (ក្រចេះ)</option>
+                                    <option value="Stung Treng">Stung Treng (ស្ទឹងត្រែង)</option>
+                                    <option value="Ratanakiri">Ratanakiri (រតនគិរី)</option>
+                                    <option value="Mondulkiri">Mondulkiri (មណ្ឌលគិរី)</option>
+                                    <option value="Preah Vihear">Preah Vihear (ព្រះវិហារ)</option>
+                                    <option value="Oddar Meanchey">Oddar Meanchey (ឧត្តរមានជ័យ)</option>
+                                    <option value="Kep">Kep (កែប)</option>
+                                    <option value="Pailin">Pailin (ប៉ៃលិន)</option>
+                                    <option value="Tboung Khmum">Tboung Khmum (ត្បូងឃ្មុំ)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Date Selection Pills -->
+                    <div class="date-selection-row">
+                        <div class="date-pills">
+                            <button type="button" class="date-pill active" data-date="today">
+                                <i class="fa-regular fa-calendar-check"></i>
+                                <span data-i18n="date_today">Today / ថ្ងៃនេះ</span>
+                            </button>
+                            <button type="button" class="date-pill" data-date="tomorrow">
+                                <i class="fa-regular fa-calendar-plus"></i>
+                                <span data-i18n="date_tomorrow">Tomorrow / ថ្ងៃស្អែក</span>
+                            </button>
+                            <button type="button" class="date-pill" id="customDateBtn" data-date="custom">
+                                <i class="fa-regular fa-calendar"></i>
+                                <span id="customDateLabel" data-i18n="date_select">Pick Date</span>
+                            </button>
+                            <input type="date" id="hiddenDateInput" style="display:none;">
+                        </div>
+                    </div>
+
+                    <!-- Action Search Button -->
+                    <button type="button" id="searchRidesBtn" class="primary-btn search-btn">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <span data-i18n="btn_find_rides">Find Available Rides / ស្វែងរកឡាន</span>
+                    </button>
+                </div>
+
+                <!-- Available Rides Section -->
+                <div class="rides-container">
+                    <div class="rides-header">
+                        <h2 class="rides-title">
+                            <span data-i18n="available_rides_title">Available Rides</span>
+                            <span class="rides-count-badge" id="ridesCountBadge">0</span>
+                        </h2>
+                        <button type="button" id="refreshRidesBtn" class="icon-refresh-btn" title="Refresh">
+                            <i class="fa-solid fa-rotate-right"></i>
+                        </button>
+                    </div>
+
+                    <!-- Rides List (Dynamic) -->
+                    <div id="ridesList" class="rides-list">
+                        <!-- Loading Skeleton Placeholder -->
+                        <div class="ride-card skeleton-card">
+                            <div class="skeleton-line skeleton-header"></div>
+                            <div class="skeleton-line skeleton-mid"></div>
+                            <div class="skeleton-line skeleton-btn"></div>
+                        </div>
+                    </div>
+
+                    <!-- On-Demand Custom Request Card (Always available when no schedule fits) -->
+                    <div id="customRequestBanner" class="custom-request-card">
+                        <div class="custom-card-header">
+                            <div class="custom-icon-wrapper">
+                                <i class="fa-solid fa-car-side"></i>
+                            </div>
+                            <div class="custom-header-text">
+                                <h3 data-i18n="custom_card_title">Need a Private Taxi or Custom Time?</h3>
+                                <p data-i18n="custom_card_desc">Don't see your desired departure? Request a private car or custom schedule in 1 tap!</p>
+                            </div>
+                        </div>
+                        <button type="button" id="openCustomRequestBtn" class="outline-action-btn">
+                            <i class="fa-solid fa-paper-plane"></i>
+                            <span data-i18n="btn_request_ride">Request Ride On-Demand / កក់តាក់ស៊ីពិសេស</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: SERVICES & RATES -->
+            <section id="tabServices" class="tab-pane">
+                <div class="services-header-card">
+                    <h2 class="pane-title" data-i18n="services_title">🚖 MyTravel Services & Rates</h2>
+                    <p class="pane-desc" data-i18n="services_desc">Professional, verified taxi & transport solutions across Cambodia.</p>
+                </div>
+
+                <div class="services-grid">
+                    <!-- Service 1 -->
+                    <div class="service-box">
+                        <div class="service-icon-bubble bg-amber">
+                            <i class="fa-solid fa-car"></i>
+                        </div>
+                        <div class="service-body">
+                            <h3 data-i18n="service_1_title">Inter-City Shared Taxi (រថយន្តរួមដំណើរ)</h3>
+                            <p data-i18n="service_1_desc">Affordable per-seat booking for comfortable rides between provinces with door-to-door pickup.</p>
+                            <div class="service-badge-row">
+                                <span class="service-tag">From $8 - $15 / seat</span>
+                                <span class="service-tag highlight">Air Conditioned</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Service 2 -->
+                    <div class="service-box">
+                        <div class="service-icon-bubble bg-ink">
+                            <i class="fa-solid fa-crown"></i>
+                        </div>
+                        <div class="service-body">
+                            <h3 data-i18n="service_2_title">Private Taxi Charter (ឡានឈ្នួលម៉ៅដាច់)</h3>
+                            <p data-i18n="service_2_desc">Exclusive VIP car for your family or team. Choose from SUV (Lexus RX), Sedan (Prius), or Van (Starex/Alphard).</p>
+                            <div class="service-badge-row">
+                                <span class="service-tag">Sedan / SUV / Van</span>
+                                <span class="service-tag highlight">Private & Direct</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Service 3 -->
+                    <div class="service-box">
+                        <div class="service-icon-bubble bg-green">
+                            <i class="fa-solid fa-plane-departure"></i>
+                        </div>
+                        <div class="service-body">
+                            <h3 data-i18n="service_3_title">Airport Express Transfer (សេវាព្រលានយន្តហោះ)</h3>
+                            <p data-i18n="service_3_desc">On-time pickup from/to Phnom Penh (PNH) and Siem Reap Angkor (SAI) International Airports.</p>
+                            <div class="service-badge-row">
+                                <span class="service-tag">Flight Tracking</span>
+                                <span class="service-tag highlight">24/7 Service</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Service 4 -->
+                    <div class="service-box">
+                        <div class="service-icon-bubble bg-blue">
+                            <i class="fa-solid fa-box-open"></i>
+                        </div>
+                        <div class="service-body">
+                            <h3 data-i18n="service_4_title">Express Parcel Delivery (ផ្ញើឥវ៉ាន់រហ័ស)</h3>
+                            <p data-i18n="service_4_desc">Same-day express inter-provincial package delivery handled directly by verified drivers.</p>
+                            <div class="service-badge-row">
+                                <span class="service-tag">Same-day</span>
+                                <span class="service-tag highlight">Door-to-door</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rates Table Preview -->
+                <div class="rates-table-card">
+                    <h3 class="rates-table-title" data-i18n="rates_table_title">Standard Rates Reference / តម្លៃគោល</h3>
+                    <div class="table-responsive">
+                        <table class="rates-table">
+                            <thead>
+                                <tr>
+                                    <th>Route</th>
+                                    <th>Per Seat</th>
+                                    <th>Private Car</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Phnom Penh ⇄ Siem Reap</td>
+                                    <td><strong>$12 - $15</strong></td>
+                                    <td><strong>$75 - $100</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>Phnom Penh ⇄ Sihanoukville</td>
+                                    <td><strong>$10 - $13</strong></td>
+                                    <td><strong>$65 - $85</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>Phnom Penh ⇄ Battambang</td>
+                                    <td><strong>$13 - $16</strong></td>
+                                    <td><strong>$80 - $110</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>Phnom Penh ⇄ Kampot</td>
+                                    <td><strong>$8 - $11</strong></td>
+                                    <td><strong>$50 - $70</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>Phnom Penh ⇄ Poipet</td>
+                                    <td><strong>$15 - $20</strong></td>
+                                    <td><strong>$100 - $130</strong></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: MY BOOKINGS -->
+            <section id="tabMyBookings" class="tab-pane">
+                <div class="my-bookings-header">
+                    <h2 class="pane-title" data-i18n="my_bookings_title">🎟️ My Bookings & Passes</h2>
+                    <p class="pane-desc" data-i18n="my_bookings_desc">Access your active tickets and past travel history anytime.</p>
+                </div>
+
+                <div id="myBookingsList" class="my-bookings-list">
+                    <!-- Populated dynamically -->
+                </div>
+            </section>
+
+            <!-- TAB 4: SUPPORT & CONTACT -->
+            <section id="tabSupport" class="tab-pane">
+                <div class="support-hero-card">
+                    <div class="support-hero-icon">
+                        <i class="fa-solid fa-headset"></i>
+                    </div>
+                    <h2 class="support-hero-title" data-i18n="support_title">24/7 Customer Support</h2>
+                    <p class="support-hero-subtitle" data-i18n="support_desc">Need assistance or have special travel requirements? Our operations team in Phnom Penh is ready to help!</p>
+                    
+                    <div class="support-actions-row">
+                        <a href="tel:0966519115" class="support-cta-btn phone-cta">
+                            <i class="fa-solid fa-phone"></i>
+                            <span>Call Hotline: 096 651 9115</span>
+                        </a>
+                        <a href="https://t.me/MyTravel_Taxi_bot" target="_blank" class="support-cta-btn tg-cta">
+                            <i class="fa-brands fa-telegram"></i>
+                            <span>Chat with Bot</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="faq-accordion-card">
+                    <h3 class="faq-card-title" data-i18n="faq_title">Frequently Asked Questions</h3>
+
+                    <details class="faq-item">
+                        <summary><strong data-i18n="faq_q1">How do I pay for my ride?</strong></summary>
+                        <p data-i18n="faq_a1">You can pay conveniently with <strong>Cash on Boarding</strong> directly to your driver, or via <strong>Bakong KHQR</strong> upon pickup. No credit card required!</p>
+                    </details>
+
+                    <details class="faq-item">
+                        <summary><strong data-i18n="faq_q2">Where will the driver pick me up?</strong></summary>
+                        <p data-i18n="faq_a2">MyTravel provides <strong>door-to-door pickup</strong>. Simply enter your hotel or address note during booking, and the driver will confirm the location with you.</p>
+                    </details>
+
+                    <details class="faq-item">
+                        <summary><strong data-i18n="faq_q3">Can I track the driver on a live map?</strong></summary>
+                        <p data-i18n="faq_a3">Yes! Once booked, you can view driver status here, or tap "Open MyTravel App" to see turn-by-turn live GPS tracking on our native mobile app.</p>
+                    </details>
+                </div>
+
+                <!-- Download App Banner -->
+                <div class="app-download-card">
+                    <div class="download-text">
+                        <h4 data-i18n="download_app_title">Get the Full MyTravel Mobile App</h4>
+                        <p data-i18n="download_app_desc">Available for iOS & Android with live GPS route radar and driver chat.</p>
+                    </div>
+                    <div class="download-buttons">
+                        <a href="https://play.google.com/store/apps/details?id=com.kh.mytravel.mytravel" target="_blank" class="store-badge-btn">
+                            <i class="fa-brands fa-google-play"></i> Google Play
+                        </a>
+                        <a href="https://apps.apple.com/app/my-travel/id6815109556" target="_blank" class="store-badge-btn">
+                            <i class="fa-brands fa-apple"></i> App Store
+                        </a>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Bottom Navigation Bar -->
+        <nav class="bottom-nav">
+            <button type="button" class="nav-item active" data-target="tabBooking">
+                <i class="fa-solid fa-taxi"></i>
+                <span data-i18n="nav_book">Book Taxi</span>
+            </button>
+            <button type="button" class="nav-item" data-target="tabServices">
+                <i class="fa-solid fa-shapes"></i>
+                <span data-i18n="nav_services">Services</span>
+            </button>
+            <button type="button" class="nav-item" data-target="tabMyBookings">
+                <i class="fa-solid fa-ticket"></i>
+                <span data-i18n="nav_my_bookings">My Rides</span>
+                <span id="navBookingBadge" class="nav-badge" style="display:none;">0</span>
+            </button>
+            <button type="button" class="nav-item" data-target="tabSupport">
+                <i class="fa-solid fa-headset"></i>
+                <span data-i18n="nav_support">Support</span>
+            </button>
+        </nav>
+
+        <!-- MODAL 1: FAST 1-TAP BOOKING BOTTOM SHEET -->
+        <div id="bookingModal" class="bottom-sheet-overlay" style="display:none;">
+            <div class="bottom-sheet">
+                <div class="sheet-handle"></div>
+                <div class="sheet-header">
+                    <div class="sheet-title-group">
+                        <h3 class="sheet-title" data-i18n="sheet_booking_title">Confirm Your Ride</h3>
+                        <p class="sheet-subtitle" id="modalRouteSummary">Phnom Penh ➔ Siem Reap</p>
+                    </div>
+                    <button type="button" id="closeBookingModalBtn" class="sheet-close-btn" aria-label="Close">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="sheet-body">
+                    <!-- Selected Car Info Pill -->
+                    <div class="modal-driver-card" id="modalDriverCard">
+                        <div class="driver-avatar-circle">
+                            <i class="fa-solid fa-user-tie"></i>
+                        </div>
+                        <div class="driver-details">
+                            <div class="driver-name" id="modalDriverName">Driver Name</div>
+                            <div class="vehicle-info" id="modalVehicleModel">Lexus RX330 • 2AB-1234</div>
+                        </div>
+                        <div class="departure-time-badge" id="modalDepartureTime">08:00 AM</div>
+                    </div>
+
+                    <!-- Seat Selector Counter -->
+                    <div class="booking-form-group">
+                        <label class="form-label" data-i18n="label_select_seats">Select Number of Seats / ចំនួនកៅអី</label>
+                        <div class="seat-stepper-wrapper">
+                            <button type="button" id="btnMinusSeat" class="stepper-btn" aria-label="Decrease seat">
+                                <i class="fa-solid fa-minus"></i>
+                            </button>
+                            <div class="seat-count-display">
+                                <span id="seatCountNumber">1</span>
+                                <span class="seat-label-small" data-i18n="unit_seats">Seat(s)</span>
+                            </div>
+                            <button type="button" id="btnPlusSeat" class="stepper-btn" aria-label="Increase seat">
+                                <i class="fa-solid fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Passenger Name -->
+                    <div class="booking-form-group">
+                        <label class="form-label" for="passengerNameInput" data-i18n="label_passenger_name">Passenger Name / ឈ្មោះអ្នកដំណើរ</label>
+                        <div class="input-with-icon">
+                            <i class="fa-solid fa-user"></i>
+                            <input type="text" id="passengerNameInput" class="sheet-input" placeholder="Enter your full name" required>
+                        </div>
+                    </div>
+
+                    <!-- Phone Number -->
+                    <div class="booking-form-group">
+                        <label class="form-label" for="passengerPhoneInput" data-i18n="label_passenger_phone">Phone Number / លេខទូរស័ព្ទ (Cambodia)</label>
+                        <div class="input-with-icon">
+                            <i class="fa-solid fa-phone"></i>
+                            <input type="tel" id="passengerPhoneInput" class="sheet-input" placeholder="012 345 678" required>
+                        </div>
+                    </div>
+
+                    <!-- Pickup Location Note -->
+                    <div class="booking-form-group">
+                        <label class="form-label" for="pickupNoteInput" data-i18n="label_pickup_note">Pickup Location / ទីតាំងទទួល (Hotel or Landmark)</label>
+                        <div class="input-with-icon">
+                            <i class="fa-solid fa-map-pin"></i>
+                            <input type="text" id="pickupNoteInput" class="sheet-input" placeholder="e.g. Sokha Hotel, or Central Market">
+                        </div>
+                    </div>
+
+                    <!-- Payment Method Toggle -->
+                    <div class="booking-form-group">
+                        <label class="form-label" data-i18n="label_payment_method">Payment Method / វិធីសាស្ត្រទូទាត់</label>
+                        <div class="payment-method-options">
+                            <label class="payment-option-pill active">
+                                <input type="radio" name="paymentMethod" value="cash" checked style="display:none;">
+                                <i class="fa-solid fa-money-bill-wave"></i>
+                                <span data-i18n="pay_cash">💵 Cash on Pickup (ពេលឡើងឡាន)</span>
+                            </label>
+                            <label class="payment-option-pill">
+                                <input type="radio" name="paymentMethod" value="khqr" style="display:none;">
+                                <i class="fa-solid fa-qrcode"></i>
+                                <span data-i18n="pay_khqr">📱 KHQR / Bakong (ស្កេន QR)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Price Summary Box -->
+                    <div class="price-summary-box">
+                        <div class="summary-line">
+                            <span data-i18n="price_per_seat">Price per seat:</span>
+                            <span id="modalPricePerSeat">$12.00</span>
+                        </div>
+                        <div class="summary-line total-line">
+                            <span data-i18n="total_price">Total Amount / សរុប:</span>
+                            <div class="total-price-group">
+                                <span class="total-usd" id="modalTotalUsd">$12.00</span>
+                                <span class="total-khr" id="modalTotalKhr">(49,200 ៛)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Confirm Booking Button -->
+                    <button type="button" id="btnConfirmBooking" class="primary-btn confirm-btn">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <span data-i18n="btn_confirm_booking">Confirm & Book Now / បញ្ជាក់ការកក់</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL 2: BOOKING PASS / TICKET SUCCESS -->
+        <div id="ticketModal" class="bottom-sheet-overlay" style="display:none;">
+            <div class="bottom-sheet pass-sheet">
+                <div class="sheet-handle"></div>
+                <div class="ticket-header-card">
+                    <div class="success-icon-badge">
+                        <i class="fa-solid fa-check"></i>
+                    </div>
+                    <h3 class="ticket-title" data-i18n="ticket_success_title">Booking Confirmed!</h3>
+                    <p class="ticket-sub" data-i18n="ticket_success_sub">Your driver is notified and your seat is reserved.</p>
+                </div>
+
+                <div class="ticket-pass-body">
+                    <!-- Pass Details -->
+                    <div class="ticket-code-row">
+                        <span class="code-label" data-i18n="ticket_ref">Booking Ref / លេខកូដ:</span>
+                        <strong class="code-value" id="ticketRefCode">MT-8921</strong>
+                    </div>
+
+                    <div class="ticket-divider"></div>
+
+                    <div class="ticket-route-display">
+                        <div class="route-node">
+                            <div class="node-dot start-dot"></div>
+                            <div class="node-text">
+                                <div class="node-label" data-i18n="label_from">From</div>
+                                <div class="node-name" id="ticketFromProvince">Phnom Penh</div>
+                            </div>
+                        </div>
+                        <div class="route-line-vert"></div>
+                        <div class="route-node">
+                            <div class="node-dot end-dot"></div>
+                            <div class="node-text">
+                                <div class="node-label" data-i18n="label_to">To</div>
+                                <div class="node-name" id="ticketToProvince">Siem Reap</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="ticket-info-grid">
+                        <div class="info-cell">
+                            <span class="cell-label" data-i18n="ticket_departure">Departure:</span>
+                            <strong class="cell-val" id="ticketDepartureTime">Today, 08:30 AM</strong>
+                        </div>
+                        <div class="info-cell">
+                            <span class="cell-label" data-i18n="ticket_seats">Seats:</span>
+                            <strong class="cell-val" id="ticketSeatCount">1 Seat</strong>
+                        </div>
+                        <div class="info-cell">
+                            <span class="cell-label" data-i18n="ticket_total">Total Fare:</span>
+                            <strong class="cell-val text-success" id="ticketTotalPrice">$12.00 (Cash)</strong>
+                        </div>
+                        <div class="info-cell">
+                            <span class="cell-label" data-i18n="ticket_status">Status:</span>
+                            <strong class="cell-val status-badge-ok">Confirmed 🟢</strong>
+                        </div>
+                    </div>
+
+                    <!-- Driver Card in Ticket -->
+                    <div class="ticket-driver-info">
+                        <div class="driver-avatar-circle">
+                            <i class="fa-solid fa-id-card"></i>
+                        </div>
+                        <div class="ticket-driver-text">
+                            <div class="ticket-driver-name" id="ticketDriverName">Sokha Driver</div>
+                            <div class="ticket-vehicle" id="ticketVehicleInfo">Toyota Prius • 2X-9988</div>
+                        </div>
+                        <a href="tel:" id="ticketCallDriverBtn" class="call-driver-btn" aria-label="Call Driver">
+                            <i class="fa-solid fa-phone"></i>
+                        </a>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="ticket-actions">
+                        <button type="button" id="ticketOpenAppBtn" class="primary-btn app-track-btn">
+                            <i class="fa-solid fa-location-crosshairs"></i>
+                            <span data-i18n="btn_track_in_app">Open in MyTravel App for Live GPS</span>
+                        </button>
+                        <button type="button" id="ticketDoneBtn" class="secondary-btn">
+                            <span data-i18n="btn_done">Done / រួចរាល់</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL 3: CUSTOM ON-DEMAND RIDE REQUEST -->
+        <div id="customModal" class="bottom-sheet-overlay" style="display:none;">
+            <div class="bottom-sheet">
+                <div class="sheet-handle"></div>
+                <div class="sheet-header">
+                    <div class="sheet-title-group">
+                        <h3 class="sheet-title" data-i18n="custom_modal_title">Request On-Demand Ride</h3>
+                        <p class="sheet-subtitle" data-i18n="custom_modal_sub">Dispatch will arrange a verified driver for your departure</p>
+                    </div>
+                    <button type="button" id="closeCustomModalBtn" class="sheet-close-btn" aria-label="Close">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="sheet-body">
+                    <div class="booking-form-group">
+                        <label class="form-label" data-i18n="custom_label_route">Requested Route</label>
+                        <div class="custom-route-display" id="customRouteDisplay">Phnom Penh ➔ Siem Reap</div>
+                    </div>
+
+                    <div class="booking-form-group">
+                        <label class="form-label" for="customNameInput" data-i18n="label_passenger_name">Your Name</label>
+                        <input type="text" id="customNameInput" class="sheet-input" placeholder="Full Name" required>
+                    </div>
+
+                    <div class="booking-form-group">
+                        <label class="form-label" for="customPhoneInput" data-i18n="label_passenger_phone">Phone Number</label>
+                        <input type="tel" id="customPhoneInput" class="sheet-input" placeholder="012 345 678" required>
+                    </div>
+
+                    <div class="booking-form-group">
+                        <label class="form-label" for="customSeatsSelect" data-i18n="custom_label_seats">Car Type / Seats</label>
+                        <select id="customSeatsSelect" class="route-select">
+                            <option value="1">1 Seat (Shared Taxi)</option>
+                            <option value="2">2 Seats (Shared Taxi)</option>
+                            <option value="3">3 Seats (Shared Taxi)</option>
+                            <option value="4" selected>Full Sedan (4-Seater Private Car)</option>
+                            <option value="7">Full SUV / Minivan (7-Seater Private Car)</option>
+                            <option value="12">12-Seater VIP Van (Hyundai Starex)</option>
+                        </select>
+                    </div>
+
+                    <div class="booking-form-group">
+                        <label class="form-label" for="customNoteInput" data-i18n="custom_label_note">Pickup Note / Time Preference</label>
+                        <input type="text" id="customNoteInput" class="sheet-input" placeholder="e.g. Depart at 2:00 PM, pick up at Hotel">
+                    </div>
+
+                    <button type="button" id="btnSubmitCustomRequest" class="primary-btn confirm-btn">
+                        <i class="fa-solid fa-paper-plane"></i>
+                        <span data-i18n="btn_submit_request">Submit Request / ផ្ញើសំណើកក់</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application JavaScript Logic -->
+    <script src="js/miniapp.js"></script>
+</body>
+</html>

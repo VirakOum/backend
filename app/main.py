@@ -28,6 +28,7 @@ root_path = os.getenv("FASTAPI_ROOT_PATH", "")
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_SITE_DIR = BASE_DIR / "static" / "site"
 STATIC_ADMIN_DIR = BASE_DIR / "static" / "admin"
+STATIC_MINIAPP_DIR = BASE_DIR / "static" / "miniapp"
 
 def _build_openapi_servers() -> list[dict[str, str]]:
     default_servers = [
@@ -365,6 +366,50 @@ def serve_admin_fallback(filepath: str):
         return FileResponse(target, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
     return RedirectResponse(url="/admin/mytravel/", status_code=307)
 
+
+
+
+# Telegram Mini App explicit route handlers
+@app.get("/miniapp", include_in_schema=False)
+@app.get("/miniapp/", include_in_schema=False)
+@app.get("/telegram/miniapp", include_in_schema=False)
+@app.get("/telegram/app", include_in_schema=False)
+@api_v1_router.get("/miniapp", include_in_schema=False)
+@api_v1_router.get("/miniapp/", include_in_schema=False)
+@api_v1_router.get("/telegram/miniapp", include_in_schema=False)
+@api_v1_router.get("/telegram/app", include_in_schema=False)
+def serve_telegram_miniapp():
+    index_file = STATIC_MINIAPP_DIR / "index.html"
+    if index_file.is_file():
+        return FileResponse(index_file, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+    raise HTTPException(status_code=404, detail="Mini App not found")
+
+
+@app.get("/miniapp/css/{filename:path}", include_in_schema=False)
+@api_v1_router.get("/miniapp/css/{filename:path}", include_in_schema=False)
+def serve_miniapp_css(filename: str):
+    file_path = STATIC_MINIAPP_DIR / "css" / filename
+    if file_path.is_file():
+        return FileResponse(file_path, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+    raise HTTPException(status_code=404, detail="Mini App CSS not found")
+
+
+@app.get("/miniapp/js/{filename:path}", include_in_schema=False)
+@api_v1_router.get("/miniapp/js/{filename:path}", include_in_schema=False)
+def serve_miniapp_js(filename: str):
+    file_path = STATIC_MINIAPP_DIR / "js" / filename
+    if file_path.is_file():
+        return FileResponse(file_path, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+    raise HTTPException(status_code=404, detail="Mini App JS not found")
+
+
+@app.get("/miniapp/{filepath:path}", include_in_schema=False)
+@api_v1_router.get("/miniapp/{filepath:path}", include_in_schema=False)
+def serve_miniapp_static(filepath: str):
+    target = STATIC_MINIAPP_DIR / filepath
+    if target.is_file():
+        return FileResponse(target, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+    return FileResponse(STATIC_MINIAPP_DIR / "index.html", headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
 app.include_router(api_v1_router)
 

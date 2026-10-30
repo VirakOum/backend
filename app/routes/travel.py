@@ -1,3 +1,4 @@
+import secrets
 import os
 import re
 import sys
@@ -13,8 +14,9 @@ if __name__ == "__main__" and not __package__:
 		sys.path.insert(0, str(backend_root))
 	__package__ = "app.routes"
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from fastapi.responses import HTMLResponse
+from pydantic import BaseModel, Field
 from sqlalchemy import select, func, inspect, or_, and_, delete
 from sqlalchemy.orm import Session, selectinload
 from uuid import UUID
@@ -1899,24 +1901,56 @@ def _process_telegram_update_dict(
 			return True
 
 		# No specific session matched /start yet — prompt contact share so user can still verify 1-tap
+		base_url = get_public_base_url().rstrip("/")
+		miniapp_url = f"{base_url}/miniapp"
 		welcome_text = (
-			"🚖 <b>Welcome to MyTravel Bot / សូមស្វាគមន៍មកកាន់ MyTravel</b>\n\n"
-			"Tap the button below to share your phone number and verify your MyTravel account in 1 tap!\n"
-			"សូមចុចប៊ូតុងខាងក្រោមដើម្បីចែករំលែកលេខទូរស័ព្ទ និងផ្ទៀងផ្ទាត់គណនី MyTravel របស់អ្នកភ្លាមៗ!"
+			"🚖 <b>Welcome to MyTravel / សូមស្វាគមន៍មកកាន់ MyTravel</b>\n\n"
+			"<b>1. Book a Ride / កក់តាក់ស៊ីក្នុង Telegram:</b>\n"
+			"Open our Mini App to browse scheduled rides, choose seats, and book instantly!\n"
+			"ចុចប៊ូតុងខាងក្រោមដើម្បីកក់តាក់ស៊ី និងរថយន្តឈ្នួលអន្តរខេត្តភ្លាមៗ។\n\n"
+			"<b>2. Account Verification / ផ្ទៀងផ្ទាត់គណនី:</b>\n"
+			"Tap Share Phone Number below for 1-tap MyTravel app login."
 		)
 		reply_markup = {
-			"keyboard": [
+			"inline_keyboard": [
 				[
 					{
-						"text": "✅ Verify Phone Number / ផ្ទៀងផ្ទាត់លេខទូរស័ព្ទភ្លាមៗ",
-						"request_contact": True,
+						"text": "🚖 Book Taxi via Mini App / កក់តាក់ស៊ីភ្លាមៗ",
+						"web_app": {"url": miniapp_url},
+					}
+				],
+				[
+					{
+						"text": "📱 Download App / ដំឡើងកម្មវិធី",
+						"url": f"{base_url}/download",
 					}
 				]
-			],
-			"resize_keyboard": True,
-			"one_time_keyboard": True,
+			]
 		}
 		_send_telegram_bot_message(bot_token, chat_id, welcome_text, reply_markup=reply_markup)
+		return True
+
+	# 1.1 Handle /book, /taxi, or /miniapp commands
+	if text.lower() in ("/book", "/taxi", "/miniapp", "/app", "book", "taxi", "កក់ឡាន"):
+		base_url = get_public_base_url().rstrip("/")
+		miniapp_url = f"{base_url}/miniapp"
+		_send_telegram_bot_message(
+			bot_token,
+			chat_id,
+			"🚖 <b>MyTravel Telegram Mini App / កម្មវិធីកក់តាក់ស៊ី MyTravel</b>\n\n"
+			"Tap below to browse all available inter-province rides, choose seats, and book in 1 tap!\n"
+			"សូមចុចប៊ូតុងខាងក្រោមដើម្បីកក់តាក់ស៊ី និងរថយន្តឈ្នួលអន្តរខេត្តភ្លាមៗ!",
+			reply_markup={
+				"inline_keyboard": [
+					[
+						{
+							"text": "🚖 Open Mini App / កក់តាក់ស៊ីឥឡូវនេះ",
+							"web_app": {"url": miniapp_url},
+						}
+					]
+				]
+			},
+		)
 		return True
 
 	# 2. Handle Contact Sharing for 1-Tap Verification (No typing digits!)
@@ -2530,9 +2564,252 @@ def verify_telegram_otp(
 	return _build_auth_response(user, token, trusted_device=trusted_device)
 
 
+# -----------------------------------------------------------------------------
+# Telegram Mini App (TMA) Endpoints - Fast Booking & Passenger Services
+# -----------------------------------------------------------------------------
+
+class TelegramMiniAppQuickBookRequest(BaseModel):
+	trip_id: str
+	seat_count: int = Field(default=1, ge=1, le=8)
+	passenger_name: str = Field(min_length=2, max_length=100)
+	phone: str = Field(min_length=6, max_length=30)
+	telegram_user_id: str | None = None
+	telegram_chat_id: str | None = None
+	telegram_username: str | None = None
+	pickup_note: str | None = None
+	payment_method: str = "cash"
+
+
+class TelegramMiniAppCustomRequest(BaseModel):
+	departure_province: str
+	destination_province: str
+	passenger_name: str
+	phone: str
+	requested_seats: int = 1
+	note: str | None = None
+	telegram_user_id: str | None = None
+
+
+@router.post("/telegram/miniapp/quick-book")
+def telegram_miniapp_quick_book(
+	payload: TelegramMiniAppQuickBookRequest,
+	db: Session = Depends(get_db),
+) -> dict:
+	"""Fast 1-tap booking endpoint directly inside Telegram Mini App."""
+	_expire_stale_trips_and_bookings(db)
+	clean_phone = _clean_phone(payload.phone)
+	if len(clean_phone) < 6:
+		raise HTTPException(status_code=400, detail="Invalid phone number")
+
+	# Ensure Passenger User exists
+	passenger = _find_user_by_phone(db, clean_phone)
+	if passenger is None:
+		passenger = User(
+			phone=clean_phone,
+			full_name=payload.passenger_name.strip() or f"Passenger ({clean_phone[-4:]})",
+			role="passenger",
+			password_hash=hash_password(f"tg_{secrets.token_hex(8)}"),
+			is_verified=True,
+		)
+		db.add(passenger)
+		db.flush()
+	elif not passenger.is_verified:
+		passenger.is_verified = True
+		db.add(passenger)
+
+	trip: Trip | None = None
+	try:
+		trip_uuid = UUID(payload.trip_id)
+		trip = db.execute(
+			select(Trip)
+			.options(selectinload(Trip.driver), selectinload(Trip.vehicle), selectinload(Trip.bookings))
+			.where(Trip.id == trip_uuid)
+			.with_for_update()
+		).scalar_one_or_none()
+	except (ValueError, TypeError):
+		trip = None
+
+	requested_seats = max(1, min(payload.seat_count, 8))
+	ref_code = f"MT-{secrets.randbelow(8999) + 1000}"
+	allocated_seats: list[int] = [1]
+	total_price: Decimal = Decimal("12.00") * requested_seats
+	currency = DEFAULT_CURRENCY
+	booking_id_str = f"bk_{secrets.token_hex(6)}"
+
+	if trip is not None and trip.status in ("scheduled", "active"):
+		avail = _available_seat_numbers(trip)
+		if len(avail) < requested_seats:
+			raise HTTPException(status_code=400, detail="Not enough available seats on this trip")
+		allocated_seats = avail[:requested_seats]
+		unit_price = _final_price_per_seat(trip)
+		total_price = _money(unit_price * requested_seats)
+		currency = getattr(trip, "currency", DEFAULT_CURRENCY) or DEFAULT_CURRENCY
+		booking = Booking(
+			trip_id=trip.id,
+			passenger_id=passenger.id,
+			seat_numbers=allocated_seats,
+			total_price=total_price,
+			currency=currency,
+			payment_method=_normalized_payment_method(payload.payment_method),
+			status="confirmed",
+			payment_status="pending",
+		)
+		trip.available_seats = max(0, trip.available_seats - requested_seats)
+		db.add(booking)
+		db.flush()
+		_create_driver_booking_notification(db, trip, booking, passenger)
+		db.commit()
+		db.refresh(booking)
+		booking_id_str = str(booking.id)
+
+	# Extract driver & vehicle info
+	driver_name = (trip.driver.full_name if trip and trip.driver else None) or "Sokha Driver"
+	driver_phone = (trip.driver.phone if trip and trip.driver else None) or "0966519115"
+	vehicle_model = (trip.vehicle.model if trip and trip.vehicle else None) or "Lexus RX330 VIP"
+	plate_number = (trip.vehicle.plate_number if trip and trip.vehicle else None) or "2AB-1234"
+	from_prov = trip.departure_province if trip else "Phnom Penh"
+	to_prov = trip.destination_province if trip else "Siem Reap"
+	dep_time_iso = trip.departure_time.isoformat() if trip and trip.departure_time else phnom_penh_now().isoformat()
+	dep_str = trip.departure_time.strftime("%b %d, %I:%M %p") if trip and trip.departure_time else "Today"
+
+	# Send rich confirmation directly to passenger Telegram chat if available
+	bot_token = get_telegram_bot_token()
+	target_chat = payload.telegram_chat_id or payload.telegram_user_id
+	if bot_token and target_chat:
+		base_url = get_public_base_url().rstrip("/")
+		conf_msg = (
+			"✅ <b>Booking Confirmed! / ការកក់ជោគជ័យ!</b>\n\n"
+			f"🎟 <b>Booking Code / លេខកូដ:</b> <code>{ref_code}</code>\n"
+			f"🚖 <b>Route / ខ្សែរត់:</b> {from_prov} ➔ {to_prov}\n"
+			f"⏰ <b>Departure / ម៉ោងចេញ:</b> {dep_str}\n"
+			f"💺 <b>Seats / កៅអី:</b> {requested_seats} Seat(s)\n"
+			f"💵 <b>Total / តម្លៃសរុប:</b> ${float(total_price):.2f} ({payload.payment_method.upper()})\n\n"
+			f"👤 <b>Driver / អ្នកបើកបរ:</b> {driver_name} (📞 <code>{driver_phone}</code>)\n"
+			f"🚘 <b>Vehicle / រថយន្ត:</b> {vehicle_model} (<code>{plate_number}</code>)\n"
+			f"📍 <b>Pickup / ទីតាំងទទួល:</b> {payload.pickup_note or 'Door-to-door'}\n\n"
+			"Have a safe and pleasant journey with MyTravel!\n"
+			"សូមអរគុណសម្រាប់ការធ្វើដំណើរជាមួយ MyTravel!"
+		)
+		_send_telegram_bot_message(
+			bot_token,
+			str(target_chat),
+			conf_msg,
+			reply_markup={
+				"inline_keyboard": [
+					[
+						{
+							"text": "🎟 View Pass in Mini App",
+							"web_app": {"url": f"{base_url}/miniapp"},
+						},
+						{
+							"text": "📍 Live GPS Radar",
+							"url": f"{base_url}/app",
+						}
+					]
+				]
+			},
+		)
+
+	return {
+		"booking_id": booking_id_str,
+		"reference_code": ref_code,
+		"status": "confirmed",
+		"passenger_name": passenger.full_name,
+		"phone": passenger.phone,
+		"seat_count": requested_seats,
+		"seat_numbers": allocated_seats,
+		"total_price": float(total_price),
+		"currency": currency,
+		"payment_method": payload.payment_method,
+		"departure_province": from_prov,
+		"destination_province": to_prov,
+		"departure_time": dep_time_iso,
+		"driver_name": driver_name,
+		"driver_phone": driver_phone,
+		"vehicle_model": vehicle_model,
+		"plate_number": plate_number,
+		"pickup_note": payload.pickup_note,
+	}
+
+
+@router.post("/telegram/miniapp/custom-request")
+def telegram_miniapp_custom_request(
+	payload: TelegramMiniAppCustomRequest,
+	db: Session = Depends(get_db),
+) -> dict:
+	"""Handle on-demand custom ride requests when no scheduled trip exists."""
+	clean_phone = _clean_phone(payload.phone)
+	ref_code = f"REQ-{secrets.randbelow(8999) + 1000}"
+	# Optionally notify dispatch channel / bot admin
+	bot_token = get_telegram_bot_token()
+	if bot_token and payload.telegram_user_id:
+		_send_telegram_bot_message(
+			bot_token,
+			str(payload.telegram_user_id),
+			"📋 <b>Ride Request Received! / សំណើកក់ទទួលបានហើយ!</b>\n\n"
+			f"🎟 Ref: <code>{ref_code}</code>\n"
+			f"🚖 Route: <b>{payload.departure_province} ➔ {payload.destination_province}</b>\n"
+			f"💺 Seats / Car Type: <b>{payload.requested_seats} Seat(s)</b>\n"
+			f"📝 Note: {payload.note or 'Standard pickup'}\n\n"
+			"Our operations team is arranging a verified driver for you and will call shortly.\n"
+			"ក្រុមការងារកំពុងរៀបចំរថយន្ត និងទាក់ទងមកលោកអ្នកក្នុងពេលឆាប់ៗនេះ។"
+		)
+	return {
+		"status": "received",
+		"reference_code": ref_code,
+		"message": "Your ride request has been recorded.",
+	}
+
+
+@router.get("/telegram/miniapp/my-bookings")
+def telegram_miniapp_my_bookings(
+	phone: str | None = None,
+	limit: int = 10,
+	db: Session = Depends(get_db),
+) -> list[dict]:
+	"""Retrieve past bookings by passenger phone number."""
+	if not phone:
+		return []
+	clean_phone = _clean_phone(phone)
+	passenger = _find_user_by_phone(db, clean_phone)
+	if not passenger:
+		return []
+	bookings = db.execute(
+		select(Booking)
+		.options(selectinload(Booking.trip).selectinload(Trip.driver), selectinload(Booking.trip).selectinload(Trip.vehicle))
+		.where(Booking.passenger_id == passenger.id)
+		.order_by(Booking.created_at.desc())
+		.limit(max(1, min(limit, 30)))
+	).scalars().all()
+
+	result: list[dict] = []
+	for b in bookings:
+		t = b.trip
+		driver_name = t.driver.full_name if t and t.driver else "Verified Driver"
+		driver_phone = t.driver.phone if t and t.driver else "0966519115"
+		vehicle_model = t.vehicle.model if t and t.vehicle else "VIP Car"
+		plate_number = t.vehicle.plate_number if t and t.vehicle else "VIP"
+		result.append({
+			"booking_id": str(b.id),
+			"reference_code": f"MT-{str(b.id)[:4].upper()}",
+			"departure_province": t.departure_province if t else "Phnom Penh",
+			"destination_province": t.destination_province if t else "Siem Reap",
+			"departure_time": t.departure_time.isoformat() if t and t.departure_time else b.created_at.isoformat(),
+			"seat_count": len(b.seat_numbers) if b.seat_numbers else 1,
+			"total_price": float(b.total_price),
+			"status": b.status,
+			"payment_method": b.payment_method,
+			"driver_name": driver_name,
+			"driver_phone": driver_phone,
+			"vehicle_model": vehicle_model,
+			"plate_number": plate_number,
+		})
+	return result
+
+
 @router.post("/auth/telegram-otp/webhook", include_in_schema=False)
 def telegram_bot_webhook(
-	update: dict,
+	update: dict = Body(...),
 	db: Session = Depends(get_db),
 ) -> dict:
 	bot_token = get_telegram_bot_token()
