@@ -14,6 +14,7 @@ if __name__ == "__main__" and not __package__:
 	__package__ = "app.routes"
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import HTMLResponse
 from sqlalchemy import select, func, inspect, or_, and_, delete
 from sqlalchemy.orm import Session, selectinload
 from uuid import UUID
@@ -33,6 +34,7 @@ from ..config import (
 	get_google_places_api_key,
 	get_google_places_api_key_android,
 	get_google_places_api_key_ios,
+	get_public_base_url,
 	get_telegram_bot_token,
 	get_telegram_bot_username,
 )
@@ -1595,12 +1597,14 @@ def _send_telegram_verification_prompt(
 		f"<i>សូមចុចប៊ូតុងខាងក្រោមដើម្បីផ្ទៀងផ្ទាត់ភ្លាមៗដោយចុចតែម្តង ឬបញ្ចូលកូដ ៦ ខ្ទង់នេះក្នុងកម្មវិធី MyTravel!</i>"
 	)
 	if has_phone:
+		base_url = get_public_base_url().rstrip("/")
+		callback_url = f"{base_url}/travel/auth/telegram/callback?token={session.session_token}"
 		reply_markup: dict = {
 			"inline_keyboard": [
 				[
 					{
 						"text": "✅ Verify & Continue (1-Tap) / ផ្ទៀងផ្ទាត់ភ្លាមៗ",
-						"callback_data": f"otp_ok:{session.session_token}",
+						"url": callback_url,
 					}
 				]
 			]
@@ -1795,6 +1799,8 @@ def _process_telegram_update_dict(
 						cb_id,
 						"✅ Verified! Return to the MyTravel app.",
 					)
+					base_url = get_public_base_url().rstrip("/")
+					callback_url = f"{base_url}/travel/auth/telegram/callback?token={session.session_token}"
 					_send_telegram_bot_message(
 						bot_token,
 						chat_id,
@@ -1802,7 +1808,16 @@ def _process_telegram_update_dict(
 						f"📱 Phone / លេខទូរស័ព្ទ: <code>{session.phone}</code>\n"
 						"You can now return to the <b>MyTravel</b> app — it will log you in automatically.\n"
 						"សូមត្រឡប់ទៅកាន់កម្មវិធី <b>MyTravel</b> វិញ។",
-						reply_markup={"remove_keyboard": True},
+						reply_markup={
+							"inline_keyboard": [
+								[
+									{
+										"text": "🚖 Return to MyTravel / ត្រឡប់ទៅកាន់ MyTravel",
+										"url": callback_url,
+									}
+								]
+							]
+						},
 					)
 					return True
 				else:
@@ -1948,6 +1963,8 @@ def _process_telegram_update_dict(
 					target_session.telegram_username = display_name
 				_ensure_user_from_telegram_session(db, target_session)
 				db.commit()
+				base_url = get_public_base_url().rstrip("/")
+				callback_url = f"{base_url}/travel/auth/telegram/callback?token={target_session.session_token}"
 				_send_telegram_bot_message(
 					bot_token,
 					chat_id,
@@ -1955,7 +1972,16 @@ def _process_telegram_update_dict(
 					f"📱 Phone / លេខទូរស័ព្ទ: <code>{target_session.phone}</code>\n"
 					"You can now return to the <b>MyTravel</b> app — it will log you in automatically.\n"
 					"សូមត្រឡប់ទៅកាន់កម្មវិធី <b>MyTravel</b> វិញ។",
-					reply_markup={"remove_keyboard": True},
+					reply_markup={
+						"inline_keyboard": [
+							[
+								{
+									"text": "🚖 Return to MyTravel / ត្រឡប់ទៅកាន់ MyTravel",
+									"url": callback_url,
+								}
+							]
+						]
+					},
 				)
 				return True
 			else:
@@ -2135,6 +2161,203 @@ def request_telegram_otp(
 		expires_in_seconds=300,
 		demo_otp_code=demo_otp,
 	)
+
+
+
+@router.get("/auth/telegram/callback", response_class=HTMLResponse, include_in_schema=True)
+@router.get("/auth/telegram-otp/callback", response_class=HTMLResponse, include_in_schema=False)
+def telegram_otp_callback_redirect(
+	token: str = Query(..., description="Telegram OTP session token"),
+	db: Session = Depends(get_db),
+) -> HTMLResponse:
+	clean_token = token.strip()
+	otp_session = db.execute(
+		select(TelegramOtpSession).where(TelegramOtpSession.session_token == clean_token)
+	).scalar_one_or_none()
+
+	now = phnom_penh_now()
+	is_valid = False
+	phone_display = ""
+
+	if otp_session is not None and otp_session.expires_at > now and otp_session.status != "expired":
+		is_valid = True
+		phone_display = otp_session.phone or ""
+		if otp_session.status != "verified":
+			otp_session.status = "verified"
+			otp_session.verified_at = now
+			_ensure_user_from_telegram_session(db, otp_session)
+			db.commit()
+			bot_token = get_telegram_bot_token()
+			if bot_token and otp_session.telegram_chat_id:
+				try:
+					_send_telegram_bot_message(
+						bot_token,
+						otp_session.telegram_chat_id,
+						"✅ <b>Verified Successfully! / ផ្ទៀងផ្ទាត់ជោគជ័យ!</b>\n\n"
+						f"📱 Phone / លេខទូរស័ព្ទ: <code>{otp_session.phone or 'Verified'}</code>\n"
+						"Account verified via 1-Tap! Return to the MyTravel app to continue.\n"
+						"គណនីត្រូវបានផ្ទៀងផ្ទាត់! សូមត្រឡប់ទៅកាន់កម្មវិធី MyTravel វិញ។",
+					)
+				except Exception:
+					pass
+
+	safe_token = clean_token.replace('"', '').replace("'", "")
+	status_title = "ផ្ទៀងផ្ទាត់ជោគជ័យ!<br>Verified Successfully!" if is_valid else "តំណភ្ជាប់ផុតកំណត់<br>Link Expired"
+	status_desc = (
+		f"លេខទូរស័ព្ទ: {phone_display}<br>កំពុងត្រឡប់ទៅកាន់កម្មវិធី MyTravel ដោយស្វ័យប្រវត្តិ...<br>Returning to the MyTravel app automatically..."
+		if is_valid
+		else "កូដផ្ទៀងផ្ទាត់នេះបានផុតកំណត់ហើយ។ សូមស្នើសុំកូដថ្មីក្នុងកម្មវិធី MyTravel។<br>This session has expired. Please request a new code in the app."
+	)
+	icon_symbol = "✓" if is_valid else "!"
+	icon_color = "#1FA86C" if is_valid else "#EF4444"
+	icon_bg = "rgba(31, 168, 108, 0.15)" if is_valid else "rgba(239, 68, 68, 0.15)"
+	btn_text = "🚖 បើកកម្មវិធី MyTravel / Open App" if is_valid else "ត្រឡប់ទៅកម្មវិធី / Return to App"
+
+	html_content = f"""<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MyTravel Verification</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {{
+            --bg: #0B0F19;
+            --card: #131B2E;
+            --border: #334155;
+            --text-dark: #F8FAFC;
+            --text-light: #94A3B8;
+            --accent: #FFC83D;
+            --accent-ink: #17223A;
+        }}
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        body {{
+            font-family: 'Kantumruy Pro', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text-dark);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            text-align: center;
+            -webkit-font-smoothing: antialiased;
+        }}
+        .container {{
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 28px;
+            padding: 36px 24px;
+            max-width: 420px;
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+        }}
+        .icon-circle {{
+            width: 76px;
+            height: 76px;
+            background: {icon_bg};
+            border: 2px solid {icon_color};
+            color: {icon_color};
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 38px;
+            font-weight: bold;
+        }}
+        h1 {{
+            font-size: 20px;
+            font-weight: 700;
+            line-height: 1.4;
+            margin-bottom: 12px;
+            color: #FFFFFF;
+        }}
+        .subtitle {{
+            font-size: 14px;
+            color: var(--text-light);
+            line-height: 1.6;
+            margin-bottom: 28px;
+        }}
+        .btn-launch {{
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 16px 20px;
+            background: var(--accent);
+            color: var(--accent-ink);
+            font-size: 16px;
+            font-weight: 700;
+            border-radius: 18px;
+            text-decoration: none;
+            box-shadow: 0 4px 16px rgba(255, 200, 61, 0.3);
+            border: none;
+            cursor: pointer;
+        }}
+        .help-note {{
+            font-size: 12px;
+            color: #64748B;
+            margin-top: 18px;
+            line-height: 1.5;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon-circle">{icon_symbol}</div>
+        <h1>{status_title}</h1>
+        <p class="subtitle">{status_desc}</p>
+
+        <a id="btn-open-app" class="btn-launch" href="#">
+            <span>{btn_text}</span>
+        </a>
+
+        <p class="help-note">
+            ប្រសិនបើកម្មវិធីមិនបើកដោយស្វ័យប្រវត្តិ សូមចុចប៊ូតុងខាងលើ<br>
+            If the app didn\'t open automatically, please tap the button above.
+        </p>
+    </div>
+
+    <script>
+        const token = "{safe_token}";
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+        const customSchemeUrl = "mytravel://auth/callback?token=" + encodeURIComponent(token);
+        const androidIntentUrl = "intent://auth/callback?token=" + encodeURIComponent(token) + "#Intent;scheme=mytravel;package=com.kh.mytravel.mytravel;end;";
+        
+        const primaryTarget = isAndroid ? androidIntentUrl : customSchemeUrl;
+
+        const btn = document.getElementById('btn-open-app');
+        btn.href = primaryTarget;
+        btn.onclick = function() {{
+            window.location.href = primaryTarget;
+        }};
+
+        // Attempt automatic callback into the app
+        function launchApp() {{
+            try {{
+                window.location.href = primaryTarget;
+            }} catch (err) {{
+                window.location.href = customSchemeUrl;
+            }}
+        }}
+
+        // Trigger immediately
+        launchApp();
+
+        // Fallback retry for iOS Safari / Telegram in-app browser
+        setTimeout(function() {{
+            window.location.href = customSchemeUrl;
+        }}, 600);
+    </script>
+</body>
+</html>"""
+	return HTMLResponse(content=html_content)
 
 
 @router.get("/auth/telegram-otp/status/{session_token}", response_model=TelegramOtpStatusResponse)

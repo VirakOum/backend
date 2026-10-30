@@ -82,5 +82,5 @@ def get_public_base_url() -> str:
         return explicit
     env = get_app_env()
     if env in {"dev", "development", "staging"}:
-        return "http://dev.mytravel.taxi"
+        return "https://dev.mytravel.taxi"
     return "https://mytravel.taxi"

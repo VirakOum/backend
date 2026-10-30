@@ -78,7 +78,9 @@ def test_telegram_otp_signup_login_and_reset_flow():
     assert req_resp.status_code in (200, 201), req_resp.text
     start_data = req_resp.json()
     session_token = start_data["session_token"]
-    otp_code = start_data["demo_otp_code"]
+    with TestingSessionLocal() as db:
+        session_row = db.query(TelegramOtpSession).filter_by(session_token=session_token).first()
+        otp_code = session_row.otp_code
     assert start_data["phone"] == "012888999"
     assert otp_code and len(otp_code) == 6
 
@@ -163,12 +165,15 @@ def test_telegram_otp_signup_login_and_reset_flow():
     )
     assert reset_req.status_code in (200, 201)
     reset_data = reset_req.json()
+    with TestingSessionLocal() as db:
+        reset_row = db.query(TelegramOtpSession).filter_by(session_token=reset_data["session_token"]).first()
+        reset_otp_code = reset_row.otp_code
 
     reset_verify = client.post(
         "/v1/api/travel/auth/telegram-otp/verify",
         json={
             "session_token": reset_data["session_token"],
-            "otp_code": reset_data["demo_otp_code"],
+            "otp_code": reset_otp_code,
             "new_password": "NewStrongPassword123",
         },
     )
@@ -180,3 +185,37 @@ def test_telegram_otp_signup_login_and_reset_flow():
         json={"phone": "012888999", "password": "NewStrongPassword123"},
     )
     assert pwd_login.status_code == 200, pwd_login.text
+
+
+def test_telegram_otp_auto_callback_redirect():
+    client = TestClient(app)
+
+    # 1. Start an OTP session
+    req_resp = client.post(
+        "/v1/api/travel/auth/telegram-otp/request",
+        json={"phone": "0966519115", "purpose": "login"},
+    )
+    assert req_resp.status_code in (200, 201), req_resp.text
+    session_token = req_resp.json()["session_token"]
+
+    # 2. Simulate user tapping [Verify & Continue (1-Tap)] link in Telegram
+    cb_resp = client.get(f"/travel/auth/telegram/callback?token={session_token}")
+    assert cb_resp.status_code == 200
+    html = cb_resp.text
+    assert "mytravel://auth/callback?token=" in html
+    assert "intent://auth/callback?token=" in html
+    assert "com.kh.mytravel.mytravel" in html
+    assert "Verified Successfully" in html
+
+    # 3. Verify session was updated to 'verified' in DB
+    with TestingSessionLocal() as db:
+        session_row = db.query(TelegramOtpSession).filter_by(session_token=session_token).first()
+        assert session_row is not None
+        assert session_row.status == "verified"
+        assert session_row.verified_at is not None
+
+    # 4. Also verify /v1/api/travel/auth/telegram-otp/callback works
+    cb_v1 = client.get(f"/v1/api/travel/auth/telegram-otp/callback?token={session_token}")
+    assert cb_v1.status_code == 200
+    assert "mytravel://auth/callback?token=" in cb_v1.text
+
