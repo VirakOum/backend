@@ -14,7 +14,7 @@ if __name__ == "__main__" and not __package__:
 		sys.path.insert(0, str(backend_root))
 	__package__ = "app.routes"
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select, func, inspect, or_, and_, delete
@@ -1755,6 +1755,7 @@ def _process_telegram_update_dict(
 	db: Session,
 	update: dict,
 	bot_token: str,
+	allow_fallback_reply: bool = True,
 ) -> bool:
 	now = phnom_penh_now()
 
@@ -1775,6 +1776,8 @@ def _process_telegram_update_dict(
 					TelegramOtpSession.session_token == token_part
 				)
 			).scalar_one_or_none()
+			if session is None and not allow_fallback_reply:
+				return False
 			if session and session.expires_at > now and session.status not in ("consumed", "expired"):
 				if not session.phone:
 					prev_phone_session = db.execute(
@@ -1829,13 +1832,14 @@ def _process_telegram_update_dict(
 						"Please tap Share Phone Number below to verify.",
 					)
 					_send_telegram_verification_prompt(bot_token, chat_id, session)
-					return False
+					return True
 			else:
-				_answer_telegram_callback_query(
-					bot_token,
-					cb_id,
-					"Session expired. Please request a new OTP in the app.",
-				)
+				if allow_fallback_reply:
+					_answer_telegram_callback_query(
+						bot_token,
+						cb_id,
+						"Session expired. Please request a new OTP in the app.",
+					)
 				return False
 
 	message = update.get("message") or update.get("edited_message")
@@ -1865,7 +1869,9 @@ def _process_telegram_update_dict(
 					TelegramOtpSession.session_token == token_part
 				)
 			).scalar_one_or_none()
-		if session is None:
+			if session is None and not allow_fallback_reply:
+				return False
+		if session is None and not arg.startswith("otp_"):
 			# Fallback for plain /start: find latest active session for this chat_id or latest pending session
 			session = db.execute(
 				select(TelegramOtpSession)
@@ -1899,6 +1905,9 @@ def _process_telegram_update_dict(
 			db.commit()
 			_send_telegram_verification_prompt(bot_token, chat_id, session)
 			return True
+
+		if not allow_fallback_reply:
+			return False
 
 		# No specific session matched /start yet — prompt contact share so user can still verify 1-tap
 		base_url = get_public_base_url().rstrip("/")
@@ -2922,14 +2931,58 @@ def telegram_miniapp_my_bookings(
 	return result
 
 
+def _forward_telegram_webhook_to_peer(update: dict) -> bool:
+	"""Forward an unmatched Telegram webhook update to the peer environment (prod <-> dev)."""
+	base_url = get_public_base_url().rstrip("/").lower()
+	peer_base = (
+		"https://dev.mytravel.taxi"
+		if base_url == "https://mytravel.taxi"
+		else "https://mytravel.taxi"
+		if "dev.mytravel.taxi" in base_url
+		else ""
+	)
+	if not peer_base:
+		return False
+	try:
+		import httpx
+		resp = httpx.post(
+			f"{peer_base}/v1/api/travel/auth/telegram-otp/webhook",
+			json=update,
+			headers={"X-Telegram-Peer-Forward": "1"},
+			timeout=4.0,
+		)
+		if resp.status_code == 200:
+			data = resp.json()
+			return bool(isinstance(data, dict) and data.get("handled"))
+	except Exception:
+		pass
+	return False
+
+
 @router.post("/auth/telegram-otp/webhook", include_in_schema=False)
 def telegram_bot_webhook(
+	request: Request,
 	update: dict = Body(...),
 	db: Session = Depends(get_db),
 ) -> dict:
 	bot_token = get_telegram_bot_token()
-	_process_telegram_update_dict(db, update, bot_token)
-	return {"ok": True}
+	is_forwarded = request.headers.get("X-Telegram-Peer-Forward") == "1"
+	if is_forwarded:
+		handled = _process_telegram_update_dict(
+			db, update, bot_token, allow_fallback_reply=False
+		)
+		return {"ok": True, "handled": handled}
+
+	handled = _process_telegram_update_dict(
+		db, update, bot_token, allow_fallback_reply=False
+	)
+	if not handled:
+		if _forward_telegram_webhook_to_peer(update):
+			return {"ok": True, "handled": True}
+		handled = _process_telegram_update_dict(
+			db, update, bot_token, allow_fallback_reply=True
+		)
+	return {"ok": True, "handled": handled}
 
 
 
