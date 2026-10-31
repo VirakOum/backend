@@ -750,38 +750,298 @@
 
     // 4.1 DRIVER DASHBOARD OPERATIONS (FOR ROLE === 'driver')
     const driverTripsListContainer = document.getElementById('driverTripsListContainer');
-    const drvFromInput = document.getElementById('drvFromInput');
-    const drvToInput = document.getElementById('drvToInput');
+    const drvFromSelect = document.getElementById('drvFromSelect');
+    const drvToSelect = document.getElementById('drvToSelect');
+    const btnDrvSwapRoute = document.getElementById('btnDrvSwapRoute');
     const drvDepTimeInput = document.getElementById('drvDepTimeInput');
+    const drvCustomTimeWrapper = document.getElementById('drvCustomTimeWrapper');
+    const btnDrvCustomTimeToggle = document.getElementById('btnDrvCustomTimeToggle');
+    const drvTimePreviewText = document.getElementById('drvTimePreviewText');
     const drvSeatsInput = document.getElementById('drvSeatsInput');
     const drvPriceInput = document.getElementById('drvPriceInput');
     const drvCurrencyInput = document.getElementById('drvCurrencyInput');
+    const drvCurrencyLabel = document.getElementById('drvCurrencyLabel');
+    const btnDrvPriceMinus = document.getElementById('btnDrvPriceMinus');
+    const btnDrvPricePlus = document.getElementById('btnDrvPricePlus');
     const drvCarModelInput = document.getElementById('drvCarModelInput');
     const drvPlateInput = document.getElementById('drvPlateInput');
+    const drvSavedVehicleBanner = document.getElementById('drvSavedVehicleBanner');
+    const drvSavedVehicleTitle = document.getElementById('drvSavedVehicleTitle');
+    const drvSavedVehicleSub = document.getElementById('drvSavedVehicleSub');
+    const btnDrvToggleVehFields = document.getElementById('btnDrvToggleVehFields');
+    const drvVehicleFields = document.getElementById('drvVehicleFields');
+    const drvSummaryRouteText = document.getElementById('drvSummaryRouteText');
+    const drvSummaryDepartText = document.getElementById('drvSummaryDepartText');
+    const drvSummaryTotalFare = document.getElementById('drvSummaryTotalFare');
     const btnPublishDriverTrip = document.getElementById('btnPublishDriverTrip');
 
-    // Default driver departure time input to +2 hours
-    if (drvDepTimeInput) {
-        const d = new Date(Date.now() + 2 * 3600000);
+    let selectedDriverDepartureIso = '';
+    let selectedDriverDepartureLabel = 'ក្នុង 30 នាទី (+30m)';
+
+    function getLocalIsoString(date) {
         const pad = n => String(n).padStart(2, '0');
-        drvDepTimeInput.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:00`;
+        const yyyy = date.getFullYear();
+        const mm = pad(date.getMonth() + 1);
+        const dd = pad(date.getDate());
+        const hh = pad(date.getHours());
+        const mi = pad(date.getMinutes());
+        return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
     }
+
+    function setDriverDepartureTime(offsetMinutes = 30, customDate = null, label = '') {
+        let targetDate = customDate;
+        if (!targetDate) {
+            targetDate = new Date(Date.now() + offsetMinutes * 60000);
+        }
+        selectedDriverDepartureIso = targetDate.toISOString();
+        if (drvDepTimeInput) {
+            drvDepTimeInput.value = getLocalIsoString(targetDate);
+        }
+        if (label) {
+            selectedDriverDepartureLabel = label;
+        } else {
+            const timeStr = targetDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+            const dateStr = targetDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
+            selectedDriverDepartureLabel = `${dateStr}, ${timeStr}`;
+        }
+        if (drvTimePreviewText) {
+            drvTimePreviewText.textContent = selectedDriverDepartureLabel;
+        }
+        updateDriverSummaryPreview();
+    }
+
+    // Default driver departure to +30 minutes
+    setDriverDepartureTime(30, null, 'ក្នុង 30 នាទី (+30m)');
+
+    function updateDriverSummaryPreview() {
+        const from = drvFromSelect?.value || 'Phnom Penh';
+        const to = drvToSelect?.value || 'Siem Reap';
+        const seats = Number(drvSeatsInput?.value || 4);
+        const price = Number(drvPriceInput?.value || 40000);
+        const curr = drvCurrencyInput?.value || 'KHR';
+
+        if (drvSummaryRouteText) {
+            drvSummaryRouteText.textContent = `${from} ➔ ${to}`;
+        }
+        if (drvSummaryDepartText) {
+            drvSummaryDepartText.textContent = `${selectedDriverDepartureLabel} • ${seats} កៅអី`;
+        }
+        if (drvSummaryTotalFare) {
+            const total = seats * price;
+            if (curr === 'KHR') {
+                drvSummaryTotalFare.textContent = `${total.toLocaleString()} ៛`;
+            } else {
+                drvSummaryTotalFare.textContent = `$${total.toFixed(2)}`;
+            }
+        }
+    }
+
+    // Quick Route Chips for Driver
+    document.querySelectorAll('#drvQuickRoutes .drv-route-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            triggerHaptic('light');
+            document.querySelectorAll('#drvQuickRoutes .drv-route-chip').forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+
+            const from = chip.getAttribute('data-from');
+            const to = chip.getAttribute('data-to');
+            if (drvFromSelect) drvFromSelect.value = from;
+            if (drvToSelect) drvToSelect.value = to;
+            updateDriverSummaryPreview();
+        });
+    });
+
+    drvFromSelect?.addEventListener('change', () => {
+        document.querySelectorAll('#drvQuickRoutes .drv-route-chip').forEach(c => c.classList.remove('active'));
+        updateDriverSummaryPreview();
+    });
+    drvToSelect?.addEventListener('change', () => {
+        document.querySelectorAll('#drvQuickRoutes .drv-route-chip').forEach(c => c.classList.remove('active'));
+        updateDriverSummaryPreview();
+    });
+
+    // Route Swap Button for Driver
+    btnDrvSwapRoute?.addEventListener('click', () => {
+        triggerHaptic('medium');
+        if (!drvFromSelect || !drvToSelect) return;
+        const temp = drvFromSelect.value;
+        drvFromSelect.value = drvToSelect.value;
+        drvToSelect.value = temp;
+        document.querySelectorAll('#drvQuickRoutes .drv-route-chip').forEach(c => c.classList.remove('active'));
+        updateDriverSummaryPreview();
+    });
+
+    // Quick Time Chips for Driver
+    document.querySelectorAll('#drvQuickTimes .drv-time-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            if (chip.id === 'btnDrvCustomTimeToggle') return;
+            triggerHaptic('light');
+            document.querySelectorAll('#drvQuickTimes .drv-time-chip').forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            if (drvCustomTimeWrapper) drvCustomTimeWrapper.style.display = 'none';
+
+            const offset = chip.getAttribute('data-offset');
+            const preset = chip.getAttribute('data-preset');
+
+            if (offset) {
+                const mins = Number(offset);
+                const label = mins === 30 ? 'ក្នុង 30 នាទី (+30m)' : (mins === 60 ? 'ក្នុង 1 ម៉ោង (+1h)' : 'ក្នុង 2 ម៉ោង (+2h)');
+                setDriverDepartureTime(mins, null, label);
+            } else if (preset === 'tomorrow_morning') {
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                tomorrow.setHours(7, 0, 0, 0);
+                setDriverDepartureTime(0, tomorrow, 'ព្រឹកស្អែក 7:00 ព្រឹក');
+            } else if (preset === 'tomorrow_afternoon') {
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                tomorrow.setHours(13, 0, 0, 0);
+                setDriverDepartureTime(0, tomorrow, 'ថ្ងៃស្អែក 1:00 រសៀល');
+            }
+        });
+    });
+
+    // Custom time toggle
+    btnDrvCustomTimeToggle?.addEventListener('click', () => {
+        triggerHaptic('light');
+        document.querySelectorAll('#drvQuickTimes .drv-time-chip').forEach(c => c.classList.remove('active'));
+        btnDrvCustomTimeToggle.classList.add('active');
+        if (drvCustomTimeWrapper) {
+            drvCustomTimeWrapper.style.display = drvCustomTimeWrapper.style.display === 'none' ? 'block' : 'none';
+            if (drvCustomTimeWrapper.style.display === 'block') {
+                drvDepTimeInput?.focus();
+            }
+        }
+    });
+
+    drvDepTimeInput?.addEventListener('change', (e) => {
+        if (e.target.value) {
+            const d = new Date(e.target.value);
+            if (!isNaN(d.getTime())) {
+                const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+                const dateStr = d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+                setDriverDepartureTime(0, d, `${dateStr}, ${timeStr}`);
+            }
+        }
+    });
+
+    // Seat capacity buttons
+    document.querySelectorAll('#drvSeatPills .drv-seat-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            triggerHaptic('light');
+            document.querySelectorAll('#drvSeatPills .drv-seat-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const seats = btn.getAttribute('data-seats') || '4';
+            if (drvSeatsInput) drvSeatsInput.value = seats;
+            updateDriverSummaryPreview();
+        });
+    });
+
+    // Quick Fare Chips
+    document.querySelectorAll('#drvQuickFares .drv-fare-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            triggerHaptic('light');
+            document.querySelectorAll('#drvQuickFares .drv-fare-chip').forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+
+            const price = chip.getAttribute('data-price');
+            const currency = chip.getAttribute('data-currency');
+            if (drvPriceInput) drvPriceInput.value = price;
+            if (drvCurrencyInput) drvCurrencyInput.value = currency;
+            if (drvCurrencyLabel) {
+                drvCurrencyLabel.textContent = currency === 'KHR' ? 'KHR (៛)' : 'USD ($)';
+            }
+            updateDriverSummaryPreview();
+        });
+    });
+
+    // Price Stepper (+ / -)
+    btnDrvPriceMinus?.addEventListener('click', () => {
+        triggerHaptic('light');
+        const curr = drvCurrencyInput?.value || 'KHR';
+        let val = Number(drvPriceInput?.value || (curr === 'KHR' ? 40000 : 10));
+        const step = curr === 'KHR' ? 5000 : 1;
+        val = Math.max(step, val - step);
+        if (drvPriceInput) drvPriceInput.value = String(val);
+        document.querySelectorAll('#drvQuickFares .drv-fare-chip').forEach(c => c.classList.remove('active'));
+        updateDriverSummaryPreview();
+    });
+
+    btnDrvPricePlus?.addEventListener('click', () => {
+        triggerHaptic('light');
+        const curr = drvCurrencyInput?.value || 'KHR';
+        let val = Number(drvPriceInput?.value || (curr === 'KHR' ? 40000 : 10));
+        const step = curr === 'KHR' ? 5000 : 1;
+        val = val + step;
+        if (drvPriceInput) drvPriceInput.value = String(val);
+        document.querySelectorAll('#drvQuickFares .drv-fare-chip').forEach(c => c.classList.remove('active'));
+        updateDriverSummaryPreview();
+    });
+
+    drvPriceInput?.addEventListener('input', () => {
+        document.querySelectorAll('#drvQuickFares .drv-fare-chip').forEach(c => c.classList.remove('active'));
+        updateDriverSummaryPreview();
+    });
+
+    drvCurrencyInput?.addEventListener('change', (e) => {
+        const curr = e.target.value;
+        if (drvCurrencyLabel) {
+            drvCurrencyLabel.textContent = curr === 'KHR' ? 'KHR (៛)' : 'USD ($)';
+        }
+        if (curr === 'USD') {
+            if (Number(drvPriceInput?.value || 0) >= 1000) {
+                drvPriceInput.value = '10';
+            }
+        } else {
+            if (Number(drvPriceInput?.value || 0) < 500) {
+                drvPriceInput.value = '40000';
+            }
+        }
+        document.querySelectorAll('#drvQuickFares .drv-fare-chip').forEach(c => c.classList.remove('active'));
+        updateDriverSummaryPreview();
+    });
+
+    // Toggle Vehicle edit fields
+    btnDrvToggleVehFields?.addEventListener('click', () => {
+        triggerHaptic('light');
+        if (drvVehicleFields) {
+            const isHidden = drvVehicleFields.style.display === 'none';
+            drvVehicleFields.style.display = isHidden ? 'grid' : 'none';
+            btnDrvToggleVehFields.textContent = isHidden ? 'រួចរាល់' : 'កែសម្រួល';
+        }
+    });
 
     function renderDriverDashboard() {
         if (!driverTripsListContainer) return;
         const vehs = currentDriverSummary?.vehicles || [];
         if (vehs.length > 0) {
-            if (drvCarModelInput && !drvCarModelInput.value) drvCarModelInput.value = vehs[0].model || '';
-            if (drvPlateInput && !drvPlateInput.value) drvPlateInput.value = vehs[0].plate_number || '';
+            const v = vehs[0];
+            if (drvCarModelInput) drvCarModelInput.value = v.model || '';
+            if (drvPlateInput) drvPlateInput.value = v.plate_number || '';
+            if (drvSavedVehicleBanner) {
+                drvSavedVehicleBanner.style.display = 'flex';
+                if (drvSavedVehicleTitle) drvSavedVehicleTitle.textContent = `${v.model || 'Registered Vehicle'} (${v.plate_number || 'Taxi'})`;
+                if (drvSavedVehicleSub) drvSavedVehicleSub.textContent = `រថយន្តរបស់អ្នកបើកបរ • ${v.seat_type || 4} កៅអី`;
+            }
+            if (drvVehicleFields) drvVehicleFields.style.display = 'none';
+            if (v.seat_type) {
+                const matchingSeatBtn = document.querySelector(`#drvSeatPills .drv-seat-btn[data-seats="${v.seat_type}"]`);
+                if (matchingSeatBtn) matchingSeatBtn.click();
+            }
+        } else {
+            if (drvSavedVehicleBanner) drvSavedVehicleBanner.style.display = 'none';
+            if (drvVehicleFields) drvVehicleFields.style.display = 'grid';
         }
+
+        updateDriverSummaryPreview();
 
         const trips = currentDriverSummary?.trips || [];
         if (trips.length === 0) {
             driverTripsListContainer.innerHTML = `
                 <div class="empty-state-box">
-                    <i class="fa-solid fa-road"></i>
+                    <i class="fa-solid fa-car-rear" style="font-size:2rem; color:var(--taxi-yellow);"></i>
                     <h4>មិនទាន់មានជើងរថយន្តដែលបានដាក់ផ្សាយទេ</h4>
-                    <p>បំពេញទម្រង់ខាងលើដើម្បីដាក់ផ្សាយជើងរថយន្តថ្មីសម្រាប់ទទួលភ្ញៀវ។</p>
+                    <p>ជ្រើសរើសខ្សែរត់ និងម៉ោងចេញខាងលើ រួចចុច "ដាក់ផ្សាយជើងរថយន្តភ្លាមៗ" ដើម្បីទទួលអ្នកដំណើរ។</p>
                 </div>
             `;
             return;
@@ -792,18 +1052,32 @@
             const card = document.createElement('div');
             card.className = 'ride-card';
             const priceInfo = formatTripPrice(t.price_per_seat, t.currency);
+            const bookedSeats = t.bookings_count || (t.total_seats - t.available_seats) || 0;
+            const isFull = t.available_seats <= 0;
+            const shareText = encodeURIComponent(`🚖 MyTravel Taxi | ជើងរថយន្ត ${t.departure_province} ➔ ${t.destination_province}\n⏰ ម៉ោងចេញ: ${formatDateTimeShort(t.departure_time)}\n💺 នៅសល់ ${t.available_seats}/${t.total_seats} កៅអី • តម្លៃ ${priceInfo.primary}\n👉 កក់ភ្លាមៗតាម Telegram: https://t.me/MyTravel_Taxi_bot/app`);
+
             card.innerHTML = `
                 <div class="trip-route-banner">
                     <span>🚖 ${t.departure_province} ➔ ${t.destination_province}</span>
-                    <span style="color:var(--success-color); font-size:0.75rem;">${t.status.toUpperCase()}</span>
+                    <span style="color:${isFull ? 'var(--danger-color)' : 'var(--success-color)'}; font-size:0.75rem; font-weight:800;">
+                        ${isFull ? '🔴 FULL (ពេញ)' : '🟢 AVAILABLE'}
+                    </span>
                 </div>
-                <div style="display:flex; justify-content:space-between; font-size:0.82rem; color:var(--text-secondary);">
-                    <span>⏰ ${formatDateTimeShort(t.departure_time)}</span>
-                    <span>💺 នៅសល់ ${t.available_seats}/${t.total_seats} កៅអី (កក់រួច: ${t.bookings_count || 0})</span>
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.82rem; color:var(--text-secondary); flex-wrap:wrap; gap:6px;">
+                    <span><i class="fa-regular fa-clock"></i> <strong>${formatDateTimeShort(t.departure_time)}</strong></span>
+                    <span style="font-weight:800; color:${bookedSeats > 0 ? 'var(--taxi-yellow)' : 'var(--text-secondary)'};">
+                        💺 បានកក់: ${bookedSeats}/${t.total_seats} (នៅសល់ ${t.available_seats})
+                    </span>
                 </div>
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-size:0.8rem; color:var(--text-secondary);">${t.vehicle_model || 'Vehicle'} ${t.plate_number ? `(${t.plate_number})` : ''}</span>
-                    <strong style="color:var(--taxi-yellow);">${priceInfo.primary} / កៅអី</strong>
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; border-top:1px dashed var(--border-color); padding-top:8px;">
+                    <div>
+                        <span style="font-size:0.78rem; color:var(--text-secondary); display:block;">${t.vehicle_model || 'Vehicle'} ${t.plate_number ? `(${t.plate_number})` : ''}</span>
+                        <strong style="color:var(--taxi-yellow); font-size:0.95rem;">${priceInfo.primary} / seat</strong>
+                    </div>
+                    <a href="https://t.me/share/url?url=${shareText}" target="_blank" class="btn-share-trip" title="Share to Telegram Chat">
+                        <i class="fa-brands fa-telegram"></i>
+                        <span>ចែករំលែក / Share</span>
+                    </a>
                 </div>
             `;
             driverTripsListContainer.appendChild(card);
@@ -815,17 +1089,23 @@
             alert('Only Driver accounts can publish trips.');
             return;
         }
-        const from = drvFromInput?.value.trim() || 'Phnom Penh';
-        const to = drvToInput?.value.trim() || 'Siem Reap';
-        const depTime = drvDepTimeInput?.value || new Date(Date.now() + 7200000).toISOString();
+        const from = drvFromSelect?.value || 'Phnom Penh';
+        const to = drvToSelect?.value || 'Siem Reap';
+        const depTime = selectedDriverDepartureIso || (drvDepTimeInput?.value ? new Date(drvDepTimeInput.value).toISOString() : new Date(Date.now() + 1800000).toISOString());
         const totalSeats = Number(drvSeatsInput?.value || 4);
         const price = Number(drvPriceInput?.value || 40000);
         const currency = drvCurrencyInput?.value || 'KHR';
         const carModel = drvCarModelInput?.value.trim() || '';
         const plate = drvPlateInput?.value.trim() || '';
 
+        if (from === to) {
+            triggerHaptic('error');
+            alert(currentLang === 'km' ? 'ខេត្តចេញដំណើរ និងខេត្តគោលដៅមិនអាចដូចគ្នាបានទេ!' : 'Departure and destination province cannot be the same!');
+            return;
+        }
+
         btnPublishDriverTrip.disabled = true;
-        btnPublishDriverTrip.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Publishing...`;
+        btnPublishDriverTrip.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> កំពុងដាក់ផ្សាយ...`;
 
         try {
             const res = await fetch('/v1/api/travel/telegram/miniapp/driver/trips', {
@@ -837,7 +1117,7 @@
                     phone: currentUser.phone,
                     departure_province: from,
                     destination_province: to,
-                    departure_time: new Date(depTime).toISOString(),
+                    departure_time: depTime,
                     price_per_seat: price,
                     currency: currency,
                     total_seats: totalSeats,
@@ -852,16 +1132,18 @@
             if (data.driver_summary) {
                 currentDriverSummary = data.driver_summary;
                 renderDriverDashboard();
+            } else {
+                await checkUserSessionAndRole();
             }
             fetchAvailableRides();
             triggerHaptic('success');
-            alert(currentLang === 'km' ? 'ដាក់ផ្សាយជើងរថយន្តជោគជ័យ!' : 'Trip published successfully!');
+            alert(currentLang === 'km' ? '🎉 ដាក់ផ្សាយជើងរថយន្តជោគជ័យ! អ្នកដំណើរអាចមើលឃើញ និងកក់បានភ្លាមៗ។' : 'Trip published successfully! Passengers can now book seats.');
         } catch (err) {
             triggerHaptic('error');
             alert(err.message || 'Could not publish trip.');
         } finally {
             btnPublishDriverTrip.disabled = false;
-            btnPublishDriverTrip.innerHTML = `<i class="fa-solid fa-paper-plane"></i> <span>ដាក់ផ្សាយជើងរថយន្ត / Publish Trip Now</span>`;
+            btnPublishDriverTrip.innerHTML = `<i class="fa-solid fa-paper-plane"></i> <span>🚀 ដាក់ផ្សាយជើងរថយន្តភ្លាមៗ / Publish Trip Now</span>`;
         }
     });
 
@@ -913,7 +1195,7 @@
             const provinces = await res.json();
             if (!Array.isArray(provinces) || provinces.length === 0) return;
 
-            [selectDeparture, selectDestination].forEach(selectEl => {
+            [selectDeparture, selectDestination, drvFromSelect, drvToSelect].forEach(selectEl => {
                 if (!selectEl) return;
                 const currentVal = selectEl.value || 'all';
                 const existingValues = new Set(

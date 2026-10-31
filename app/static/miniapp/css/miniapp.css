@@ -2260,3 +2260,299 @@ button, input, select, textarea {
     border-radius: var(--radius-sm);
     border: 1px solid var(--border-color);
 }
+
+/* ===================================================================
+   DRIVER TRIP CREATION - FAST & INTUITIVE MOBILE WORKFLOW
+   =================================================================== */
+.driver-publish-card {
+    background: linear-gradient(180deg, var(--card-bg) 0%, rgba(255, 200, 61, 0.04) 100%);
+    border: 1.5px solid rgba(255, 200, 61, 0.35);
+    border-radius: var(--radius-xl);
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.driver-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed var(--border-color);
+}
+
+.driver-card-header .header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.icon-circle-yellow {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: var(--taxi-yellow);
+    color: var(--taxi-ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    font-weight: 900;
+    flex-shrink: 0;
+}
+
+.driver-card-title {
+    font-size: 0.96rem;
+    font-weight: 800;
+    color: var(--taxi-yellow);
+    line-height: 1.3;
+}
+
+.driver-card-subtitle {
+    font-size: 0.74rem;
+    color: var(--text-secondary);
+    line-height: 1.35;
+    display: block;
+}
+
+.driver-step-box {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.step-label {
+    font-size: 0.78rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    line-height: 1.3;
+}
+
+.step-number {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: var(--taxi-yellow);
+    color: var(--taxi-ink);
+    font-size: 0.72rem;
+    font-weight: 900;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.driver-quick-routes, .driver-quick-times, .driver-quick-fares {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.drv-route-chip, .drv-time-chip, .drv-fare-chip {
+    background-color: var(--card-elevated);
+    border: 1.5px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 7px 11px;
+    border-radius: var(--radius-full);
+    font-size: 0.76rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    line-height: 1.3;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.drv-route-chip:active, .drv-time-chip:active, .drv-fare-chip:active {
+    transform: scale(0.96);
+}
+
+.drv-route-chip.active, .drv-time-chip.active, .drv-fare-chip.active {
+    background-color: var(--taxi-yellow-soft);
+    border-color: var(--taxi-yellow);
+    color: var(--taxi-yellow);
+    font-weight: 800;
+}
+
+.selected-time-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    background: var(--card-elevated);
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--success-color);
+}
+
+.selected-time-indicator strong {
+    color: var(--text-primary);
+}
+
+.drv-vehicle-detected {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background-color: var(--card-elevated);
+    border: 1px solid var(--border-color);
+    padding: 9px 12px;
+    border-radius: var(--radius-md);
+}
+
+.drv-vehicle-detected .veh-info {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+    flex: 1;
+}
+
+.drv-vehicle-detected .veh-info i {
+    font-size: 1.25rem;
+    color: var(--taxi-yellow);
+    flex-shrink: 0;
+}
+
+.drv-vehicle-detected .veh-info strong {
+    font-size: 0.88rem;
+    display: block;
+    color: var(--text-primary);
+    word-break: break-word;
+}
+
+.drv-vehicle-detected .veh-info span {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+}
+
+.btn-change-veh {
+    background: none;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 0.72rem;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.drv-seat-pills {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.drv-seat-btn {
+    background-color: var(--card-bg);
+    border: 1.5px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 8px 6px;
+    border-radius: var(--radius-sm);
+    font-size: 0.76rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: center;
+    line-height: 1.3;
+}
+
+.drv-seat-btn.active {
+    background-color: var(--taxi-yellow-soft);
+    border-color: var(--taxi-yellow);
+    color: var(--taxi-yellow);
+    font-weight: 800;
+}
+
+.drv-price-stepper-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.drv-price-val-box {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    background-color: var(--card-elevated);
+    border: 1.5px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 4px 10px;
+}
+
+.drv-price-val-box input {
+    font-size: 1.15rem;
+    font-weight: 900;
+    color: var(--taxi-yellow);
+    text-align: center;
+}
+
+.drv-currency-badge {
+    font-size: 0.76rem;
+    font-weight: 800;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.drv-currency-select {
+    width: auto;
+    background: var(--card-elevated);
+    border: 1.5px solid var(--border-color);
+    padding: 8px 10px;
+    border-radius: var(--radius-md);
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: var(--taxi-yellow);
+}
+
+.driver-summary-preview {
+    background: rgba(255, 200, 61, 0.08);
+    border: 1.5px dashed rgba(255, 200, 61, 0.4);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.driver-summary-preview .summary-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+.driver-summary-preview .summary-line.total {
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px dashed rgba(255, 200, 61, 0.25);
+    font-size: 0.84rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.btn-share-trip {
+    background-color: rgba(56, 189, 248, 0.16);
+    border: 1px solid rgba(56, 189, 248, 0.45);
+    color: #38BDF8;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 0.76rem;
+    font-weight: 800;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    text-decoration: none;
+}
+

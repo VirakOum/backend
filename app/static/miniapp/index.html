@@ -372,62 +372,247 @@
                     <p class="charter-sub">បង្កើតជើងរថយន្តថ្មី និងពិនិត្យមើលចំនួនកៅអីដែលភ្ញៀវបានកក់ក្នុងប្រព័ន្ធ MyTravel</p>
                 </div>
 
-                <!-- Publish New Trip Card -->
-                <div class="route-search-card" style="gap:10px;">
-                    <h3 style="font-size:0.95rem; font-weight:800; color:var(--taxi-yellow);">
-                        <i class="fa-solid fa-plus-circle"></i> បង្កើតជើងរថយន្តថ្មី / Publish New Trip
-                    </h3>
-                    <div class="responsive-grid-2">
-                        <div class="form-group-card">
-                            <label>ចេញពីខេត្ត / From:</label>
-                            <input type="text" id="drvFromInput" class="modern-input" value="Phnom Penh" placeholder="Phnom Penh">
-                        </div>
-                        <div class="form-group-card">
-                            <label>ទៅកាន់ខេត្ត / To:</label>
-                            <input type="text" id="drvToInput" class="modern-input" value="Siem Reap" placeholder="Siem Reap">
+                <!-- Super Fast & Intuitive Publish New Trip Card -->
+                <div class="driver-publish-card">
+                    <div class="driver-card-header">
+                        <div class="header-left">
+                            <span class="icon-circle-yellow"><i class="fa-solid fa-plus"></i></span>
+                            <div>
+                                <h3 class="driver-card-title">បង្កើតជើងរថយន្តថ្មី / Publish New Trip</h3>
+                                <span class="driver-card-subtitle">ជ្រើសរើសខ្សែរត់ និងម៉ោងចេញដំណើរយ៉ាងរហ័សក្នុង 5 វិនាទី</span>
+                            </div>
                         </div>
                     </div>
-                    <div class="responsive-grid-2">
-                        <div class="form-group-card">
-                            <label>ថ្ងៃ និងម៉ោងចេញ / Departure:</label>
+
+                    <!-- STEP 1: ROUTE SELECTION -->
+                    <div class="driver-step-box">
+                        <label class="step-label"><span class="step-number">1</span> ជ្រើសរើសខ្សែរត់ / Select Route:</label>
+                        <!-- Quick Route Chips for Driver -->
+                        <div class="driver-quick-routes" id="drvQuickRoutes">
+                            <button type="button" class="drv-route-chip active" data-from="Phnom Penh" data-to="Siem Reap">
+                                <span>🏙️ ភ្នំពេញ ➔ 🏛️ សៀមរាប</span>
+                            </button>
+                            <button type="button" class="drv-route-chip" data-from="Phnom Penh" data-to="Preah Sihanouk">
+                                <span>🏙️ ភ្នំពេញ ➔ 🏖️ ព្រះសីហនុ</span>
+                            </button>
+                            <button type="button" class="drv-route-chip" data-from="Phnom Penh" data-to="Battambang">
+                                <span>🏙️ ភ្នំពេញ ➔ 🌾 បាត់ដំបង</span>
+                            </button>
+                            <button type="button" class="drv-route-chip" data-from="Phnom Penh" data-to="Kampot">
+                                <span>🏙️ ភ្នំពេញ ➔ 🌿 កំពត</span>
+                            </button>
+                            <button type="button" class="drv-route-chip" data-from="Siem Reap" data-to="Phnom Penh">
+                                <span>🏛️ សៀមរាប ➔ 🏙️ ភ្នំពេញ</span>
+                            </button>
+                            <button type="button" class="drv-route-chip" data-from="Preah Sihanouk" data-to="Phnom Penh">
+                                <span>🏖️ ព្រះសីហនុ ➔ 🏙️ ភ្នំពេញ</span>
+                            </button>
+                        </div>
+
+                        <!-- Origin & Destination Dropdown Selects with 1-Tap Swap -->
+                        <div class="search-fields-group" style="margin-top:4px;">
+                            <div class="search-field-item">
+                                <div class="field-icon-box origin-box"><i class="fa-solid fa-circle-dot"></i></div>
+                                <div class="field-control">
+                                    <span class="field-label">ចេញដំណើរពី / Departure:</span>
+                                    <select id="drvFromSelect" class="modern-select">
+                                        <option value="Phnom Penh" selected>🏙️ Phnom Penh (រាជធានីភ្នំពេញ)</option>
+                                        <option value="Siem Reap">🏛️ Siem Reap (សៀមរាប)</option>
+                                        <option value="Preah Sihanouk">🏖️ Preah Sihanouk (ព្រះសីហនុ)</option>
+                                        <option value="Battambang">🌾 Battambang (បាត់ដំបង)</option>
+                                        <option value="Kampot">🌿 Kampot (កំពត)</option>
+                                        <option value="Banteay Meanchey">🛂 Banteay Meanchey (បន្ទាយមានជ័យ)</option>
+                                        <option value="Kampong Cham">🌴 Kampong Cham (កំពង់ចាម)</option>
+                                        <option value="Kampong Thom">🌾 Kampong Thom (កំពង់ធំ)</option>
+                                        <option value="Kandal">🏘️ Kandal (កណ្តាល)</option>
+                                        <option value="Koh Kong">⛰️ Koh Kong (កោះកុង)</option>
+                                        <option value="Pursat">🍊 Pursat (ពោធិ៍សាត់)</option>
+                                        <option value="Kampong Chhnang">🏺 Kampong Chhnang (កំពង់ឆ្នាំង)</option>
+                                        <option value="Kampong Speu">🌴 Kampong Speu (កំពង់ស្ពឺ)</option>
+                                        <option value="Takeo">🌾 Takeo (តាកែវ)</option>
+                                        <option value="Prey Veng">🌾 Prey Veng (ព្រៃវែង)</option>
+                                        <option value="Svay Rieng">🌾 Svay Rieng (ស្វាយរៀង)</option>
+                                        <option value="Kratie">🐬 Kratie (ក្រចេះ)</option>
+                                        <option value="Stung Treng">🌊 Stung Treng (ស្ទឹងត្រែង)</option>
+                                        <option value="Ratanakiri">🏞️ Ratanakiri (រតនគិរី)</option>
+                                        <option value="Mondulkiri">🌲 Mondulkiri (មណ្ឌលគិរី)</option>
+                                        <option value="Preah Vihear">🏯 Preah Vihear (ព្រះវិហារ)</option>
+                                        <option value="Oddar Meanchey">🌾 Oddar Meanchey (ឧត្តរមានជ័យ)</option>
+                                        <option value="Kep">🦀 Kep (កែប)</option>
+                                        <option value="Pailin">💎 Pailin (ប៉ៃលិន)</option>
+                                        <option value="Tboung Khmum">🌳 Tboung Khmum (ត្បូងឃ្មុំ)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="swap-divider">
+                                <button type="button" id="btnDrvSwapRoute" class="swap-action-button" title="Swap Route" aria-label="Swap Route">
+                                    <i class="fa-solid fa-arrow-down-up-across-line"></i>
+                                </button>
+                            </div>
+
+                            <div class="search-field-item">
+                                <div class="field-icon-box dest-box"><i class="fa-solid fa-location-dot"></i></div>
+                                <div class="field-control">
+                                    <span class="field-label">ទៅកាន់ខេត្ត / Destination:</span>
+                                    <select id="drvToSelect" class="modern-select">
+                                        <option value="Siem Reap" selected>🏛️ Siem Reap (សៀមរាប)</option>
+                                        <option value="Phnom Penh">🏙️ Phnom Penh (រាជធានីភ្នំពេញ)</option>
+                                        <option value="Preah Sihanouk">🏖️ Preah Sihanouk (ព្រះសីហនុ)</option>
+                                        <option value="Battambang">🌾 Battambang (បាត់ដំបង)</option>
+                                        <option value="Kampot">🌿 Kampot (កំពត)</option>
+                                        <option value="Banteay Meanchey">🛂 Banteay Meanchey (បន្ទាយមានជ័យ)</option>
+                                        <option value="Kampong Cham">🌴 Kampong Cham (កំពង់ចាម)</option>
+                                        <option value="Kampong Thom">🌾 Kampong Thom (កំពង់ធំ)</option>
+                                        <option value="Kandal">🏘️ Kandal (កណ្តាល)</option>
+                                        <option value="Koh Kong">⛰️ Koh Kong (កោះកុង)</option>
+                                        <option value="Pursat">🍊 Pursat (ពោធិ៍សាត់)</option>
+                                        <option value="Kampong Chhnang">🏺 Kampong Chhnang (កំពង់ឆ្នាំង)</option>
+                                        <option value="Kampong Speu">🌴 Kampong Speu (កំពង់ស្ពឺ)</option>
+                                        <option value="Takeo">🌾 Takeo (តាកែវ)</option>
+                                        <option value="Prey Veng">🌾 Prey Veng (ព្រៃវែង)</option>
+                                        <option value="Svay Rieng">🌾 Svay Rieng (ស្វាយរៀង)</option>
+                                        <option value="Kratie">🐬 Kratie (ក្រចេះ)</option>
+                                        <option value="Stung Treng">🌊 Stung Treng (ស្ទឹងត្រែង)</option>
+                                        <option value="Ratanakiri">🏞️ Ratanakiri (រតនគិរី)</option>
+                                        <option value="Mondulkiri">🌲 Mondulkiri (មណ្ឌលគិរី)</option>
+                                        <option value="Preah Vihear">🏯 Preah Vihear (ព្រះវិហារ)</option>
+                                        <option value="Oddar Meanchey">🌾 Oddar Meanchey (ឧត្តរមានជ័យ)</option>
+                                        <option value="Kep">🦀 Kep (កែប)</option>
+                                        <option value="Pailin">💎 Pailin (ប៉ៃលិន)</option>
+                                        <option value="Tboung Khmum">🌳 Tboung Khmum (ត្បូងឃ្មុំ)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 2: DEPARTURE TIME PRESETS -->
+                    <div class="driver-step-box">
+                        <label class="step-label"><span class="step-number">2</span> ម៉ោងចេញដំណើរ / Departure Time:</label>
+                        <div class="driver-quick-times" id="drvQuickTimes">
+                            <button type="button" class="drv-time-chip active" data-offset="30">
+                                <i class="fa-solid fa-bolt text-warning"></i> <span>ក្នុង 30 នាទី (+30m)</span>
+                            </button>
+                            <button type="button" class="drv-time-chip" data-offset="60">
+                                <i class="fa-regular fa-clock"></i> <span>ក្នុង 1 ម៉ោង (+1h)</span>
+                            </button>
+                            <button type="button" class="drv-time-chip" data-offset="120">
+                                <i class="fa-regular fa-clock"></i> <span>ក្នុង 2 ម៉ោង (+2h)</span>
+                            </button>
+                            <button type="button" class="drv-time-chip" data-preset="tomorrow_morning">
+                                <i class="fa-regular fa-sun text-warning"></i> <span>ព្រឹកស្អែក 7:00 ព្រឹក</span>
+                            </button>
+                            <button type="button" class="drv-time-chip" data-preset="tomorrow_afternoon">
+                                <i class="fa-solid fa-cloud-sun text-warning"></i> <span>ថ្ងៃស្អែក 1:00 រសៀល</span>
+                            </button>
+                            <button type="button" class="drv-time-chip" id="btnDrvCustomTimeToggle">
+                                <i class="fa-regular fa-calendar"></i> <span>ម៉ោងផ្សេង...</span>
+                            </button>
+                        </div>
+
+                        <!-- Custom datetime fallback (hidden unless toggled) -->
+                        <div class="form-group-card" id="drvCustomTimeWrapper" style="display:none; margin-top:4px;">
+                            <label for="drvDepTimeInput">កំណត់កាលបរិច្ឆេទ និងម៉ោងជាក់លាក់:</label>
                             <input type="datetime-local" id="drvDepTimeInput" class="modern-input">
                         </div>
-                        <div class="form-group-card">
-                            <label>ចំនួនកៅអីទំនេរ / Seats:</label>
-                            <select id="drvSeatsInput" class="modern-select" style="padding:8px;">
-                                <option value="4" selected>4 Seats (Sedan/SUV)</option>
-                                <option value="6">6 Seats (MPV)</option>
-                                <option value="11">11 Seats (VIP Van)</option>
-                                <option value="15">15 Seats (Minibus)</option>
+
+                        <!-- Active selected departure time preview badge -->
+                        <div class="selected-time-indicator" id="drvSelectedTimeDisplay">
+                            <i class="fa-solid fa-circle-check text-success"></i>
+                            <span>ចេញដំណើរ: <strong id="drvTimePreviewText">ក្នុង 30 នាទី</strong></span>
+                        </div>
+                    </div>
+
+                    <!-- STEP 3: VEHICLE & SEAT CAPACITY -->
+                    <div class="driver-step-box">
+                        <label class="step-label"><span class="step-number">3</span> រថយន្ត និងចំនួនកៅអី / Vehicle & Seats:</label>
+
+                        <!-- Saved Vehicle Notification -->
+                        <div id="drvSavedVehicleBanner" class="drv-vehicle-detected" style="display:none;">
+                            <div class="veh-info">
+                                <i class="fa-solid fa-car-side"></i>
+                                <div>
+                                    <strong id="drvSavedVehicleTitle">Toyota Prius (2AB-1234)</strong>
+                                    <span id="drvSavedVehicleSub">រថយន្តដែលបានចុះឈ្មោះរួចហើយ</span>
+                                </div>
+                            </div>
+                            <button type="button" id="btnDrvToggleVehFields" class="btn-change-veh">កែសម្រួល</button>
+                        </div>
+
+                        <!-- Vehicle Edit Fields -->
+                        <div id="drvVehicleFields" class="responsive-grid-2">
+                            <div class="form-group-card">
+                                <label for="drvCarModelInput">ម៉ូដែលឡាន / Model:</label>
+                                <input type="text" id="drvCarModelInput" class="modern-input" placeholder="Lexus RX330, Prius...">
+                            </div>
+                            <div class="form-group-card">
+                                <label for="drvPlateInput">ផ្លាកលេខ / Plate:</label>
+                                <input type="text" id="drvPlateInput" class="modern-input" placeholder="2AB-1234">
+                            </div>
+                        </div>
+
+                        <!-- 1-Tap Seat Capacity Buttons -->
+                        <div class="form-group-card" style="margin-top:4px;">
+                            <label>ចំនួនកៅអីទទួលភ្ញៀវ / Seats for Passengers:</label>
+                            <div class="drv-seat-pills" id="drvSeatPills">
+                                <button type="button" class="drv-seat-btn active" data-seats="4">4 កៅអី (Sedan/SUV)</button>
+                                <button type="button" class="drv-seat-btn" data-seats="6">6 កៅអី (MPV)</button>
+                                <button type="button" class="drv-seat-btn" data-seats="7">7 កៅអី (SUV 7)</button>
+                                <button type="button" class="drv-seat-btn" data-seats="11">11 កៅអី (VIP Van)</button>
+                            </div>
+                            <input type="hidden" id="drvSeatsInput" value="4">
+                        </div>
+                    </div>
+
+                    <!-- STEP 4: FARE RATE PER SEAT -->
+                    <div class="driver-step-box">
+                        <label class="step-label"><span class="step-number">4</span> តម្លៃក្នុង 1 កៅអី / Rate per Seat:</label>
+                        <!-- Quick Fare Chips -->
+                        <div class="driver-quick-fares" id="drvQuickFares">
+                            <button type="button" class="drv-fare-chip active" data-price="40000" data-currency="KHR">40,000 ៛</button>
+                            <button type="button" class="drv-fare-chip" data-price="45000" data-currency="KHR">45,000 ៛</button>
+                            <button type="button" class="drv-fare-chip" data-price="50000" data-currency="KHR">50,000 ៛</button>
+                            <button type="button" class="drv-fare-chip" data-price="60000" data-currency="KHR">60,000 ៛</button>
+                            <button type="button" class="drv-fare-chip" data-price="10" data-currency="USD">$10</button>
+                            <button type="button" class="drv-fare-chip" data-price="12" data-currency="USD">$12</button>
+                            <button type="button" class="drv-fare-chip" data-price="15" data-currency="USD">$15</button>
+                        </div>
+
+                        <!-- Stepper / Input -->
+                        <div class="drv-price-stepper-row">
+                            <button type="button" id="btnDrvPriceMinus" class="stepper-action" aria-label="Decrease Fare"><i class="fa-solid fa-minus"></i></button>
+                            <div class="drv-price-val-box">
+                                <input type="number" id="drvPriceInput" class="modern-input" value="40000" min="1000" step="1000">
+                                <span id="drvCurrencyLabel" class="drv-currency-badge">KHR (៛)</span>
+                            </div>
+                            <button type="button" id="btnDrvPricePlus" class="stepper-action" aria-label="Increase Fare"><i class="fa-solid fa-plus"></i></button>
+                            <select id="drvCurrencyInput" class="modern-select drv-currency-select">
+                                <option value="KHR" selected>៛ KHR</option>
+                                <option value="USD">$ USD</option>
                             </select>
                         </div>
                     </div>
-                    <div class="responsive-grid-2">
-                        <div class="form-group-card">
-                            <label>តម្លៃក្នុង 1 កៅអី / Price per Seat:</label>
-                            <input type="number" id="drvPriceInput" class="modern-input" value="40000" min="1">
+
+                    <!-- STEP 5: LIVE SUMMARY PREVIEW & PUBLISH BUTTON -->
+                    <div class="driver-summary-preview">
+                        <div class="summary-line">
+                            <span>ជើងរថយន្ត / Route:</span>
+                            <strong id="drvSummaryRouteText">ភ្នំពេញ ➔ សៀមរាប</strong>
                         </div>
-                        <div class="form-group-card">
-                            <label>រូបិយប័ណ្ណ / Currency:</label>
-                            <select id="drvCurrencyInput" class="modern-select" style="padding:8px;">
-                                <option value="KHR" selected>KHR (រៀល ៛)</option>
-                                <option value="USD">USD (ដុល្លារ $)</option>
-                            </select>
+                        <div class="summary-line">
+                            <span>ម៉ោងចេញ & កៅអី / Depart:</span>
+                            <span id="drvSummaryDepartText">ចេញក្នុង 30 នាទី • 4 កៅអី</span>
                         </div>
-                    </div>
-                    <div class="responsive-grid-2">
-                        <div class="form-group-card">
-                            <label>ម៉ូដែលឡាន / Car Model:</label>
-                            <input type="text" id="drvCarModelInput" class="modern-input" placeholder="e.g. Lexus RX330">
-                        </div>
-                        <div class="form-group-card">
-                            <label>ផ្លាកលេខ / Plate Number:</label>
-                            <input type="text" id="drvPlateInput" class="modern-input" placeholder="e.g. 2AB-1234">
+                        <div class="summary-line total">
+                            <span>ចំណូលប៉ាន់ស្មាន / Total Potential:</span>
+                            <strong style="color:var(--taxi-yellow);" id="drvSummaryTotalFare">160,000 ៛</strong>
                         </div>
                     </div>
-                    <button type="button" id="btnPublishDriverTrip" class="btn-primary-yellow">
+
+                    <button type="button" id="btnPublishDriverTrip" class="btn-primary-yellow full-width" style="padding:13px 16px; font-size:0.96rem;">
                         <i class="fa-solid fa-paper-plane"></i>
-                        <span>ដាក់ផ្សាយជើងរថយន្ត / Publish Trip Now</span>
+                        <span>🚀 ដាក់ផ្សាយជើងរថយន្តភ្លាមៗ / Publish Trip Now</span>
                     </button>
                 </div>
 
