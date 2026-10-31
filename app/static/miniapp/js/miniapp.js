@@ -1,6 +1,8 @@
 /**
  * MyTravel Telegram Mini App (TMA) — 100% Real API Integration
- * Live Inter-Province Trips, Seat Selection, Real Database Bookings, Fleet & Support
+ * Includes Role Check (Passenger / Driver), End-to-End Telegram Registration,
+ * Mobile App Account Linking (for accounts created without Telegram OTP),
+ * Live Trips, Interactive Seat Selection, Fleet, and My Rides.
  */
 
 (function () {
@@ -245,6 +247,9 @@
     let cachedTrips = [];
     let cachedVehicleModels = [];
     let cachedMyBookings = [];
+    let currentUser = null;
+    let currentDriverSummary = null;
+    let telegramContactVerified = false;
     const EXCHANGE_RATE = 4100;
 
     function setLanguage(lang) {
@@ -264,6 +269,7 @@
             renderVehicleModels(cachedVehicleModels);
         }
         renderMyBookingsList(cachedMyBookings);
+        updateAccountHeaderUI();
     }
 
     langToggleBtn?.addEventListener('click', () => {
@@ -271,14 +277,49 @@
         setLanguage(currentLang === 'km' ? 'en' : 'km');
     });
 
-    // 4. USER IDENTITY & PHONE SYNC
+    // 4. USER IDENTITY, ROLE CHECK & END-TO-END TELEGRAM / APP ACCOUNT LINKING
     const userNameEl = document.getElementById('userName');
     const userAvatarEl = document.getElementById('userAvatar');
+    const userRoleBadge = document.getElementById('userRoleBadge');
+    const userAccountSub = document.getElementById('userAccountSub');
+    const accountActionStrip = document.getElementById('accountActionStrip');
+    const accountStripTitle = document.getElementById('accountStripTitle');
+    const accountStripSub = document.getElementById('accountStripSub');
+    const btnOpenAccountModal = document.getElementById('btnOpenAccountModal');
+    const btnOpenAccountModalText = document.getElementById('btnOpenAccountModalText');
+    const btnManageAccount = document.getElementById('btnManageAccount');
+    const topTabDriverBtn = document.getElementById('topTabDriverBtn');
+    const bottomNavDriverBtn = document.getElementById('bottomNavDriverBtn');
+
     const inputPassengerName = document.getElementById('inputPassengerName');
     const inputPassengerPhone = document.getElementById('inputPassengerPhone');
     const inputCustomName = document.getElementById('inputCustomName');
     const inputCustomPhone = document.getElementById('inputCustomPhone');
     const inputLookupPhone = document.getElementById('inputLookupPhone');
+
+    // Account Modal Elements
+    const accountModal = document.getElementById('accountModal');
+    const btnCloseAccountModal = document.getElementById('btnCloseAccountModal');
+    const tabModeRegister = document.getElementById('tabModeRegister');
+    const tabModeLinkApp = document.getElementById('tabModeLinkApp');
+    const registerFieldsGroup = document.getElementById('registerFieldsGroup');
+    const linkAppFieldsGroup = document.getElementById('linkAppFieldsGroup');
+    const accountErrorAlert = document.getElementById('accountErrorAlert');
+    const appAccountDetectedBanner = document.getElementById('appAccountDetectedBanner');
+    const btnShareTelegramContact = document.getElementById('btnShareTelegramContact');
+    const accPhoneInput = document.getElementById('accPhoneInput');
+    const accFullNameInput = document.getElementById('accFullNameInput');
+    const accVehicleModel = document.getElementById('accVehicleModel');
+    const accPlateNumber = document.getElementById('accPlateNumber');
+    const accNewPasswordInput = document.getElementById('accNewPasswordInput');
+    const accLinkPasswordInput = document.getElementById('accLinkPasswordInput');
+    const roleCardPassenger = document.getElementById('roleCardPassenger');
+    const roleCardDriver = document.getElementById('roleCardDriver');
+    const driverSetupFields = document.getElementById('driverSetupFields');
+    const btnSubmitRegisterAccount = document.getElementById('btnSubmitRegisterAccount');
+    const btnSubmitLinkAppAccount = document.getElementById('btnSubmitLinkAppAccount');
+
+    let selectedRole = 'passenger';
 
     if (tgUser) {
         const fullName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ');
@@ -286,6 +327,7 @@
         if (userNameEl) userNameEl.textContent = displayName;
         if (inputPassengerName) inputPassengerName.value = displayName;
         if (inputCustomName) inputCustomName.value = displayName;
+        if (accFullNameInput) accFullNameInput.value = displayName;
         if (tgUser.first_name && userAvatarEl) {
             userAvatarEl.textContent = tgUser.first_name.charAt(0).toUpperCase();
         }
@@ -296,15 +338,532 @@
         if (inputPassengerPhone) inputPassengerPhone.value = savedPhone;
         if (inputCustomPhone) inputCustomPhone.value = savedPhone;
         if (inputLookupPhone) inputLookupPhone.value = savedPhone;
+        if (accPhoneInput) accPhoneInput.value = savedPhone;
     }
 
     function syncSavedPhone(phone) {
         if (!phone) return;
         localStorage.setItem('mytravel_saved_phone', phone);
-        if (inputPassengerPhone && !inputPassengerPhone.value) inputPassengerPhone.value = phone;
-        if (inputCustomPhone && !inputCustomPhone.value) inputCustomPhone.value = phone;
-        if (inputLookupPhone && !inputLookupPhone.value) inputLookupPhone.value = phone;
+        if (inputPassengerPhone) inputPassengerPhone.value = phone;
+        if (inputCustomPhone) inputCustomPhone.value = phone;
+        if (inputLookupPhone) inputLookupPhone.value = phone;
+        if (accPhoneInput && !accPhoneInput.value) accPhoneInput.value = phone;
     }
+
+    function updateAccountHeaderUI(appLinkPreview = null) {
+        if (currentUser) {
+            const isDriver = currentUser.role === 'driver';
+            if (userNameEl) userNameEl.textContent = currentUser.full_name || 'Member';
+            if (userRoleBadge) {
+                userRoleBadge.className = `role-pill-badge ${isDriver ? 'role-pill-driver' : 'role-pill-passenger'}`;
+                userRoleBadge.innerHTML = isDriver
+                    ? '<i class="fa-solid fa-taxi"></i> DRIVER / អ្នកបើកបរ'
+                    : '<i class="fa-solid fa-ticket"></i> PASSENGER / អ្នកដំណើរ';
+            }
+            if (userAccountSub) {
+                userAccountSub.innerHTML = `📱 <strong>${currentUser.phone}</strong> • Telegram Linked ✅`;
+            }
+            if (accountActionStrip) {
+                accountActionStrip.style.display = 'none';
+            }
+            if (topTabDriverBtn) topTabDriverBtn.style.display = isDriver ? 'inline-flex' : 'none';
+            if (bottomNavDriverBtn) bottomNavDriverBtn.style.display = isDriver ? 'flex' : 'none';
+            if (isDriver) {
+                renderDriverDashboard();
+            }
+        } else if (appLinkPreview) {
+            if (userRoleBadge) {
+                userRoleBadge.className = 'role-pill-badge role-pill-guest';
+                userRoleBadge.textContent = 'App Account Found';
+            }
+            if (accountActionStrip) {
+                accountActionStrip.style.display = 'flex';
+            }
+            const roleLabel = appLinkPreview.role === 'driver' ? 'អ្នកបើកបរ / Driver' : 'អ្នកដំណើរ / Passenger';
+            if (accountStripTitle) {
+                accountStripTitle.textContent = `រកឃើញគណនី MyTravel App (${appLinkPreview.phone} • ${roleLabel})`;
+            }
+            if (accountStripSub) {
+                accountStripSub.textContent = 'គណនីនេះត្រូវបានបង្កើតក្នុង App ដោយមិនទាន់ភ្ជាប់ Telegram។ សូមចុចភ្ជាប់ឥឡូវនេះ!';
+            }
+            if (btnOpenAccountModalText) {
+                btnOpenAccountModalText.textContent = 'ភ្ជាប់គណនី App';
+            }
+        } else {
+            if (userRoleBadge) {
+                userRoleBadge.className = 'role-pill-badge role-pill-guest';
+                userRoleBadge.textContent = currentLang === 'km' ? 'មិនទាន់មានគណនី' : 'No Account';
+            }
+            if (accountActionStrip) {
+                accountActionStrip.style.display = 'flex';
+            }
+            if (accountStripTitle) {
+                accountStripTitle.textContent = currentLang === 'km'
+                    ? 'មិនទាន់មានគណនី ឬមានគណនីក្នុង App រួចហើយ?'
+                    : 'No account yet, or registered in Mobile App?';
+            }
+            if (accountStripSub) {
+                accountStripSub.textContent = currentLang === 'km'
+                    ? 'បង្កើតគណនីថ្មីជាមួយ Telegram (អ្នកដំណើរ / អ្នកបើកបរ) ឬភ្ជាប់គណនីពី App'
+                    : 'Create an account with Telegram (Passenger / Driver) or link your Mobile App account';
+            }
+            if (btnOpenAccountModalText) {
+                btnOpenAccountModalText.textContent = currentLang === 'km' ? 'បង្កើត / ភ្ជាប់គណនី' : 'Create / Link Account';
+            }
+            if (topTabDriverBtn) topTabDriverBtn.style.display = 'none';
+            if (bottomNavDriverBtn) bottomNavDriverBtn.style.display = 'none';
+        }
+    }
+
+    function applySessionData(data) {
+        if (data.linked_phone) {
+            syncSavedPhone(data.linked_phone);
+        }
+        if (data.registered && data.telegram_linked && data.user) {
+            currentUser = data.user;
+            currentDriverSummary = data.driver_summary || null;
+            if (data.auth_token) {
+                localStorage.setItem('mytravel_auth_token', data.auth_token);
+            }
+            syncSavedPhone(data.user.phone);
+            if (inputPassengerName && data.user.full_name) {
+                inputPassengerName.value = data.user.full_name;
+            }
+            if (inputCustomName && data.user.full_name) {
+                inputCustomName.value = data.user.full_name;
+            }
+            updateAccountHeaderUI();
+            fetchMyBookings();
+            return true;
+        }
+        if (data.requires_app_link && data.account_preview) {
+            currentUser = null;
+            updateAccountHeaderUI(data.account_preview);
+            showDetectedAppAccountBanner(data.account_preview);
+            switchAccountModalMode('link');
+            return false;
+        }
+        currentUser = null;
+        updateAccountHeaderUI();
+        return false;
+    }
+
+    async function checkUserSessionAndRole() {
+        const tgId = tgUser?.id ? String(tgUser.id) : '';
+        const phone = localStorage.getItem('mytravel_saved_phone') || '';
+        const token = localStorage.getItem('mytravel_auth_token') || '';
+
+        const params = new URLSearchParams();
+        if (tgId) params.set('telegram_user_id', tgId);
+        if (phone) params.set('phone', phone);
+        if (token) params.set('auth_token', token);
+
+        try {
+            const res = await fetch(`/v1/api/travel/telegram/miniapp/me?${params.toString()}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            applySessionData(data);
+        } catch (err) {
+            console.warn('Session check error:', err);
+        }
+    }
+
+    function switchAccountModalMode(mode) {
+        if (accountErrorAlert) {
+            accountErrorAlert.style.display = 'none';
+            accountErrorAlert.textContent = '';
+        }
+        if (mode === 'link') {
+            tabModeRegister?.classList.remove('active');
+            tabModeLinkApp?.classList.add('active');
+            if (registerFieldsGroup) registerFieldsGroup.style.display = 'none';
+            if (linkAppFieldsGroup) linkAppFieldsGroup.style.display = 'flex';
+        } else {
+            tabModeRegister?.classList.add('active');
+            tabModeLinkApp?.classList.remove('active');
+            if (registerFieldsGroup) registerFieldsGroup.style.display = 'flex';
+            if (linkAppFieldsGroup) linkAppFieldsGroup.style.display = 'none';
+        }
+    }
+
+    function showDetectedAppAccountBanner(preview) {
+        if (!appAccountDetectedBanner || !preview) return;
+        const roleText = preview.role === 'driver' ? '🚖 អ្នកបើកបរ / Driver' : '🎫 អ្នកដំណើរ / Passenger';
+        appAccountDetectedBanner.innerHTML = `
+            <strong>🔗 រកឃើញគណនីដែលបង្កើតក្នុង MyTravel App!</strong><br>
+            ឈ្មោះ: <strong>${preview.full_name || '-'}</strong> • តួនាទី: <strong>${roleText}</strong><br>
+            សូមបញ្ចូលពាក្យសម្ងាត់ App របស់អ្នកខាងក្រោម ឬចុចប៊ូតុងចែករំលែកលេខ Telegram ខាងលើដើម្បីភ្ជាប់គណនី។
+        `;
+        appAccountDetectedBanner.style.display = 'block';
+    }
+
+    tabModeRegister?.addEventListener('click', () => {
+        triggerHaptic('light');
+        switchAccountModalMode('register');
+    });
+
+    tabModeLinkApp?.addEventListener('click', () => {
+        triggerHaptic('light');
+        switchAccountModalMode('link');
+    });
+
+    btnOpenAccountModal?.addEventListener('click', () => {
+        triggerHaptic('medium');
+        if (accountModal) accountModal.style.display = 'flex';
+    });
+
+    btnManageAccount?.addEventListener('click', () => {
+        triggerHaptic('light');
+        if (currentUser && currentUser.role === 'driver') {
+            switchTab('tabDriverDashboard');
+        } else {
+            if (accountModal) accountModal.style.display = 'flex';
+        }
+    });
+
+    btnCloseAccountModal?.addEventListener('click', () => {
+        if (accountModal) accountModal.style.display = 'none';
+    });
+
+    // Role cards selection (Passenger vs Driver)
+    function selectRoleCard(role) {
+        selectedRole = role;
+        roleCardPassenger?.classList.toggle('active', role === 'passenger');
+        roleCardDriver?.classList.toggle('active', role === 'driver');
+        if (driverSetupFields) {
+            driverSetupFields.style.display = role === 'driver' ? 'flex' : 'none';
+        }
+    }
+
+    roleCardPassenger?.addEventListener('click', () => {
+        triggerHaptic('light');
+        selectRoleCard('passenger');
+    });
+
+    roleCardDriver?.addEventListener('click', () => {
+        triggerHaptic('light');
+        selectRoleCard('driver');
+    });
+
+    // Live check when user types/blurs phone number in Account Modal
+    accPhoneInput?.addEventListener('blur', async () => {
+        const phone = accPhoneInput.value.trim();
+        if (phone.length < 6) return;
+        try {
+            const res = await fetch('/v1/api/travel/telegram/miniapp/check-phone', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    phone: phone,
+                    telegram_user_id: tgUser?.id ? String(tgUser.id) : null
+                })
+            });
+            if (!res.ok) return;
+            const info = await res.json();
+            if (info.exists) {
+                showDetectedAppAccountBanner(info);
+                if (!info.already_linked_to_this_telegram) {
+                    switchAccountModalMode('link');
+                }
+            } else if (appAccountDetectedBanner) {
+                appAccountDetectedBanner.style.display = 'none';
+            }
+        } catch (e) {}
+    });
+
+    // 1-Tap Share Telegram Contact via Telegram WebApp SDK
+    btnShareTelegramContact?.addEventListener('click', () => {
+        triggerHaptic('medium');
+        if (tg && typeof tg.requestContact === 'function') {
+            tg.requestContact(async (shared) => {
+                if (shared) {
+                    telegramContactVerified = true;
+                    // Poll backend /me to pick up the contact webhook update from Telegram
+                    for (let i = 0; i < 4; i++) {
+                        await new Promise(r => setTimeout(r, 900));
+                        await checkUserSessionAndRole();
+                        if (currentUser) {
+                            if (accountModal) accountModal.style.display = 'none';
+                            triggerHaptic('success');
+                            return;
+                        }
+                    }
+                }
+            });
+        } else {
+            alert(
+                currentLang === 'km'
+                    ? 'សូមបញ្ចូលលេខទូរស័ព្ទរបស់អ្នកខាងក្រោមដើម្បីបង្កើត ឬភ្ជាប់គណនី។'
+                    : 'Please enter your phone number below to create or link your account.'
+            );
+            accPhoneInput?.focus();
+        }
+    });
+
+    // Submit End-to-End Account Registration
+    btnSubmitRegisterAccount?.addEventListener('click', async () => {
+        const phone = accPhoneInput?.value.trim() || '';
+        const fullName = accFullNameInput?.value.trim() || '';
+        const password = accNewPasswordInput?.value || '';
+        const vehModel = accVehicleModel?.value.trim() || '';
+        const plateNum = accPlateNumber?.value.trim() || '';
+
+        if (accountErrorAlert) {
+            accountErrorAlert.style.display = 'none';
+            accountErrorAlert.textContent = '';
+        }
+
+        if (!phone || phone.length < 6) {
+            triggerHaptic('error');
+            if (accountErrorAlert) {
+                accountErrorAlert.textContent = currentLang === 'km' ? 'សូមបញ្ចូលលេខទូរស័ព្ទត្រឹមត្រូវ' : 'Please enter a valid phone number.';
+                accountErrorAlert.style.display = 'block';
+            }
+            accPhoneInput?.focus();
+            return;
+        }
+
+        if (!fullName || fullName.length < 2) {
+            triggerHaptic('error');
+            if (accountErrorAlert) {
+                accountErrorAlert.textContent = currentLang === 'km' ? 'សូមបញ្ចូលឈ្មោះពេញរបស់អ្នក' : 'Please enter your full name.';
+                accountErrorAlert.style.display = 'block';
+            }
+            accFullNameInput?.focus();
+            return;
+        }
+
+        btnSubmitRegisterAccount.disabled = true;
+        btnSubmitRegisterAccount.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Creating Account...`;
+
+        try {
+            const res = await fetch('/v1/api/travel/telegram/miniapp/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    phone: phone,
+                    full_name: fullName,
+                    role: selectedRole,
+                    password: password || null,
+                    telegram_user_id: tgUser?.id ? String(tgUser.id) : null,
+                    telegram_chat_id: tg?.initDataUnsafe?.chat?.id ? String(tg.initDataUnsafe.chat.id) : (tgUser?.id ? String(tgUser.id) : null),
+                    telegram_username: tgUser?.username || null,
+                    telegram_contact_verified: telegramContactVerified,
+                    vehicle_model: vehModel || null,
+                    plate_number: plateNum || null,
+                    seat_type: 4
+                })
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (res.status === 409) {
+                // Phone already exists in Mobile App! Switch to Link App mode
+                switchAccountModalMode('link');
+                if (accountErrorAlert) {
+                    accountErrorAlert.textContent = currentLang === 'km'
+                        ? 'លេខទូរស័ព្ទនេះមានគណនីក្នុងកម្មវិធី MyTravel រួចហើយ! សូមបញ្ចូលពាក្យសម្ងាត់ App ឬចុចចែករំលែកលេខ Telegram ដើម្បីភ្ជាប់គណនី។'
+                        : (data.detail || 'Account already exists in App. Please link it below.');
+                    accountErrorAlert.style.display = 'block';
+                }
+                return;
+            }
+            if (!res.ok) {
+                throw new Error(data.detail || `Registration failed (${res.status})`);
+            }
+
+            applySessionData(data);
+            if (accountModal) accountModal.style.display = 'none';
+            triggerHaptic('success');
+            if (currentUser?.role === 'driver') {
+                switchTab('tabDriverDashboard');
+            }
+        } catch (err) {
+            triggerHaptic('error');
+            if (accountErrorAlert) {
+                accountErrorAlert.textContent = err.message || 'Could not create account.';
+                accountErrorAlert.style.display = 'block';
+            }
+        } finally {
+            btnSubmitRegisterAccount.disabled = false;
+            btnSubmitRegisterAccount.innerHTML = `<i class="fa-solid fa-user-plus"></i> <span>បង្កើតគណនីជាមួយ Telegram / Create Account</span>`;
+        }
+    });
+
+    // Submit Link Existing Mobile App Account
+    btnSubmitLinkAppAccount?.addEventListener('click', async () => {
+        const phone = accPhoneInput?.value.trim() || '';
+        const password = accLinkPasswordInput?.value || '';
+
+        if (accountErrorAlert) {
+            accountErrorAlert.style.display = 'none';
+            accountErrorAlert.textContent = '';
+        }
+
+        if (!phone || phone.length < 6) {
+            triggerHaptic('error');
+            if (accountErrorAlert) {
+                accountErrorAlert.textContent = currentLang === 'km' ? 'សូមបញ្ចូលលេខទូរស័ព្ទគណនី App របស់អ្នក' : 'Please enter your App phone number.';
+                accountErrorAlert.style.display = 'block';
+            }
+            return;
+        }
+
+        btnSubmitLinkAppAccount.disabled = true;
+        btnSubmitLinkAppAccount.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Linking Account...`;
+
+        try {
+            const res = await fetch('/v1/api/travel/telegram/miniapp/link-account', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    phone: phone,
+                    password: password || null,
+                    telegram_user_id: tgUser?.id ? String(tgUser.id) : null,
+                    telegram_chat_id: tg?.initDataUnsafe?.chat?.id ? String(tg.initDataUnsafe.chat.id) : (tgUser?.id ? String(tgUser.id) : null),
+                    telegram_username: tgUser?.username || null,
+                    telegram_contact_verified: telegramContactVerified
+                })
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                throw new Error(data.detail || `Failed to link account (${res.status})`);
+            }
+
+            applySessionData(data);
+            if (accountModal) accountModal.style.display = 'none';
+            triggerHaptic('success');
+            if (currentUser?.role === 'driver') {
+                switchTab('tabDriverDashboard');
+            }
+        } catch (err) {
+            triggerHaptic('error');
+            if (accountErrorAlert) {
+                accountErrorAlert.textContent = err.message || 'Could not link account.';
+                accountErrorAlert.style.display = 'block';
+            }
+        } finally {
+            btnSubmitLinkAppAccount.disabled = false;
+            btnSubmitLinkAppAccount.innerHTML = `<i class="fa-solid fa-link"></i> <span>ភ្ជាប់គណនី App មកកាន់ Telegram / Link Account</span>`;
+        }
+    });
+
+    // 4.1 DRIVER DASHBOARD OPERATIONS (FOR ROLE === 'driver')
+    const driverTripsListContainer = document.getElementById('driverTripsListContainer');
+    const drvFromInput = document.getElementById('drvFromInput');
+    const drvToInput = document.getElementById('drvToInput');
+    const drvDepTimeInput = document.getElementById('drvDepTimeInput');
+    const drvSeatsInput = document.getElementById('drvSeatsInput');
+    const drvPriceInput = document.getElementById('drvPriceInput');
+    const drvCurrencyInput = document.getElementById('drvCurrencyInput');
+    const drvCarModelInput = document.getElementById('drvCarModelInput');
+    const drvPlateInput = document.getElementById('drvPlateInput');
+    const btnPublishDriverTrip = document.getElementById('btnPublishDriverTrip');
+
+    // Default driver departure time input to +2 hours
+    if (drvDepTimeInput) {
+        const d = new Date(Date.now() + 2 * 3600000);
+        const pad = n => String(n).padStart(2, '0');
+        drvDepTimeInput.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:00`;
+    }
+
+    function renderDriverDashboard() {
+        if (!driverTripsListContainer) return;
+        const vehs = currentDriverSummary?.vehicles || [];
+        if (vehs.length > 0) {
+            if (drvCarModelInput && !drvCarModelInput.value) drvCarModelInput.value = vehs[0].model || '';
+            if (drvPlateInput && !drvPlateInput.value) drvPlateInput.value = vehs[0].plate_number || '';
+        }
+
+        const trips = currentDriverSummary?.trips || [];
+        if (trips.length === 0) {
+            driverTripsListContainer.innerHTML = `
+                <div class="empty-state-box">
+                    <i class="fa-solid fa-road"></i>
+                    <h4>មិនទាន់មានជើងរថយន្តដែលបានដាក់ផ្សាយទេ</h4>
+                    <p>បំពេញទម្រង់ខាងលើដើម្បីដាក់ផ្សាយជើងរថយន្តថ្មីសម្រាប់ទទួលភ្ញៀវ។</p>
+                </div>
+            `;
+            return;
+        }
+
+        driverTripsListContainer.innerHTML = '';
+        trips.forEach(t => {
+            const card = document.createElement('div');
+            card.className = 'ride-card';
+            const priceInfo = formatTripPrice(t.price_per_seat, t.currency);
+            card.innerHTML = `
+                <div class="trip-route-banner">
+                    <span>🚖 ${t.departure_province} ➔ ${t.destination_province}</span>
+                    <span style="color:var(--success-color); font-size:0.75rem;">${t.status.toUpperCase()}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:0.82rem; color:var(--text-secondary);">
+                    <span>⏰ ${formatDateTimeShort(t.departure_time)}</span>
+                    <span>💺 នៅសល់ ${t.available_seats}/${t.total_seats} កៅអី (កក់រួច: ${t.bookings_count || 0})</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:0.8rem; color:var(--text-secondary);">${t.vehicle_model || 'Vehicle'} ${t.plate_number ? `(${t.plate_number})` : ''}</span>
+                    <strong style="color:var(--taxi-yellow);">${priceInfo.primary} / កៅអី</strong>
+                </div>
+            `;
+            driverTripsListContainer.appendChild(card);
+        });
+    }
+
+    btnPublishDriverTrip?.addEventListener('click', async () => {
+        if (!currentUser || currentUser.role !== 'driver') {
+            alert('Only Driver accounts can publish trips.');
+            return;
+        }
+        const from = drvFromInput?.value.trim() || 'Phnom Penh';
+        const to = drvToInput?.value.trim() || 'Siem Reap';
+        const depTime = drvDepTimeInput?.value || new Date(Date.now() + 7200000).toISOString();
+        const totalSeats = Number(drvSeatsInput?.value || 4);
+        const price = Number(drvPriceInput?.value || 40000);
+        const currency = drvCurrencyInput?.value || 'KHR';
+        const carModel = drvCarModelInput?.value.trim() || '';
+        const plate = drvPlateInput?.value.trim() || '';
+
+        btnPublishDriverTrip.disabled = true;
+        btnPublishDriverTrip.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Publishing...`;
+
+        try {
+            const res = await fetch('/v1/api/travel/telegram/miniapp/driver/trips', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    auth_token: localStorage.getItem('mytravel_auth_token') || null,
+                    telegram_user_id: tgUser?.id ? String(tgUser.id) : null,
+                    phone: currentUser.phone,
+                    departure_province: from,
+                    destination_province: to,
+                    departure_time: new Date(depTime).toISOString(),
+                    price_per_seat: price,
+                    currency: currency,
+                    total_seats: totalSeats,
+                    vehicle_model: carModel || null,
+                    plate_number: plate || null
+                })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                throw new Error(data.detail || `Failed to publish trip (${res.status})`);
+            }
+            if (data.driver_summary) {
+                currentDriverSummary = data.driver_summary;
+                renderDriverDashboard();
+            }
+            fetchAvailableRides();
+            triggerHaptic('success');
+            alert(currentLang === 'km' ? 'ដាក់ផ្សាយជើងរថយន្តជោគជ័យ!' : 'Trip published successfully!');
+        } catch (err) {
+            triggerHaptic('error');
+            alert(err.message || 'Could not publish trip.');
+        } finally {
+            btnPublishDriverTrip.disabled = false;
+            btnPublishDriverTrip.innerHTML = `<i class="fa-solid fa-paper-plane"></i> <span>ដាក់ផ្សាយជើងរថយន្ត / Publish Trip Now</span>`;
+        }
+    });
 
     // 5. NAVIGATION (TOP TABS & BOTTOM BAR)
     function switchTab(targetTabId) {
@@ -322,6 +881,8 @@
             fetchMyBookings();
         } else if (targetTabId === 'tabCharter' && cachedVehicleModels.length === 0) {
             fetchVehicleModels();
+        } else if (targetTabId === 'tabDriverDashboard') {
+            renderDriverDashboard();
         }
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -412,7 +973,7 @@
     // 7. DATE SELECTION PILLS
     const nativeDateInput = document.getElementById('nativeDateInput');
     const datePickLabel = document.getElementById('datePickLabel');
-    let selectedDateFilter = 'all'; // 'all', 'today', 'tomorrow', or 'YYYY-MM-DD'
+    let selectedDateFilter = 'all';
 
     function getFormattedDateString(offsetDays = 0) {
         const d = new Date();
@@ -557,7 +1118,7 @@
             const isFiltered = (selectDeparture?.value !== 'all') || (selectDestination?.value !== 'all') || (selectedDateFilter !== 'all');
             ridesListContainer.innerHTML = `
                 <div class="empty-state-box">
-                    <i class="fa-solid fa-car-Rear" style="font-size:2rem; color:var(--taxi-yellow);"></i>
+                    <i class="fa-solid fa-car-rear" style="font-size:2rem; color:var(--taxi-yellow);"></i>
                     <h4>${i18n[currentLang].empty_trips_title}</h4>
                     <p>${i18n[currentLang].empty_trips_sub}</p>
                     ${isFiltered ? `
@@ -898,7 +1459,8 @@
             openTicketPass(data);
             triggerHaptic('success');
 
-            // Refresh real trips & real bookings from backend DB
+            // Refresh session, real trips & real bookings from backend DB
+            checkUserSessionAndRole();
             fetchAvailableRides();
             fetchMyBookings();
         } catch (err) {
@@ -1288,6 +1850,7 @@
 
     // INITIALIZE MINI APP WITH REAL APIS
     setLanguage(currentLang);
+    checkUserSessionAndRole();
     loadRealProvinces();
     fetchAvailableRides();
     fetchVehicleModels();

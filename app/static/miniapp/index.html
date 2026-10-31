@@ -150,6 +150,105 @@
             font-weight: 600;
             display: none;
         }
+        /* Role & Account Banner Styles */
+        .role-pill-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 10px;
+            border-radius: var(--radius-full);
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .role-pill-passenger {
+            background: rgba(16, 185, 129, 0.18);
+            color: #10B981;
+            border: 1px solid rgba(16, 185, 129, 0.35);
+        }
+        .role-pill-driver {
+            background: rgba(255, 200, 61, 0.2);
+            color: var(--taxi-yellow);
+            border: 1px solid rgba(255, 200, 61, 0.45);
+        }
+        .role-pill-guest {
+            background: rgba(148, 163, 184, 0.15);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+        .account-cta-strip {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .role-selector-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 6px;
+        }
+        .role-select-card {
+            background: var(--card-elevated);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 12px 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            color: var(--text-primary);
+        }
+        .role-select-card i {
+            font-size: 1.35rem;
+            margin-bottom: 6px;
+            display: block;
+            color: var(--text-secondary);
+        }
+        .role-select-card.active {
+            border-color: var(--taxi-yellow);
+            background: rgba(255, 200, 61, 0.12);
+        }
+        .role-select-card.active i {
+            color: var(--taxi-yellow);
+        }
+        .mode-switch-tabs {
+            display: flex;
+            background: var(--card-elevated);
+            padding: 4px;
+            border-radius: var(--radius-md);
+            gap: 4px;
+            margin-bottom: 10px;
+        }
+        .mode-switch-btn {
+            flex: 1;
+            padding: 8px 10px;
+            border-radius: var(--radius-sm);
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-weight: 700;
+            font-size: 0.8rem;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .mode-switch-btn.active {
+            background: var(--taxi-yellow);
+            color: var(--taxi-ink);
+        }
+        .app-account-detected-banner {
+            background: rgba(56, 189, 248, 0.12);
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            color: #38BDF8;
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
     </style>
 </head>
 <body>
@@ -179,18 +278,37 @@
             </div>
         </header>
 
-        <!-- 2. USER WELCOME BANNER -->
+        <!-- 2. USER ACCOUNT & ROLE STATUS BANNER -->
         <div class="user-greeting-card">
-            <div class="user-profile-summary">
-                <div class="user-avatar-badge" id="userAvatar">
-                    <i class="fa-solid fa-user"></i>
-                </div>
-                <div class="user-text">
-                    <div class="welcome-line">
-                        <span data-i18n="greeting_hello">សួស្តី</span>, <strong id="userName">Traveler</strong> 👋
+            <div class="user-profile-summary" style="justify-content: space-between;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <div class="user-avatar-badge" id="userAvatar">
+                        <i class="fa-solid fa-user"></i>
                     </div>
-                    <div class="welcome-sub" data-i18n="greeting_sub">កក់តាក់ស៊ី និងរថយន្តឈ្នួលអន្តរខេត្តទូទាំងប្រទេសកម្ពុជា</div>
+                    <div class="user-text">
+                        <div class="welcome-line" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                            <span data-i18n="greeting_hello">សួស្តី</span>, <strong id="userName">Traveler</strong>
+                            <span id="userRoleBadge" class="role-pill-badge role-pill-guest">Guest</span>
+                        </div>
+                        <div class="welcome-sub" id="userAccountSub" data-i18n="greeting_sub">កក់តាក់ស៊ី និងរថយន្តឈ្នួលអន្តរខេត្តទូទាំងប្រទេសកម្ពុជា</div>
+                    </div>
                 </div>
+                <button type="button" id="btnManageAccount" class="btn-icon-soft" title="Account Settings" style="width:auto; padding:0 12px; font-size:0.78rem; font-weight:700; gap:6px;">
+                    <i class="fa-solid fa-id-badge"></i>
+                    <span id="btnManageAccountLabel">គណនី</span>
+                </button>
+            </div>
+
+            <!-- Unregistered / Link App Account Call-to-Action Strip -->
+            <div id="accountActionStrip" class="account-cta-strip">
+                <div style="font-size:0.78rem; color:var(--text-secondary); flex:1;">
+                    <strong style="color:var(--text-primary); display:block;" id="accountStripTitle">មិនទាន់មានគណនី ឬមានគណនីក្នុង App រួចហើយ?</strong>
+                    <span id="accountStripSub">បង្កើតគណនីថ្មីជាមួយ Telegram ឬភ្ជាប់គណនី MyTravel App (អ្នកដំណើរ / អ្នកបើកបរ)</span>
+                </div>
+                <button type="button" id="btnOpenAccountModal" class="btn-primary-yellow" style="width:auto; padding:8px 14px; font-size:0.8rem;">
+                    <i class="fa-brands fa-telegram"></i>
+                    <span id="btnOpenAccountModalText">បង្កើត / ភ្ជាប់គណនី</span>
+                </button>
             </div>
         </div>
 
@@ -199,6 +317,10 @@
             <button type="button" class="service-tab-btn active" data-tab="tabShared">
                 <i class="fa-solid fa-taxi"></i>
                 <span data-i18n="tab_shared_taxi">Shared Taxi (រួមដំណើរ)</span>
+            </button>
+            <button type="button" class="service-tab-btn" id="topTabDriverBtn" data-tab="tabDriverDashboard" style="display:none;">
+                <i class="fa-solid fa-steering-wheel"></i>
+                <span>🚖 Driver Mode (អ្នកបើកបរ)</span>
             </button>
             <button type="button" class="service-tab-btn" data-tab="tabCharter">
                 <i class="fa-solid fa-car-side"></i>
@@ -393,6 +515,82 @@
                 </div>
             </section>
 
+            <!-- TAB DRIVER DASHBOARD: FOR USERS WITH ROLE == 'driver' -->
+            <section id="tabDriverDashboard" class="tab-view">
+                <div class="charter-hero-card">
+                    <div class="charter-badge">🚖 VERIFIED DRIVER DASHBOARD</div>
+                    <h2 class="charter-title">គ្រប់គ្រងជើងរថយន្តអ្នកបើកបរ / Driver Operations</h2>
+                    <p class="charter-sub">បង្កើតជើងរថយន្តថ្មី និងពិនិត្យមើលចំនួនកៅអីដែលភ្ញៀវបានកក់ក្នុងប្រព័ន្ធ MyTravel</p>
+                </div>
+
+                <!-- Publish New Trip Card -->
+                <div class="route-search-card" style="gap:10px;">
+                    <h3 style="font-size:0.95rem; font-weight:800; color:var(--taxi-yellow);">
+                        <i class="fa-solid fa-plus-circle"></i> បង្កើតជើងរថយន្តថ្មី / Publish New Trip
+                    </h3>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                        <div class="form-group-card">
+                            <label>ចេញពីខេត្ត / From:</label>
+                            <input type="text" id="drvFromInput" class="modern-input" value="Phnom Penh" placeholder="Phnom Penh">
+                        </div>
+                        <div class="form-group-card">
+                            <label>ទៅកាន់ខេត្ត / To:</label>
+                            <input type="text" id="drvToInput" class="modern-input" value="Siem Reap" placeholder="Siem Reap">
+                        </div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                        <div class="form-group-card">
+                            <label>ថ្ងៃ និងម៉ោងចេញ / Departure:</label>
+                            <input type="datetime-local" id="drvDepTimeInput" class="modern-input">
+                        </div>
+                        <div class="form-group-card">
+                            <label>ចំនួនកៅអីទំនេរ / Seats:</label>
+                            <select id="drvSeatsInput" class="modern-select" style="padding:8px;">
+                                <option value="4" selected>4 Seats (Sedan/SUV)</option>
+                                <option value="6">6 Seats (MPV)</option>
+                                <option value="11">11 Seats (VIP Van)</option>
+                                <option value="15">15 Seats (Minibus)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                        <div class="form-group-card">
+                            <label>តម្លៃក្នុង 1 កៅអី / Price per Seat:</label>
+                            <input type="number" id="drvPriceInput" class="modern-input" value="40000" min="1">
+                        </div>
+                        <div class="form-group-card">
+                            <label>រូបិយប័ណ្ណ / Currency:</label>
+                            <select id="drvCurrencyInput" class="modern-select" style="padding:8px;">
+                                <option value="KHR" selected>KHR (រៀល ៛)</option>
+                                <option value="USD">USD (ដុល្លារ $)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                        <div class="form-group-card">
+                            <label>ម៉ូដែលឡាន / Car Model:</label>
+                            <input type="text" id="drvCarModelInput" class="modern-input" placeholder="e.g. Lexus RX330">
+                        </div>
+                        <div class="form-group-card">
+                            <label>ផ្លាកលេខ / Plate Number:</label>
+                            <input type="text" id="drvPlateInput" class="modern-input" placeholder="e.g. 2AB-1234">
+                        </div>
+                    </div>
+                    <button type="button" id="btnPublishDriverTrip" class="btn-primary-yellow">
+                        <i class="fa-solid fa-paper-plane"></i>
+                        <span>ដាក់ផ្សាយជើងរថយន្ត / Publish Trip Now</span>
+                    </button>
+                </div>
+
+                <!-- Driver's Active Trips List -->
+                <div class="rides-listing-section">
+                    <div class="listing-header">
+                        <h2 class="section-title">ជើងរថយន្តរបស់ខ្ញុំ / My Published Trips</h2>
+                    </div>
+                    <div id="driverTripsListContainer" class="rides-cards-list"></div>
+                </div>
+            </section>
+
             <!-- TAB B: VEHICLE FLEET & PRIVATE CHARTER (FROM /v1/api/travel/vehicle-models) -->
             <section id="tabCharter" class="tab-view">
                 <div class="charter-hero-card">
@@ -480,9 +678,7 @@
                     </div>
                 </div>
 
-                <div id="myRidesListContainer" class="my-rides-list">
-                    <!-- Populated from GET /v1/api/travel/telegram/miniapp/my-bookings -->
-                </div>
+                <div id="myRidesListContainer" class="my-rides-list"></div>
             </section>
 
             <!-- TAB E: 24/7 SUPPORT (FROM /v1/api/travel/support/config) -->
@@ -555,6 +751,10 @@
                 <i class="fa-solid fa-taxi"></i>
                 <span data-i18n="nav_book">កក់តាក់ស៊ី</span>
             </button>
+            <button type="button" class="nav-tab-item" id="bottomNavDriverBtn" data-target="tabDriverDashboard" style="display:none;">
+                <i class="fa-solid fa-car-on"></i>
+                <span>អ្នកបើកបរ</span>
+            </button>
             <button type="button" class="nav-tab-item" data-target="tabCharter">
                 <i class="fa-solid fa-car-side"></i>
                 <span data-i18n="nav_charter">រថយន្ត & ម៉ៅដាច់</span>
@@ -569,6 +769,130 @@
                 <span data-i18n="nav_support">ជំនួយ 24/7</span>
             </button>
         </nav>
+
+        <!-- MODAL 0: END-TO-END TELEGRAM ACCOUNT CREATION & APP ACCOUNT LINKING -->
+        <div id="accountModal" class="tma-modal-overlay" style="display:none;">
+            <div class="tma-bottom-sheet">
+                <div class="sheet-drag-handle"></div>
+                <div class="sheet-header">
+                    <div>
+                        <h3 class="sheet-title" id="accountModalTitle">គណនី MyTravel & Telegram</h3>
+                        <p class="sheet-sub" id="accountModalSub">បង្កើតគណនីថ្មី (អ្នកដំណើរ / អ្នកបើកបរ) ឬភ្ជាប់គណនីដែលបានបង្កើតក្នុង App</p>
+                    </div>
+                    <button type="button" id="btnCloseAccountModal" class="btn-close-sheet" aria-label="Close">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="sheet-scrollable-body">
+                    <!-- Mode Switcher: Create New Account vs Link Existing App Account -->
+                    <div class="mode-switch-tabs">
+                        <button type="button" class="mode-switch-btn active" id="tabModeRegister">
+                            ✨ បង្កើតគណនីថ្មី / New Account
+                        </button>
+                        <button type="button" class="mode-switch-btn" id="tabModeLinkApp">
+                            🔗 ភ្ជាប់គណនីពី App / Link App
+                        </button>
+                    </div>
+
+                    <div id="accountErrorAlert" class="error-alert-box"></div>
+                    <div id="appAccountDetectedBanner" class="app-account-detected-banner" style="display:none;"></div>
+
+                    <!-- 1-Tap Share Telegram Contact Button (Works for both New & Existing App Accounts) -->
+                    <button type="button" id="btnShareTelegramContact" class="btn-secondary-soft full-width" style="border:1.5px solid var(--taxi-yellow); color:var(--taxi-yellow);">
+                        <i class="fa-brands fa-telegram" style="font-size:1.1rem;"></i>
+                        <span>ចែករំលែកលេខទូរស័ព្ទពី Telegram (1-Tap Verify)</span>
+                    </button>
+
+                    <!-- Phone Number Input -->
+                    <div class="form-group-card">
+                        <label for="accPhoneInput">លេខទូរស័ព្ទ / Phone Number (Cambodia):</label>
+                        <div class="input-icon-wrapper">
+                            <i class="fa-solid fa-phone"></i>
+                            <input type="tel" id="accPhoneInput" class="modern-input" placeholder="012 345 678" required>
+                        </div>
+                    </div>
+
+                    <!-- REGISTER NEW ACCOUNT FIELDS -->
+                    <div id="registerFieldsGroup" style="display:flex; flex-direction:column; gap:12px;">
+                        <!-- Choose Role: Passenger or Driver -->
+                        <div class="form-group-card">
+                            <label>ជ្រើសរើសតួនាទីរបស់អ្នក / Select Your Role:</label>
+                            <div class="role-selector-cards">
+                                <div class="role-select-card active" data-role="passenger" id="roleCardPassenger">
+                                    <i class="fa-solid fa-person-walking-luggage"></i>
+                                    <strong style="display:block; font-size:0.88rem;">អ្នកដំណើរ / Passenger</strong>
+                                    <span style="font-size:0.72rem; color:var(--text-secondary);">កក់តាក់ស៊ី & ជិះរួមដំណើរ</span>
+                                </div>
+                                <div class="role-select-card" data-role="driver" id="roleCardDriver">
+                                    <i class="fa-solid fa-taxi"></i>
+                                    <strong style="display:block; font-size:0.88rem;">អ្នកបើកបរ / Driver</strong>
+                                    <span style="font-size:0.72rem; color:var(--text-secondary);">ដាក់ជើងឡាន & ទទួលភ្ញៀវ</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Full Name -->
+                        <div class="form-group-card">
+                            <label for="accFullNameInput">ឈ្មោះពេញ / Full Name:</label>
+                            <div class="input-icon-wrapper">
+                                <i class="fa-solid fa-user"></i>
+                                <input type="text" id="accFullNameInput" class="modern-input" placeholder="Enter Full Name">
+                            </div>
+                        </div>
+
+                        <!-- Driver Optional Vehicle Setup -->
+                        <div id="driverSetupFields" style="display:none; flex-direction:column; gap:10px; background:var(--card-elevated); padding:12px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
+                            <strong style="font-size:0.82rem; color:var(--taxi-yellow);">🚘 ព័ត៌មានរថយន្តអ្នកបើកបរ / Driver Vehicle Info:</strong>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                                <div>
+                                    <label style="font-size:0.74rem; color:var(--text-secondary);">ម៉ូដែលឡាន / Model:</label>
+                                    <input type="text" id="accVehicleModel" class="modern-input" placeholder="Lexus RX330">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.74rem; color:var(--text-secondary);">ផ្លាកលេខ / Plate:</label>
+                                    <input type="text" id="accPlateNumber" class="modern-input" placeholder="2AB-1234">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Optional Password for Mobile App Login -->
+                        <div class="form-group-card">
+                            <label for="accNewPasswordInput">កំណត់ពាក្យសម្ងាត់សម្រាប់ចូល App (Optional Password):</label>
+                            <div class="input-icon-wrapper">
+                                <i class="fa-solid fa-lock"></i>
+                                <input type="password" id="accNewPasswordInput" class="modern-input" placeholder="Set password for MyTravel mobile app">
+                            </div>
+                        </div>
+
+                        <button type="button" id="btnSubmitRegisterAccount" class="btn-primary-yellow full-width">
+                            <i class="fa-solid fa-user-plus"></i>
+                            <span>បង្កើតគណនីជាមួយ Telegram / Create Account</span>
+                        </button>
+                    </div>
+
+                    <!-- LINK EXISTING MOBILE APP ACCOUNT FIELDS -->
+                    <div id="linkAppFieldsGroup" style="display:none; flex-direction:column; gap:12px;">
+                        <div style="font-size:0.8rem; color:var(--text-secondary); background:var(--card-elevated); padding:10px 12px; border-radius:var(--radius-sm);">
+                            💡 ប្រសិនបើអ្នកបានបង្កើតគណនីនៅក្នុង <strong>កម្មវិធីទូរស័ព្ទ MyTravel App</strong> រួចហើយ (ដោយមិនបានប្រើ Telegram OTP) សូមបញ្ចូលពាក្យសម្ងាត់កម្មវិធីរបស់អ្នក ឬចុចប៊ូតុងចែករំលែកលេខ Telegram ខាងលើដើម្បីភ្ជាប់គណនីទាំងពីរเข้าគ្នា!
+                        </div>
+
+                        <div class="form-group-card">
+                            <label for="accLinkPasswordInput">ពាក្យសម្ងាត់ក្នុង MyTravel App / Your App Password:</label>
+                            <div class="input-icon-wrapper">
+                                <i class="fa-solid fa-key"></i>
+                                <input type="password" id="accLinkPasswordInput" class="modern-input" placeholder="Enter your MyTravel App password">
+                            </div>
+                        </div>
+
+                        <button type="button" id="btnSubmitLinkAppAccount" class="btn-primary-yellow full-width">
+                            <i class="fa-solid fa-link"></i>
+                            <span>ភ្ជាប់គណនី App មកកាន់ Telegram / Link Account</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- MODAL 1: REAL TRIP BOOKING SHEET -->
         <div id="bookingModal" class="tma-modal-overlay" style="display:none;">

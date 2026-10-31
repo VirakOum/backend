@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.main import app
+from app.auth import hash_password
 from app.db import get_db
 from app.models import (
     AuthToken,
@@ -264,4 +265,175 @@ def test_telegram_bot_commands_support_miniapp():
 
     res = client.post("/v1/api/travel/auth/telegram-otp/webhook", json=update)
     assert res.status_code == 200
-    assert res.json() == {"ok": True}
+    assert res.json().get("ok") is True
+
+
+def test_telegram_miniapp_register_role_and_link_existing_app_account():
+    client = TestClient(app)
+
+    # 1. Check unregistered Telegram user -> registered: False
+    me_unreg = client.get("/v1/api/travel/telegram/miniapp/me?telegram_user_id=555000111")
+    assert me_unreg.status_code == 200
+    assert me_unreg.json()["registered"] is False
+
+    # 2. End-to-end Register as a DRIVER from Telegram Mini App (with vehicle)
+    reg_driver_res = client.post(
+        "/v1/api/travel/telegram/miniapp/register",
+        json={
+            "full_name": "Sokha Driver TG",
+            "phone": "077889900",
+            "role": "driver",
+            "telegram_user_id": "555000111",
+            "telegram_chat_id": "555000111",
+            "telegram_username": "sokha_driver",
+            "vehicle_model": "Lexus RX350",
+            "plate_number": "2GH-9988",
+            "seat_type": 4,
+        },
+    )
+    assert reg_driver_res.status_code == 200
+    reg_driver_data = reg_driver_res.json()
+    assert reg_driver_data["registered"] is True
+    assert reg_driver_data["telegram_linked"] is True
+    assert reg_driver_data["user"]["role"] == "driver"
+    assert reg_driver_data["auth_token"]
+    assert len(reg_driver_data["driver_summary"]["vehicles"]) == 1
+    assert reg_driver_data["driver_summary"]["vehicles"][0]["model"] == "Lexus RX350"
+
+    # 3. Verify GET /me by telegram_user_id returns role=driver and driver_summary
+    me_driver = client.get("/v1/api/travel/telegram/miniapp/me?telegram_user_id=555000111")
+    assert me_driver.status_code == 200
+    assert me_driver.json()["registered"] is True
+    assert me_driver.json()["user"]["role"] == "driver"
+
+    # 4. Driver publishes a trip directly from the Mini App
+    dep_time = (phnom_penh_now() + timedelta(hours=5)).isoformat()
+    pub_trip_res = client.post(
+        "/v1/api/travel/telegram/miniapp/driver/trips",
+        json={
+            "telegram_user_id": "555000111",
+            "departure_province": "Phnom Penh (រាជធានីភ្នំពេញ)",
+            "destination_province": "Battambang (បាត់ដំបង)",
+            "departure_time": dep_time,
+            "price_per_seat": 45000,
+            "currency": "KHR",
+            "total_seats": 4,
+        },
+    )
+    assert pub_trip_res.status_code == 200
+    pub_trip_data = pub_trip_res.json()
+    assert pub_trip_data["status"] == "scheduled"
+    assert pub_trip_data["total_seats"] == 4
+
+    # 5. Simulate accounts created in the Mobile App WITHOUT Telegram OTP (User row exists, no TelegramOtpSession)
+    db = TestingSessionLocal()
+    try:
+        app_driver = User(
+            phone="015667788",
+            full_name="Vannak App User",
+            role="driver",
+            password_hash=hash_password("AppPassword123"),
+            is_verified=False,
+        )
+        app_passenger = User(
+            phone="012345678",
+            full_name="Bopha App Passenger",
+            role="passenger",
+            password_hash=hash_password("PassengerPass123"),
+            is_verified=False,
+        )
+        db.add_all([app_driver, app_passenger])
+        db.commit()
+    finally:
+        db.close()
+
+    # 6. Check phone from Mini App -> detects existing App account created without Telegram
+    chk_res = client.post(
+        "/v1/api/travel/telegram/miniapp/check-phone",
+        json={
+            "phone": "015667788",
+            "telegram_user_id": "777888999",
+        },
+    )
+    assert chk_res.status_code == 200
+    chk_data = chk_res.json()
+    assert chk_data["exists"] is True
+    assert chk_data["role"] == "driver"
+    assert chk_data["full_name"] == "Vannak App User"
+    assert chk_data["created_via_app_without_telegram"] is True
+    assert chk_data["already_linked_to_this_telegram"] is False
+
+    # 7. GET /me with phone + unlinked telegram_user_id -> returns requires_app_link: True
+    me_unlinked = client.get(
+        "/v1/api/travel/telegram/miniapp/me?phone=015667788&telegram_user_id=777888999"
+    )
+    assert me_unlinked.status_code == 200
+    me_unlinked_data = me_unlinked.json()
+    assert me_unlinked_data["registered"] is True
+    assert me_unlinked_data["telegram_linked"] is False
+    assert me_unlinked_data["requires_app_link"] is True
+    assert me_unlinked_data["account_preview"]["role"] == "driver"
+
+    # 8. Attempting /register on that phone without password or contact verification -> 409 ACCOUNT_EXISTS_IN_APP
+    reg_conflict = client.post(
+        "/v1/api/travel/telegram/miniapp/register",
+        json={
+            "full_name": "Vannak App User",
+            "phone": "015667788",
+            "role": "driver",
+            "telegram_user_id": "777888999",
+        },
+    )
+    assert reg_conflict.status_code == 409
+    assert "ACCOUNT_EXISTS_IN_APP" in str(reg_conflict.json()["detail"])
+
+    # 9. Link the existing Mobile App account using App Password
+    link_res = client.post(
+        "/v1/api/travel/telegram/miniapp/link-account",
+        json={
+            "phone": "015667788",
+            "password": "AppPassword123",
+            "telegram_user_id": "777888999",
+            "telegram_chat_id": "777888999",
+        },
+    )
+    assert link_res.status_code == 200
+    link_data = link_res.json()
+    assert link_data["telegram_linked"] is True
+    assert link_data["account_action"] == "linked_existing_app_account"
+    assert link_data["user"]["role"] == "driver"
+    assert link_data["user"]["full_name"] == "Vannak App User"
+
+    # 10. Now GET /me with only telegram_user_id=777888999 resolves the linked App account!
+    me_after_link = client.get("/v1/api/travel/telegram/miniapp/me?telegram_user_id=777888999")
+    assert me_after_link.status_code == 200
+    assert me_after_link.json()["registered"] is True
+    assert me_after_link.json()["telegram_linked"] is True
+    assert me_after_link.json()["user"]["phone"] == "015667788"
+    assert me_after_link.json()["user"]["role"] == "driver"
+
+    # 11. Also test Bot Contact Share webhook auto-linking an existing Mobile App passenger account
+    contact_update = {
+        "update_id": 999902,
+        "message": {
+            "message_id": 2,
+            "date": 1730000010,
+            "chat": {"id": 888999000, "type": "private"},
+            "from": {"id": 888999000, "first_name": "Bopha", "username": "bopha_kh"},
+            "contact": {
+                "phone_number": "+85512345678",
+                "first_name": "Bopha",
+                "user_id": 888999000,
+            },
+        },
+    }
+    wh_res = client.post("/v1/api/travel/auth/telegram-otp/webhook", json=contact_update)
+    assert wh_res.status_code == 200
+
+    me_bopha = client.get("/v1/api/travel/telegram/miniapp/me?telegram_user_id=888999000")
+    assert me_bopha.status_code == 200
+    assert me_bopha.json()["registered"] is True
+    assert me_bopha.json()["telegram_linked"] is True
+    assert me_bopha.json()["user"]["phone"] == "012345678"
+    assert me_bopha.json()["user"]["role"] == "passenger"
+
