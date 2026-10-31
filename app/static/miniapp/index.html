@@ -18,33 +18,36 @@
     <!-- FontAwesome 6 Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
-    <!-- External Stylesheet -->
-    <link rel="stylesheet" href="/miniapp/css/miniapp.css">
+    <!-- External Stylesheet with cache buster -->
+    <link rel="stylesheet" href="/miniapp/css/miniapp.css?v=3.1">
     <link rel="icon" type="image/png" href="/assets/logo.png">
 
-    <!-- Inline Critical Core Styles -->
+    <!-- Responsive Phone UI Styles (Inline Critical Fallback) -->
     <style>
         :root {
             --bg-color: #0B0F19;
             --card-bg: #151D2E;
             --card-elevated: #1E293B;
-            --border-color: rgba(255, 255, 255, 0.1);
+            --border-color: rgba(255, 255, 255, 0.11);
             --border-focus: #FFC83D;
             --text-primary: #F8FAFC;
-            --text-secondary: #94A3B8;
-            --text-muted: #64748B;
+            --text-secondary: #CBD5E1;
+            --text-muted: #94A3B8;
             --taxi-yellow: #FFC83D;
             --taxi-yellow-hover: #F5B82E;
+            --taxi-yellow-soft: rgba(255, 200, 61, 0.16);
             --taxi-ink: #17223A;
             --success-color: #10B981;
-            --success-bg: rgba(16, 185, 129, 0.15);
+            --success-bg: rgba(16, 185, 129, 0.16);
             --danger-color: #EF4444;
-            --danger-bg: rgba(239, 68, 68, 0.15);
-            --radius-sm: 8px;
+            --danger-bg: rgba(239, 68, 68, 0.16);
+            --radius-xs: 6px;
+            --radius-sm: 10px;
             --radius-md: 14px;
-            --radius-lg: 20px;
+            --radius-lg: 18px;
+            --radius-xl: 22px;
             --radius-full: 9999px;
-            --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.25);
+            --nav-height: 64px;
             --safe-bottom: env(safe-area-inset-bottom, 0px);
         }
 
@@ -53,14 +56,14 @@
             --card-bg: #FFFFFF;
             --card-elevated: #F8FAFC;
             --border-color: #E2E8F0;
-            --border-focus: #FFC83D;
+            --border-focus: #E5A91C;
             --text-primary: #0F172A;
-            --text-secondary: #475569;
+            --text-secondary: #334155;
             --text-muted: #64748B;
-            --shadow-card: 0 4px 16px rgba(23, 34, 58, 0.08);
+            --taxi-yellow-soft: rgba(255, 200, 61, 0.22);
         }
 
-        * {
+        *, *::before, *::after {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
@@ -71,183 +74,27 @@
             background-color: var(--bg-color);
             color: var(--text-primary);
             font-family: 'Kantumruy Pro', 'Inter', -apple-system, sans-serif;
-            font-size: 15px;
-            line-height: 1.45;
+            font-size: 14.5px;
+            line-height: 1.55;
             min-height: 100vh;
+            min-height: 100dvh;
             display: flex;
             justify-content: center;
+            overflow-x: hidden;
+            word-wrap: break-word;
         }
 
         .app-shell {
             width: 100%;
-            max-width: 520px;
+            max-width: 480px;
             min-height: 100vh;
+            min-height: 100dvh;
             background-color: var(--bg-color);
             display: flex;
             flex-direction: column;
             position: relative;
-            padding-bottom: calc(74px + var(--safe-bottom));
-        }
-
-        /* Seat Picker Pills */
-        .seat-picker-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 8px;
-        }
-        .seat-chip {
-            padding: 8px 13px;
-            border-radius: var(--radius-sm);
-            background: var(--card-elevated);
-            border: 1.5px solid var(--border-color);
-            color: var(--text-primary);
-            font-size: 0.82rem;
-            font-weight: 700;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            transition: all 0.15s ease;
-        }
-        .seat-chip.selected {
-            background: rgba(255, 200, 61, 0.18);
-            border-color: var(--taxi-yellow);
-            color: var(--taxi-yellow);
-        }
-        .seat-chip.booked {
-            opacity: 0.4;
-            cursor: not-allowed;
-            text-decoration: line-through;
-        }
-        .route-stop-sub {
-            font-size: 0.76rem;
-            color: var(--text-secondary);
-            margin-top: 3px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        .trip-route-banner {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: var(--card-elevated);
-            padding: 8px 12px;
-            border-radius: var(--radius-sm);
-            font-size: 0.85rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            border-left: 3px solid var(--taxi-yellow);
-        }
-        .error-alert-box {
-            background: var(--danger-bg);
-            border: 1px solid var(--danger-color);
-            color: var(--danger-color);
-            padding: 10px 12px;
-            border-radius: var(--radius-sm);
-            font-size: 0.82rem;
-            font-weight: 600;
-            display: none;
-        }
-        /* Role & Account Banner Styles */
-        .role-pill-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            padding: 3px 10px;
-            border-radius: var(--radius-full);
-            font-size: 0.72rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-        }
-        .role-pill-passenger {
-            background: rgba(16, 185, 129, 0.18);
-            color: #10B981;
-            border: 1px solid rgba(16, 185, 129, 0.35);
-        }
-        .role-pill-driver {
-            background: rgba(255, 200, 61, 0.2);
-            color: var(--taxi-yellow);
-            border: 1px solid rgba(255, 200, 61, 0.45);
-        }
-        .role-pill-guest {
-            background: rgba(148, 163, 184, 0.15);
-            color: var(--text-secondary);
-            border: 1px solid var(--border-color);
-        }
-        .account-cta-strip {
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px dashed var(--border-color);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        .role-selector-cards {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 6px;
-        }
-        .role-select-card {
-            background: var(--card-elevated);
-            border: 2px solid var(--border-color);
-            border-radius: var(--radius-md);
-            padding: 12px 10px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.15s ease;
-            color: var(--text-primary);
-        }
-        .role-select-card i {
-            font-size: 1.35rem;
-            margin-bottom: 6px;
-            display: block;
-            color: var(--text-secondary);
-        }
-        .role-select-card.active {
-            border-color: var(--taxi-yellow);
-            background: rgba(255, 200, 61, 0.12);
-        }
-        .role-select-card.active i {
-            color: var(--taxi-yellow);
-        }
-        .mode-switch-tabs {
-            display: flex;
-            background: var(--card-elevated);
-            padding: 4px;
-            border-radius: var(--radius-md);
-            gap: 4px;
-            margin-bottom: 10px;
-        }
-        .mode-switch-btn {
-            flex: 1;
-            padding: 8px 10px;
-            border-radius: var(--radius-sm);
-            border: none;
-            background: transparent;
-            color: var(--text-secondary);
-            font-weight: 700;
-            font-size: 0.8rem;
-            cursor: pointer;
-            font-family: inherit;
-        }
-        .mode-switch-btn.active {
-            background: var(--taxi-yellow);
-            color: var(--taxi-ink);
-        }
-        .app-account-detected-banner {
-            background: rgba(56, 189, 248, 0.12);
-            border: 1px solid rgba(56, 189, 248, 0.4);
-            color: #38BDF8;
-            padding: 10px 12px;
-            border-radius: var(--radius-sm);
-            font-size: 0.8rem;
-            line-height: 1.4;
+            padding-bottom: calc(var(--nav-height) + var(--safe-bottom) + 18px);
+            overflow-x: hidden;
         }
     </style>
 </head>
@@ -280,20 +127,20 @@
 
         <!-- 2. USER ACCOUNT & ROLE STATUS BANNER -->
         <div class="user-greeting-card">
-            <div class="user-profile-summary" style="justify-content: space-between;">
-                <div style="display:flex; align-items:center; gap:12px;">
+            <div class="user-profile-summary">
+                <div class="user-profile-left">
                     <div class="user-avatar-badge" id="userAvatar">
                         <i class="fa-solid fa-user"></i>
                     </div>
                     <div class="user-text">
-                        <div class="welcome-line" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                        <div class="welcome-line">
                             <span data-i18n="greeting_hello">សួស្តី</span>, <strong id="userName">Traveler</strong>
                             <span id="userRoleBadge" class="role-pill-badge role-pill-guest">Guest</span>
                         </div>
                         <div class="welcome-sub" id="userAccountSub" data-i18n="greeting_sub">កក់តាក់ស៊ី និងរថយន្តឈ្នួលអន្តរខេត្តទូទាំងប្រទេសកម្ពុជា</div>
                     </div>
                 </div>
-                <button type="button" id="btnManageAccount" class="btn-icon-soft" title="Account Settings" style="width:auto; padding:0 12px; font-size:0.78rem; font-weight:700; gap:6px;">
+                <button type="button" id="btnManageAccount" class="btn-account-chip" title="Account Settings">
                     <i class="fa-solid fa-id-badge"></i>
                     <span id="btnManageAccountLabel">គណនី</span>
                 </button>
@@ -301,11 +148,11 @@
 
             <!-- Unregistered / Link App Account Call-to-Action Strip -->
             <div id="accountActionStrip" class="account-cta-strip">
-                <div style="font-size:0.78rem; color:var(--text-secondary); flex:1;">
-                    <strong style="color:var(--text-primary); display:block;" id="accountStripTitle">មិនទាន់មានគណនី ឬមានគណនីក្នុង App រួចហើយ?</strong>
+                <div class="account-cta-text">
+                    <strong id="accountStripTitle">មិនទាន់មានគណនី ឬមានគណនីក្នុង App រួចហើយ?</strong>
                     <span id="accountStripSub">បង្កើតគណនីថ្មីជាមួយ Telegram ឬភ្ជាប់គណនី MyTravel App (អ្នកដំណើរ / អ្នកបើកបរ)</span>
                 </div>
-                <button type="button" id="btnOpenAccountModal" class="btn-primary-yellow" style="width:auto; padding:8px 14px; font-size:0.8rem;">
+                <button type="button" id="btnOpenAccountModal" class="btn-primary-yellow">
                     <i class="fa-brands fa-telegram"></i>
                     <span id="btnOpenAccountModalText">បង្កើត / ភ្ជាប់គណនី</span>
                 </button>
@@ -505,10 +352,12 @@
 
                     <!-- Quick On-Demand Banner -->
                     <div class="on-demand-banner">
-                        <div class="banner-icon"><i class="fa-solid fa-bell-concierge"></i></div>
-                        <div class="banner-body">
-                            <h3 data-i18n="banner_custom_title">ត្រូវការឡានចេញម៉ោងផ្សេង ឬម៉ៅដាច់?</h3>
-                            <p data-i18n="banner_custom_sub">ប្រសិនបើគ្មានម៉ោងដែលត្រូវចិត្ត សូមផ្ញើសំណើកក់ឡានពិសេសតាមម៉ោងដែលអ្នកចង់បាន!</p>
+                        <div class="on-demand-top">
+                            <div class="banner-icon"><i class="fa-solid fa-bell-concierge"></i></div>
+                            <div class="banner-body">
+                                <h3 data-i18n="banner_custom_title">ត្រូវការឡានចេញម៉ោងផ្សេង ឬម៉ៅដាច់?</h3>
+                                <p data-i18n="banner_custom_sub">ប្រសិនបើគ្មានម៉ោងដែលត្រូវចិត្ត សូមផ្ញើសំណើកក់ឡានពិសេសតាមម៉ោងដែលអ្នកចង់បាន!</p>
+                            </div>
                         </div>
                         <button type="button" id="btnOpenCustomModal" class="banner-btn" data-i18n="btn_custom_request">ស្នើសុំឡាន</button>
                     </div>
@@ -528,7 +377,7 @@
                     <h3 style="font-size:0.95rem; font-weight:800; color:var(--taxi-yellow);">
                         <i class="fa-solid fa-plus-circle"></i> បង្កើតជើងរថយន្តថ្មី / Publish New Trip
                     </h3>
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                    <div class="responsive-grid-2">
                         <div class="form-group-card">
                             <label>ចេញពីខេត្ត / From:</label>
                             <input type="text" id="drvFromInput" class="modern-input" value="Phnom Penh" placeholder="Phnom Penh">
@@ -538,7 +387,7 @@
                             <input type="text" id="drvToInput" class="modern-input" value="Siem Reap" placeholder="Siem Reap">
                         </div>
                     </div>
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                    <div class="responsive-grid-2">
                         <div class="form-group-card">
                             <label>ថ្ងៃ និងម៉ោងចេញ / Departure:</label>
                             <input type="datetime-local" id="drvDepTimeInput" class="modern-input">
@@ -553,7 +402,7 @@
                             </select>
                         </div>
                     </div>
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                    <div class="responsive-grid-2">
                         <div class="form-group-card">
                             <label>តម្លៃក្នុង 1 កៅអី / Price per Seat:</label>
                             <input type="number" id="drvPriceInput" class="modern-input" value="40000" min="1">
@@ -566,7 +415,7 @@
                             </select>
                         </div>
                     </div>
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                    <div class="responsive-grid-2">
                         <div class="form-group-card">
                             <label>ម៉ូដែលឡាន / Car Model:</label>
                             <input type="text" id="drvCarModelInput" class="modern-input" placeholder="e.g. Lexus RX330">
