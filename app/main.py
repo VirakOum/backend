@@ -252,6 +252,9 @@ def serve_css(filename: str):
     file_path = STATIC_SITE_DIR / "css" / filename
     if file_path.is_file():
         return FileResponse(file_path, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+    miniapp_css = STATIC_MINIAPP_DIR / "css" / filename
+    if miniapp_css.is_file():
+        return FileResponse(miniapp_css, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
     raise HTTPException(status_code=404, detail="CSS file not found")
 
 @app.get("/js/{filename:path}", include_in_schema=False)
@@ -260,6 +263,9 @@ def serve_js(filename: str):
     file_path = STATIC_SITE_DIR / "js" / filename
     if file_path.is_file():
         return FileResponse(file_path, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+    miniapp_js = STATIC_MINIAPP_DIR / "js" / filename
+    if miniapp_js.is_file():
+        return FileResponse(miniapp_js, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
     raise HTTPException(status_code=404, detail="JS file not found")
 
 @app.get("/favicon.ico", include_in_schema=False)
@@ -371,13 +377,17 @@ def serve_admin_fallback(filepath: str):
 
 # Telegram Mini App explicit route handlers
 @app.get("/miniapp", include_in_schema=False)
-@app.get("/miniapp/", include_in_schema=False)
-@app.get("/telegram/miniapp", include_in_schema=False)
-@app.get("/telegram/app", include_in_schema=False)
 @api_v1_router.get("/miniapp", include_in_schema=False)
-@api_v1_router.get("/miniapp/", include_in_schema=False)
+@app.get("/telegram/miniapp", include_in_schema=False)
 @api_v1_router.get("/telegram/miniapp", include_in_schema=False)
+@app.get("/telegram/app", include_in_schema=False)
 @api_v1_router.get("/telegram/app", include_in_schema=False)
+def redirect_miniapp_slash():
+    return RedirectResponse(url="/miniapp/", status_code=307)
+
+
+@app.get("/miniapp/", include_in_schema=False)
+@api_v1_router.get("/miniapp/", include_in_schema=False)
 def serve_telegram_miniapp():
     index_file = STATIC_MINIAPP_DIR / "index.html"
     if index_file.is_file():

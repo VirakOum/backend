@@ -1,46 +1,72 @@
 /* ===================================================================
-   MYTRAVEL TELEGRAM MINI APP (TMA) - TAXI SERVICE THEME
-   Bilingual: English + Khmer (Kantumruy Pro)
+   MYTRAVEL TELEGRAM MINI APP (TMA) - PREMIUM TAXI THEME
+   Fully compatible with Telegram Dark & Light Color Schemes
+   Cambodia Inter-Province Taxi & Ride-Sharing Platform
    =================================================================== */
 
 :root {
+    /* Color Palette - Dark Mode Defaults */
+    --bg-color: #0B0F19;
+    --card-bg: #151D2E;
+    --card-elevated: #1E293B;
+    --border-color: rgba(255, 255, 255, 0.1);
+    --border-focus: #FFC83D;
+    
+    /* Text Hierarchy */
+    --text-primary: #F8FAFC;
+    --text-secondary: #94A3B8;
+    --text-muted: #64748B;
+    
+    /* Brand Accent: Taxi Yellow */
+    --taxi-yellow: #FFC83D;
     --taxi-accent: #FFC83D;
-    --taxi-accent-hover: #F6B81C;
-    --taxi-accent-light: rgba(255, 200, 61, 0.18);
+    --taxi-yellow-hover: #F5B82E;
+    --taxi-yellow-soft: rgba(255, 200, 61, 0.16);
     --taxi-ink: #17223A;
-    --taxi-ink-light: #243456;
-    --taxi-bg: #F3F5F8;
-    --taxi-card: #FFFFFF;
-    --taxi-border: #E2E8F0;
-    --taxi-border-focus: #FFC83D;
-    --taxi-text-dark: #0F172A;
-    --taxi-text-muted: #64748B;
-    --taxi-text-light: #94A3B8;
-    --taxi-success: #1FA86C;
-    --taxi-success-bg: rgba(31, 168, 108, 0.12);
-    --taxi-danger: #E4563F;
-    --taxi-danger-bg: rgba(228, 86, 63, 0.12);
-    --taxi-radius-sm: 8px;
-    --taxi-radius-md: 14px;
-    --taxi-radius-lg: 20px;
-    --taxi-radius-full: 9999px;
-    --taxi-shadow-sm: 0 2px 6px rgba(23, 34, 58, 0.05);
-    --taxi-shadow-md: 0 8px 24px rgba(23, 34, 58, 0.08);
-    --taxi-shadow-lg: 0 16px 40px rgba(23, 34, 58, 0.14);
-    --bottom-bar-height: 64px;
+    
+    /* Semantic Colors */
+    --success-color: #10B981;
+    --success-bg: rgba(16, 185, 129, 0.16);
+    --danger-color: #EF4444;
+    --danger-bg: rgba(239, 68, 68, 0.16);
+    --warning-color: #F59E0B;
+    --info-blue: #3B82F6;
+    --info-blue-bg: rgba(59, 130, 246, 0.16);
+    
+    /* Shapes & Radii */
+    --radius-xs: 6px;
+    --radius-sm: 10px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
+    --radius-xl: 26px;
+    --radius-full: 9999px;
+    
+    /* Shadows */
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.28);
+    --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.4);
+    
+    /* Dimensions */
+    --nav-height: 66px;
     --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Telegram WebApp Theme Override if available */
-body.tg-theme-dark {
-    --taxi-bg: #0F172A;
-    --taxi-card: #1E293B;
-    --taxi-border: #334155;
-    --taxi-text-dark: #F8FAFC;
-    --taxi-text-muted: #94A3B8;
+/* Light Mode Overrides */
+html[data-theme="light"] {
+    --bg-color: #F3F5F8;
+    --card-bg: #FFFFFF;
+    --card-elevated: #F8FAFC;
+    --border-color: #E2E8F0;
+    --border-focus: #FFC83D;
+    --text-primary: #0F172A;
+    --text-secondary: #475569;
+    --text-muted: #64748B;
+    --shadow-sm: 0 2px 8px rgba(23, 34, 58, 0.05);
+    --shadow-md: 0 8px 24px rgba(23, 34, 58, 0.08);
+    --shadow-lg: 0 16px 40px rgba(23, 34, 58, 0.14);
 }
 
-/* Global Reset */
+/* Base Styles */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -51,30 +77,29 @@ body.tg-theme-dark {
 html, body {
     width: 100%;
     min-height: 100%;
-    background-color: var(--taxi-bg);
-    color: var(--taxi-text-dark);
+    background-color: var(--bg-color);
+    color: var(--text-primary);
     font-family: 'Kantumruy Pro', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     font-size: 15px;
     line-height: 1.45;
     overflow-x: hidden;
-    user-select: none;
-    -webkit-user-select: none;
 }
 
-/* App Wrapper Container */
-.app-wrapper {
+/* App Shell Container */
+.app-shell {
+    width: 100%;
+    max-width: 520px;
+    min-height: 100vh;
+    margin: 0 auto;
+    background-color: var(--bg-color);
     display: flex;
     flex-direction: column;
-    min-height: 100vh;
-    padding-bottom: calc(var(--bottom-bar-height) + var(--safe-bottom) + 16px);
-    max-width: 540px;
-    margin: 0 auto;
     position: relative;
-    background-color: var(--taxi-bg);
+    padding-bottom: calc(var(--nav-height) + var(--safe-bottom) + 14px);
 }
 
-/* Top Sticky Header */
-.app-header {
+/* 1. TOP APP HEADER */
+.tma-header {
     position: sticky;
     top: 0;
     z-index: 100;
@@ -82,158 +107,253 @@ html, body {
     align-items: center;
     justify-content: space-between;
     padding: 12px 16px;
-    background-color: var(--taxi-ink);
-    color: #FFFFFF;
-    box-shadow: 0 4px 16px rgba(23, 34, 58, 0.12);
+    background-color: var(--card-bg);
+    border-bottom: 1px solid var(--border-color);
+    backdrop-filter: blur(12px);
+    box-shadow: var(--shadow-sm);
 }
 
-.header-left {
-    display: flex;
-    align-items: center;
-}
-
-.brand-logo {
+.header-brand {
     display: flex;
     align-items: center;
     gap: 10px;
 }
 
-.brand-logo img {
-    width: 34px;
-    height: 34px;
-    border-radius: 8px;
-    object-fit: cover;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+.logo-box {
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-sm);
+    background-color: var(--taxi-ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    flex-shrink: 0;
 }
 
-.brand-name {
+.logo-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.brand-title {
     font-family: 'Outfit', sans-serif;
-    font-weight: 800;
     font-size: 1.15rem;
+    font-weight: 900;
     letter-spacing: 0.5px;
-    color: #FFFFFF;
-    display: block;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
     line-height: 1.1;
 }
 
-.brand-badge {
-    font-size: 0.72rem;
-    color: #A0AEC0;
+.brand-badge-pro {
+    background: var(--taxi-yellow);
+    color: var(--taxi-ink);
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: var(--radius-xs);
+    letter-spacing: 0.5px;
+}
+
+.brand-status {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 5px;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
 }
 
-.pulse-dot {
-    font-size: 0.45rem;
-    color: var(--taxi-success);
-    animation: pulseGlow 2s infinite;
+.status-pulse {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: var(--success-color);
+    box-shadow: 0 0 8px var(--success-color);
+    animation: statusPulse 2s infinite;
 }
 
-@keyframes pulseGlow {
-    0% { opacity: 0.4; }
-    50% { opacity: 1; transform: scale(1.1); }
-    100% { opacity: 0.4; }
+@keyframes statusPulse {
+    0% { transform: scale(0.9); opacity: 0.7; }
+    50% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(0.9); opacity: 0.7; }
 }
 
-.lang-pill {
-    background: rgba(255, 255, 255, 0.14);
-    border: 1px solid rgba(255, 255, 255, 0.22);
-    color: #FFFFFF;
-    border-radius: var(--taxi-radius-full);
-    padding: 6px 12px;
-    font-size: 0.8rem;
-    font-weight: 600;
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.header-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-full);
+    background-color: var(--card-elevated);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
-    display: inline-flex;
+    font-size: 0.95rem;
+    transition: transform 0.15s ease;
+}
+
+.header-btn:active {
+    transform: scale(0.92);
+}
+
+.lang-switch-btn {
+    background-color: var(--card-elevated);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 6px 12px;
+    border-radius: var(--radius-full);
+    font-size: 0.8rem;
+    font-weight: 700;
+    display: flex;
     align-items: center;
     gap: 6px;
+    cursor: pointer;
     transition: all 0.15s ease;
 }
 
-.lang-pill:active {
-    transform: scale(0.96);
-    background: rgba(255, 255, 255, 0.25);
+.lang-switch-btn:active {
+    transform: scale(0.95);
+    background-color: var(--taxi-yellow-soft);
 }
 
-/* User Greeting Strip */
-.user-greeting-strip {
+/* 2. USER GREETING BANNER */
+.user-greeting-card {
+    padding: 12px 16px;
+    background: linear-gradient(135deg, var(--card-bg) 0%, var(--card-elevated) 100%);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.user-profile-summary {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 14px 16px;
-    background: linear-gradient(135deg, var(--taxi-ink) 0%, var(--taxi-ink-light) 100%);
-    color: #FFFFFF;
-    border-bottom-left-radius: var(--taxi-radius-lg);
-    border-bottom-right-radius: var(--taxi-radius-lg);
-    box-shadow: 0 4px 12px rgba(23, 34, 58, 0.08);
 }
 
-.user-avatar {
-    width: 40px;
-    height: 40px;
+.user-avatar-badge {
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
-    background-color: var(--taxi-accent);
+    background-color: var(--taxi-yellow);
     color: var(--taxi-ink);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.1rem;
-    font-weight: 700;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    font-size: 1.15rem;
+    font-weight: 800;
     flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(255, 200, 61, 0.3);
 }
 
-.greeting-title {
+.welcome-line {
     font-size: 0.98rem;
-    font-weight: 500;
+    color: var(--text-primary);
     line-height: 1.25;
 }
 
-.greeting-title strong {
-    color: var(--taxi-accent);
-    font-weight: 700;
+.welcome-line strong {
+    color: var(--taxi-yellow);
+    font-weight: 800;
 }
 
-.greeting-sub {
+.welcome-sub {
     font-size: 0.78rem;
-    color: #CBD5E1;
+    color: var(--text-secondary);
 }
 
-/* Main Content Area */
-.main-content {
-    flex: 1;
-    padding: 14px 14px 20px;
+/* 3. SERVICE CATEGORY SEGMENTED TABS */
+.service-nav-bar {
+    display: flex;
+    padding: 10px 14px 4px;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
 }
 
-.tab-pane {
+.service-nav-bar::-webkit-scrollbar {
     display: none;
-    animation: fadeIn 0.2s ease;
 }
 
-.tab-pane.active {
+.service-tab-btn {
+    flex: 1;
+    min-width: 130px;
+    background-color: var(--card-bg);
+    border: 1.5px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    font-size: 0.8rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+
+.service-tab-btn i {
+    font-size: 1rem;
+}
+
+.service-tab-btn:active {
+    transform: scale(0.96);
+}
+
+.service-tab-btn.active {
+    background-color: var(--taxi-ink);
+    color: var(--taxi-yellow);
+    border-color: var(--taxi-yellow);
+    box-shadow: 0 4px 12px rgba(255, 200, 61, 0.2);
+}
+
+/* 4. MAIN CONTENT AREA */
+.tma-content {
+    flex: 1;
+    padding: 12px 14px 20px;
+}
+
+.tab-view {
+    display: none;
+    animation: tabFadeIn 0.22s ease-out;
+}
+
+.tab-view.active {
     display: block;
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(4px); }
+@keyframes tabFadeIn {
+    from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* Popular Routes Section */
-.popular-routes-section {
+/* Popular Routes Block */
+.popular-routes-block {
     margin-bottom: 12px;
 }
 
-.section-label {
+.block-title {
     font-size: 0.78rem;
-    font-weight: 600;
-    color: var(--taxi-text-muted);
-    margin-bottom: 6px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
     padding-left: 2px;
 }
 
-.popular-chips-scroller {
+.route-chips-scroll {
     display: flex;
     gap: 8px;
     overflow-x: auto;
@@ -241,109 +361,126 @@ html, body {
     scrollbar-width: none;
 }
 
-.popular-chips-scroller::-webkit-scrollbar {
+.route-chips-scroll::-webkit-scrollbar {
     display: none;
 }
 
-.route-chip {
+.popular-chip {
     flex-shrink: 0;
-    background-color: var(--taxi-card);
-    border: 1px solid var(--taxi-border);
-    color: var(--taxi-text-dark);
+    background-color: var(--card-bg);
+    border: 1.5px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 7px 12px;
+    border-radius: var(--radius-full);
     font-size: 0.8rem;
-    font-weight: 600;
-    padding: 7px 13px;
-    border-radius: var(--taxi-radius-full);
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     cursor: pointer;
-    box-shadow: var(--taxi-shadow-sm);
+    box-shadow: var(--shadow-sm);
     transition: all 0.15s ease;
     white-space: nowrap;
 }
 
-.route-chip:active {
-    transform: scale(0.96);
+.popular-chip .chip-fare {
+    background-color: var(--taxi-yellow);
+    color: var(--taxi-ink);
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 1px 6px;
+    border-radius: var(--radius-full);
 }
 
-.route-chip.active {
-    background-color: var(--taxi-ink);
-    color: var(--taxi-accent);
-    border-color: var(--taxi-ink);
+.popular-chip:active {
+    transform: scale(0.95);
 }
 
-/* Search Card Box */
-.search-card {
-    background-color: var(--taxi-card);
-    border-radius: var(--taxi-radius-lg);
+.popular-chip.active {
+    background-color: var(--taxi-yellow-soft);
+    border-color: var(--taxi-yellow);
+    color: var(--taxi-yellow);
+}
+
+/* Route Search Card */
+.route-search-card {
+    background-color: var(--card-bg);
+    border-radius: var(--radius-xl);
     padding: 16px;
-    box-shadow: var(--taxi-shadow-md);
-    border: 1px solid var(--taxi-border);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-md);
     margin-bottom: 18px;
 }
 
-.route-inputs-wrapper {
+.search-fields-group {
     display: flex;
     flex-direction: column;
     position: relative;
     gap: 8px;
 }
 
-.route-field {
+.search-field-item {
     display: flex;
     align-items: center;
     gap: 12px;
-    background-color: var(--taxi-bg);
-    border: 1.5px solid var(--taxi-border);
-    border-radius: var(--taxi-radius-md);
-    padding: 8px 12px;
+    background-color: var(--card-elevated);
+    border: 1.5px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 10px 14px;
     transition: border-color 0.2s ease;
 }
 
-.route-field:focus-within {
-    border-color: var(--taxi-accent);
+.search-field-item:focus-within {
+    border-color: var(--border-focus);
 }
 
-.field-icon {
-    font-size: 1.1rem;
+.field-icon-box {
+    width: 28px;
+    height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
+    font-size: 1.15rem;
+    flex-shrink: 0;
 }
 
-.origin-icon {
-    color: var(--taxi-success);
-}
+.origin-box { color: var(--success-color); }
+.dest-box { color: var(--danger-color); }
 
-.dest-icon {
-    color: var(--taxi-danger);
-}
-
-.field-body {
+.field-control {
     flex: 1;
     display: flex;
     flex-direction: column;
+    min-width: 0;
 }
 
-.field-body label {
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: var(--taxi-text-muted);
+.field-label {
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.3px;
     margin-bottom: 2px;
 }
 
-.route-select {
+.modern-select {
+    width: 100%;
     border: none;
     background: transparent;
+    color: var(--text-primary);
     font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--taxi-text-dark);
+    font-weight: 700;
     outline: none;
     cursor: pointer;
-    width: 100%;
+    font-family: inherit;
 }
 
-.swap-action-container {
+.modern-select option {
+    background-color: var(--card-bg);
+    color: var(--text-primary);
+}
+
+.swap-divider {
     position: absolute;
     right: 18px;
     top: 50%;
@@ -351,148 +488,155 @@ html, body {
     z-index: 5;
 }
 
-.swap-btn {
+.swap-action-button {
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    background-color: var(--taxi-accent);
+    background-color: var(--taxi-yellow);
     color: var(--taxi-ink);
-    border: 2px solid var(--taxi-card);
+    border: 2.5px solid var(--card-bg);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    box-shadow: var(--taxi-shadow-sm);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
     transition: transform 0.2s ease;
 }
 
-.swap-btn:active {
-    transform: rotate(180deg) scale(0.95);
+.swap-action-button:active {
+    transform: rotate(180deg) scale(0.92);
 }
 
-/* Date Selection Row */
-.date-selection-row {
-    margin-top: 12px;
-    margin-bottom: 14px;
-}
-
-.date-pills {
+/* Date Selection Pills */
+.search-date-pills {
     display: flex;
     gap: 8px;
+    margin: 12px 0 14px;
 }
 
-.date-pill {
+.date-selector-pill {
     flex: 1;
+    background-color: var(--card-elevated);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    font-weight: 700;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
-    background-color: var(--taxi-bg);
-    border: 1px solid var(--taxi-border);
-    color: var(--taxi-text-dark);
-    padding: 8px 10px;
-    border-radius: var(--taxi-radius-md);
-    font-size: 0.8rem;
-    font-weight: 600;
     cursor: pointer;
     transition: all 0.15s ease;
 }
 
-.date-pill:active {
-    transform: scale(0.97);
+.date-selector-pill:active {
+    transform: scale(0.96);
 }
 
-.date-pill.active {
-    background-color: var(--taxi-accent-light);
-    border-color: var(--taxi-accent);
-    color: var(--taxi-ink);
-    font-weight: 700;
+.date-selector-pill.active {
+    background-color: var(--taxi-yellow-soft);
+    border-color: var(--taxi-yellow);
+    color: var(--taxi-yellow);
 }
 
-/* Primary Action Buttons */
-.primary-btn {
+/* Primary Taxi Yellow Button */
+.btn-primary-yellow {
     width: 100%;
-    background-color: var(--taxi-accent);
+    background-color: var(--taxi-yellow);
     color: var(--taxi-ink);
-    border: 2px solid var(--taxi-accent-hover);
+    border: 2px solid var(--taxi-yellow-hover);
     padding: 13px 18px;
-    border-radius: var(--taxi-radius-md);
+    border-radius: var(--radius-md);
     font-size: 0.98rem;
-    font-weight: 700;
+    font-weight: 800;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
     cursor: pointer;
-    box-shadow: 0 4px 14px rgba(255, 200, 61, 0.35);
+    box-shadow: 0 4px 16px rgba(255, 200, 61, 0.35);
+    text-decoration: none;
     transition: all 0.15s ease;
 }
 
-.primary-btn:active {
+.btn-primary-yellow:active {
     transform: scale(0.98);
-    background-color: var(--taxi-accent-hover);
+    background-color: var(--taxi-yellow-hover);
 }
 
-.secondary-btn {
+.btn-secondary-soft {
     width: 100%;
-    background-color: var(--taxi-bg);
-    color: var(--taxi-text-dark);
-    border: 1px solid var(--taxi-border);
-    padding: 11px 16px;
-    border-radius: var(--taxi-radius-md);
+    background-color: var(--card-elevated);
+    color: var(--text-primary);
+    border: 1.5px solid var(--border-color);
+    padding: 12px 18px;
+    border-radius: var(--radius-md);
     font-size: 0.92rem;
-    font-weight: 600;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
     transition: background 0.15s ease;
 }
 
-.secondary-btn:active {
-    background-color: #E2E8F0;
+.btn-secondary-soft:active {
+    background-color: rgba(255, 255, 255, 0.1);
 }
 
-/* Rides Section Header */
-.rides-header {
+/* Rides Listing Header */
+.listing-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin-bottom: 12px;
 }
 
-.rides-title {
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: var(--taxi-ink);
+.listing-header .header-left {
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
-.rides-count-badge {
-    background-color: var(--taxi-ink);
-    color: var(--taxi-accent);
-    font-size: 0.72rem;
-    padding: 2px 7px;
-    border-radius: var(--taxi-radius-full);
+.section-title {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--text-primary);
 }
 
-.icon-refresh-btn {
-    background: none;
-    border: none;
-    color: var(--taxi-text-muted);
-    font-size: 1rem;
-    cursor: pointer;
-    padding: 6px;
+.count-tag {
+    background-color: var(--card-elevated);
+    border: 1px solid var(--border-color);
+    color: var(--taxi-yellow);
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 2px 7px;
+    border-radius: var(--radius-full);
+}
+
+.btn-icon-soft {
+    background-color: var(--card-elevated);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
     transition: transform 0.2s ease, color 0.2s ease;
 }
 
-.icon-refresh-btn:active {
+.btn-icon-soft:active {
     transform: rotate(180deg);
-    color: var(--taxi-ink);
+    color: var(--text-primary);
 }
 
-/* Ride Cards */
-.rides-list {
+/* Ride Cards in Results */
+.rides-cards-list {
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -500,139 +644,142 @@ html, body {
 }
 
 .ride-card {
-    background-color: var(--taxi-card);
-    border-radius: var(--taxi-radius-lg);
+    background-color: var(--card-bg);
+    border-radius: var(--radius-lg);
     padding: 14px 16px;
-    border: 1px solid var(--taxi-border);
-    box-shadow: var(--taxi-shadow-sm);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
     display: flex;
     flex-direction: column;
     gap: 10px;
-    transition: box-shadow 0.2s ease, transform 0.15s ease;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .ride-card:active {
     transform: scale(0.99);
 }
 
-.ride-top-row {
+.ride-card-top {
     display: flex;
     align-items: center;
     justify-content: space-between;
 }
 
-.driver-meta {
+.driver-profile-row {
     display: flex;
     align-items: center;
     gap: 10px;
 }
 
 .driver-avatar-circle {
-    width: 38px;
-    height: 38px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
-    background-color: var(--taxi-accent-light);
-    color: var(--taxi-ink);
+    background: var(--taxi-yellow-soft);
+    color: var(--taxi-yellow);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.05rem;
+    font-size: 1.15rem;
     flex-shrink: 0;
+    border: 1.5px solid var(--taxi-yellow);
 }
 
-.driver-name {
-    font-weight: 700;
+.driver-name-col strong {
     font-size: 0.95rem;
-    color: var(--taxi-text-dark);
+    font-weight: 800;
+    color: var(--text-primary);
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 5px;
 }
 
-.verified-icon {
+.verified-badge {
     color: #38BDF8;
     font-size: 0.8rem;
 }
 
-.driver-rating {
-    font-size: 0.75rem;
-    color: #D97706;
-    font-weight: 600;
+.driver-stars-row {
+    font-size: 0.72rem;
+    color: #FBBF24;
+    font-weight: 700;
 }
 
-.departure-time-badge {
-    background-color: var(--taxi-ink);
-    color: #FFFFFF;
-    font-size: 0.82rem;
-    font-weight: 700;
+.dep-time-badge {
+    background-color: var(--card-elevated);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
     padding: 5px 10px;
-    border-radius: var(--taxi-radius-full);
+    border-radius: var(--radius-full);
+    font-size: 0.82rem;
+    font-weight: 800;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 5px;
 }
 
-.ride-middle-row {
+.dep-time-badge i {
+    color: var(--taxi-yellow);
+}
+
+.ride-card-mid {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background-color: var(--taxi-bg);
+    background-color: var(--card-elevated);
     padding: 8px 12px;
-    border-radius: var(--taxi-radius-md);
+    border-radius: var(--radius-sm);
     font-size: 0.82rem;
 }
 
-.vehicle-info {
-    color: var(--taxi-text-muted);
-    font-weight: 600;
+.car-model-name {
+    color: var(--text-secondary);
+    font-weight: 700;
     display: flex;
     align-items: center;
     gap: 6px;
 }
 
-.seats-badge {
-    font-weight: 700;
-    display: inline-flex;
+.seats-remaining {
+    font-weight: 800;
+    color: var(--success-color);
+    display: flex;
     align-items: center;
     gap: 4px;
 }
 
-.seats-badge.available {
-    color: var(--taxi-success);
-}
-
-.ride-bottom-row {
+.ride-card-bottom {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding-top: 4px;
 }
 
-.fare-block {
+.fare-display-group {
     display: flex;
     flex-direction: column;
 }
 
 .fare-usd {
-    font-size: 1.15rem;
-    font-weight: 800;
-    color: var(--taxi-ink);
+    font-size: 1.25rem;
+    font-weight: 900;
+    color: var(--taxi-yellow);
     line-height: 1.1;
 }
 
 .fare-khr {
     font-size: 0.72rem;
-    color: var(--taxi-text-muted);
+    color: var(--text-secondary);
 }
 
 .btn-book-seat {
-    background-color: var(--taxi-accent);
+    background-color: var(--taxi-yellow);
     color: var(--taxi-ink);
-    border: 1.5px solid var(--taxi-accent-hover);
+    border: 1.5px solid var(--taxi-yellow-hover);
     padding: 8px 16px;
-    border-radius: var(--taxi-radius-md);
-    font-weight: 700;
-    font-size: 0.86rem;
+    border-radius: var(--radius-sm);
+    font-weight: 800;
+    font-size: 0.88rem;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -642,435 +789,511 @@ html, body {
 }
 
 .btn-book-seat:active {
-    transform: scale(0.95);
+    transform: scale(0.94);
 }
 
-/* Skeleton Placeholder */
-.skeleton-card {
+/* Skeleton Loading Animation */
+.skeleton-box {
+    opacity: 0.6;
     pointer-events: none;
-    opacity: 0.7;
 }
 
-.skeleton-line {
-    background: linear-gradient(90deg, #E2E8F0 25%, #CBD5E1 50%, #E2E8F0 75%);
+.sk-line {
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 25%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.05) 75%);
     background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
+    animation: shimmerLoading 1.4s infinite;
     border-radius: 6px;
 }
 
-.skeleton-header { height: 34px; width: 65%; }
-.skeleton-mid { height: 26px; width: 100%; margin: 6px 0; }
-.skeleton-btn { height: 36px; width: 40%; align-self: flex-end; }
+.sk-title { height: 32px; width: 60%; margin-bottom: 8px; }
+.sk-body { height: 26px; width: 100%; margin-bottom: 8px; }
+.sk-btn { height: 34px; width: 38%; align-self: flex-end; }
 
-@keyframes shimmer {
+@keyframes shimmerLoading {
     0% { background-position: -200% 0; }
     100% { background-position: 200% 0; }
 }
 
-/* Custom Request Card (On-Demand) */
-.custom-request-card {
-    background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
-    border: 1.5px dashed #93C5FD;
-    border-radius: var(--taxi-radius-lg);
-    padding: 16px;
-    margin-bottom: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.custom-card-header {
-    display: flex;
-    gap: 12px;
-    align-items: flex-start;
-}
-
-.custom-icon-wrapper {
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    background-color: #2563EB;
-    color: #FFFFFF;
+/* On-Demand Banner */
+.on-demand-banner {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(37, 99, 235, 0.08) 100%);
+    border: 1.5px dashed var(--info-blue);
+    border-radius: var(--radius-lg);
+    padding: 14px 16px;
     display: flex;
     align-items: center;
-    justify-content: center;
-    font-size: 1.05rem;
+    gap: 12px;
+}
+
+.banner-icon {
+    font-size: 1.4rem;
+    color: var(--info-blue);
     flex-shrink: 0;
 }
 
-.custom-header-text h3 {
-    font-size: 0.95rem;
-    font-weight: 700;
-    color: #1E3A8A;
+.banner-body h3 {
+    font-size: 0.88rem;
+    font-weight: 800;
+    color: var(--text-primary);
     margin-bottom: 2px;
 }
 
-.custom-header-text p {
-    font-size: 0.78rem;
-    color: #3B82F6;
-    line-height: 1.35;
+.banner-body p {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    line-height: 1.3;
 }
 
-.outline-action-btn {
-    background: #FFFFFF;
-    border: 1.5px solid #2563EB;
-    color: #2563EB;
-    padding: 9px 14px;
-    border-radius: var(--taxi-radius-md);
-    font-size: 0.86rem;
+.banner-btn {
+    flex-shrink: 0;
+    background-color: var(--info-blue);
+    color: #FFFFFF;
+    border: none;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 0.78rem;
     font-weight: 700;
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.1);
-    transition: all 0.15s ease;
+    white-space: nowrap;
 }
 
-.outline-action-btn:active {
-    transform: scale(0.97);
-    background-color: #2563EB;
-    color: #FFFFFF;
-}
-
-/* Services Tab Styles */
-.services-header-card, .my-bookings-header {
-    background-color: var(--taxi-card);
-    border-radius: var(--taxi-radius-lg);
-    padding: 16px;
+/* Charter (Private Taxi) Tab Styles */
+.charter-hero-card, .delivery-hero-card {
+    background: linear-gradient(135deg, var(--card-bg) 0%, var(--card-elevated) 100%);
+    border-radius: var(--radius-xl);
+    padding: 18px 16px;
+    border: 1px solid var(--border-color);
     margin-bottom: 14px;
-    border: 1px solid var(--taxi-border);
 }
 
-.pane-title {
-    font-size: 1.15rem;
+.charter-badge {
+    display: inline-block;
+    background-color: var(--taxi-yellow-soft);
+    color: var(--taxi-yellow);
+    font-size: 0.68rem;
     font-weight: 800;
-    color: var(--taxi-ink);
-    margin-bottom: 4px;
-}
-
-.pane-desc {
-    font-size: 0.82rem;
-    color: var(--taxi-text-muted);
-}
-
-.services-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin-bottom: 18px;
-}
-
-.service-box {
-    background-color: var(--taxi-card);
-    border-radius: var(--taxi-radius-lg);
-    padding: 14px 16px;
-    border: 1px solid var(--taxi-border);
-    display: flex;
-    gap: 14px;
-    box-shadow: var(--taxi-shadow-sm);
-}
-
-.service-icon-bubble {
-    width: 44px;
-    height: 44px;
-    border-radius: var(--taxi-radius-md);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.25rem;
-    flex-shrink: 0;
-}
-
-.bg-amber { background-color: var(--taxi-accent-light); color: #B45309; }
-.bg-ink { background-color: rgba(23, 34, 58, 0.12); color: var(--taxi-ink); }
-.bg-green { background-color: var(--taxi-success-bg); color: var(--taxi-success); }
-.bg-blue { background-color: rgba(59, 130, 246, 0.12); color: #2563EB; }
-
-.service-body h3 {
-    font-size: 0.95rem;
-    font-weight: 700;
-    color: var(--taxi-text-dark);
-    margin-bottom: 4px;
-}
-
-.service-body p {
-    font-size: 0.8rem;
-    color: var(--taxi-text-muted);
-    line-height: 1.35;
-    margin-bottom: 8px;
-}
-
-.service-badge-row {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-}
-
-.service-tag {
-    font-size: 0.72rem;
-    font-weight: 600;
-    background-color: var(--taxi-bg);
-    color: var(--taxi-text-muted);
-    padding: 3px 8px;
-    border-radius: var(--taxi-radius-full);
-}
-
-.service-tag.highlight {
-    background-color: var(--taxi-accent-light);
-    color: #92400E;
-    font-weight: 700;
-}
-
-/* Rates Table */
-.rates-table-card {
-    background-color: var(--taxi-card);
-    border-radius: var(--taxi-radius-lg);
-    padding: 16px;
-    border: 1px solid var(--taxi-border);
-    margin-bottom: 20px;
-}
-
-.rates-table-title {
-    font-size: 0.95rem;
-    font-weight: 700;
-    color: var(--taxi-ink);
-    margin-bottom: 10px;
-}
-
-.table-responsive {
-    overflow-x: auto;
-}
-
-.rates-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.82rem;
-}
-
-.rates-table th, .rates-table td {
-    padding: 8px 10px;
-    text-align: left;
-    border-bottom: 1px solid var(--taxi-border);
-}
-
-.rates-table th {
-    background-color: var(--taxi-bg);
-    color: var(--taxi-text-muted);
-    font-weight: 700;
-}
-
-/* My Bookings Tab */
-.my-bookings-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.empty-bookings-box {
-    text-align: center;
-    padding: 36px 16px;
-    background-color: var(--taxi-card);
-    border-radius: var(--taxi-radius-lg);
-    border: 1px dashed var(--taxi-border);
-    color: var(--taxi-text-muted);
-}
-
-.empty-bookings-box i {
-    font-size: 2.2rem;
-    color: var(--taxi-text-light);
-    margin-bottom: 10px;
-}
-
-.booking-item-card {
-    background-color: var(--taxi-card);
-    border-radius: var(--taxi-radius-lg);
-    padding: 14px 16px;
-    border: 1px solid var(--taxi-border);
-    box-shadow: var(--taxi-shadow-sm);
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.booking-item-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.booking-item-code {
-    font-family: 'Outfit', sans-serif;
-    font-weight: 800;
-    font-size: 0.95rem;
-    color: var(--taxi-ink);
-}
-
-.status-badge-confirmed {
-    background-color: var(--taxi-success-bg);
-    color: var(--taxi-success);
-    font-size: 0.72rem;
-    font-weight: 700;
-    padding: 3px 8px;
-    border-radius: var(--taxi-radius-full);
-}
-
-/* Support Tab */
-.support-hero-card {
-    background: linear-gradient(135deg, var(--taxi-ink) 0%, var(--taxi-ink-light) 100%);
-    border-radius: var(--taxi-radius-lg);
-    padding: 22px 18px;
-    color: #FFFFFF;
-    text-align: center;
-    margin-bottom: 16px;
-    box-shadow: var(--taxi-shadow-md);
-}
-
-.support-hero-icon {
-    font-size: 2.4rem;
-    color: var(--taxi-accent);
-    margin-bottom: 10px;
-}
-
-.support-hero-title {
-    font-size: 1.25rem;
-    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
     margin-bottom: 6px;
 }
 
-.support-hero-subtitle {
-    font-size: 0.82rem;
-    color: #CBD5E1;
+.charter-title, .delivery-title {
+    font-size: 1.15rem;
+    font-weight: 900;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.charter-sub, .delivery-sub {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.charter-vehicles-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.charter-card {
+    background-color: var(--card-bg);
+    border-radius: var(--radius-xl);
+    padding: 16px;
+    border: 1.5px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.charter-card.featured {
+    border-color: var(--taxi-yellow);
+    background: linear-gradient(180deg, var(--card-bg) 0%, rgba(255, 200, 61, 0.04) 100%);
+}
+
+.charter-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.car-badge {
+    font-size: 0.75rem;
+    font-weight: 800;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+}
+
+.bg-gold { background: rgba(245, 158, 11, 0.18); color: #F59E0B; }
+.bg-yellow { background: var(--taxi-yellow); color: var(--taxi-ink); }
+.bg-blue { background: rgba(59, 130, 246, 0.18); color: #60A5FA; }
+
+.charter-price-tag {
+    text-align: right;
+}
+
+.charter-price-tag .price-val {
+    font-size: 1.15rem;
+    font-weight: 900;
+    color: var(--text-primary);
+}
+
+.charter-price-tag .price-sub {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.car-photo-placeholder {
+    height: 80px;
+    border-radius: var(--radius-md);
+    background-color: var(--card-elevated);
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: var(--text-secondary);
+}
+
+.car-photo-placeholder i {
+    font-size: 1.8rem;
+    color: var(--taxi-yellow);
+}
+
+.car-photo-placeholder span {
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.charter-features {
+    list-style: none;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.charter-features li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-charter-action {
+    width: 100%;
+    background-color: var(--card-elevated);
+    border: 1.5px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    font-weight: 800;
+    font-size: 0.86rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-charter-action.btn-highlight {
+    background-color: var(--taxi-yellow);
+    border-color: var(--taxi-yellow-hover);
+    color: var(--taxi-ink);
+}
+
+.btn-charter-action:active {
+    transform: scale(0.97);
+}
+
+/* Delivery Tab Styles */
+.delivery-icon-bubble {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-md);
+    background: var(--taxi-yellow-soft);
+    color: var(--taxi-yellow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    margin-bottom: 10px;
+}
+
+.delivery-steps-box {
+    background-color: var(--card-bg);
+    border-radius: var(--radius-xl);
+    padding: 16px;
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 16px;
+}
+
+.step-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.step-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background-color: var(--taxi-yellow);
+    color: var(--taxi-ink);
+    font-weight: 800;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.step-info strong {
+    font-size: 0.88rem;
+    color: var(--text-primary);
+    display: block;
+    margin-bottom: 2px;
+}
+
+.step-info p {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+.delivery-cta-card {
+    background-color: var(--card-bg);
+    border-radius: var(--radius-xl);
+    padding: 16px;
+    border: 1px solid var(--border-color);
+    text-align: center;
+}
+
+.delivery-cta-card h4 {
+    font-size: 0.95rem;
+    font-weight: 800;
+    margin-bottom: 4px;
+}
+
+.delivery-cta-card p {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 14px;
+}
+
+/* My Rides Tab */
+.my-rides-header {
+    margin-bottom: 14px;
+}
+
+.section-subtitle {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.my-rides-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.empty-state-box {
+    text-align: center;
+    padding: 40px 16px;
+    background-color: var(--card-bg);
+    border-radius: var(--radius-xl);
+    border: 1.5px dashed var(--border-color);
+    color: var(--text-secondary);
+}
+
+.empty-state-box i {
+    font-size: 2.5rem;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+}
+
+.empty-state-box h4 {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.empty-state-box p {
+    font-size: 0.8rem;
+}
+
+/* Support Tab */
+.support-contact-card {
+    background: linear-gradient(135deg, var(--card-bg) 0%, var(--card-elevated) 100%);
+    border-radius: var(--radius-xl);
+    padding: 22px 18px;
+    border: 1px solid var(--border-color);
+    text-align: center;
+    margin-bottom: 16px;
+}
+
+.support-avatar {
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background-color: var(--taxi-yellow);
+    color: var(--taxi-ink);
+    font-size: 1.6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px;
+    box-shadow: 0 4px 14px rgba(255, 200, 61, 0.35);
+}
+
+.support-name {
+    font-size: 1.15rem;
+    font-weight: 900;
+    margin-bottom: 6px;
+}
+
+.support-desc {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
     margin-bottom: 16px;
     line-height: 1.4;
 }
 
-.support-actions-row {
+.support-button-list {
     display: flex;
     flex-direction: column;
     gap: 10px;
 }
 
-.support-cta-btn {
+.btn-support-item {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 8px;
+    gap: 12px;
+    background-color: var(--card-bg);
+    border: 1.5px solid var(--border-color);
     padding: 12px 16px;
-    border-radius: var(--taxi-radius-md);
-    font-size: 0.9rem;
-    font-weight: 700;
+    border-radius: var(--radius-md);
     text-decoration: none;
+    color: var(--text-primary);
+    text-align: left;
     transition: transform 0.15s ease;
 }
 
-.support-cta-btn:active {
+.btn-support-item:active {
     transform: scale(0.98);
 }
 
-.phone-cta {
-    background-color: var(--taxi-accent);
-    color: var(--taxi-ink);
+.btn-support-item i {
+    font-size: 1.4rem;
 }
 
-.tg-cta {
-    background: rgba(255, 255, 255, 0.16);
-    color: #FFFFFF;
-    border: 1px solid rgba(255, 255, 255, 0.25);
+.btn-phone i { color: var(--taxi-yellow); }
+.btn-tg i { color: #38BDF8; }
+
+.btn-support-item .label {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    font-weight: 700;
 }
 
-.faq-accordion-card, .app-download-card {
-    background-color: var(--taxi-card);
-    border-radius: var(--taxi-radius-lg);
+.btn-support-item .val {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.faq-card, .app-native-promo {
+    background-color: var(--card-bg);
+    border-radius: var(--radius-xl);
     padding: 16px;
-    border: 1px solid var(--taxi-border);
+    border: 1px solid var(--border-color);
     margin-bottom: 16px;
 }
 
 .faq-card-title {
     font-size: 0.95rem;
-    font-weight: 700;
-    color: var(--taxi-ink);
-    margin-bottom: 12px;
+    font-weight: 800;
+    margin-bottom: 10px;
 }
 
-.faq-item {
-    border-bottom: 1px solid var(--taxi-border);
+.faq-row {
+    border-bottom: 1px solid var(--border-color);
     padding: 10px 0;
-    font-size: 0.85rem;
+    font-size: 0.84rem;
 }
 
-.faq-item:last-child {
+.faq-row:last-child {
     border-bottom: none;
 }
 
-.faq-item summary {
+.faq-row summary {
     cursor: pointer;
-    font-weight: 600;
-    color: var(--taxi-text-dark);
+    font-weight: 700;
     outline: none;
 }
 
-.faq-item p {
+.faq-row p {
     margin-top: 6px;
-    color: var(--taxi-text-muted);
+    color: var(--text-secondary);
     line-height: 1.4;
 }
 
-.download-text h4 {
+.app-native-promo .promo-text h4 {
     font-size: 0.95rem;
-    font-weight: 700;
-    color: var(--taxi-ink);
-    margin-bottom: 4px;
+    font-weight: 800;
+    margin-bottom: 3px;
 }
 
-.download-text p {
-    font-size: 0.8rem;
-    color: var(--taxi-text-muted);
+.app-native-promo .promo-text p {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
     margin-bottom: 12px;
 }
 
-.download-buttons {
+.promo-buttons {
     display: flex;
     gap: 10px;
 }
 
-.store-badge-btn {
+.store-badge {
     flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    background-color: var(--taxi-ink);
-    color: #FFFFFF;
-    padding: 9px 12px;
-    border-radius: var(--taxi-radius-md);
+    gap: 8px;
+    background-color: var(--card-elevated);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 10px;
+    border-radius: var(--radius-sm);
     text-decoration: none;
     font-size: 0.82rem;
-    font-weight: 600;
+    font-weight: 700;
 }
 
-/* Bottom Navigation Bar */
-.bottom-nav {
+/* 5. BOTTOM NAVIGATION BAR */
+.bottom-tab-bar {
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
-    max-width: 540px;
+    max-width: 520px;
     margin: 0 auto;
-    height: calc(var(--bottom-bar-height) + var(--safe-bottom));
+    height: calc(var(--nav-height) + var(--safe-bottom));
     padding-bottom: var(--safe-bottom);
-    background-color: var(--taxi-card);
-    border-top: 1px solid var(--taxi-border);
+    background-color: var(--card-bg);
+    border-top: 1px solid var(--border-color);
     display: flex;
     align-items: center;
     justify-content: space-around;
     z-index: 1000;
-    box-shadow: 0 -4px 16px rgba(23, 34, 58, 0.06);
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.15);
 }
 
-.nav-item {
+.nav-tab-item {
     flex: 1;
     height: 100%;
     background: none;
@@ -1080,82 +1303,81 @@ html, body {
     align-items: center;
     justify-content: center;
     gap: 4px;
-    color: var(--taxi-text-muted);
+    color: var(--text-secondary);
     font-size: 0.72rem;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
     position: relative;
     transition: color 0.15s ease;
 }
 
-.nav-item i {
+.nav-tab-item i {
     font-size: 1.25rem;
 }
 
-.nav-item.active {
-    color: var(--taxi-ink);
-    font-weight: 700;
+.nav-tab-item.active {
+    color: var(--taxi-yellow);
 }
 
-.nav-item.active i {
-    color: var(--taxi-accent);
+.nav-tab-item.active i {
+    color: var(--taxi-yellow);
 }
 
-.nav-badge {
+.nav-bubble {
     position: absolute;
     top: 6px;
     right: calc(50% - 18px);
-    background-color: var(--taxi-danger);
+    background-color: var(--danger-color);
     color: #FFFFFF;
     font-size: 0.65rem;
-    font-weight: 700;
+    font-weight: 800;
     padding: 1px 5px;
-    border-radius: var(--taxi-radius-full);
+    border-radius: var(--radius-full);
 }
 
-/* Bottom Sheet Modals */
-.bottom-sheet-overlay {
+/* MODALS & BOTTOM SHEETS */
+.tma-modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(15, 23, 42, 0.65);
+    background: rgba(0, 0, 0, 0.75);
     backdrop-filter: blur(4px);
     z-index: 2000;
     display: flex;
     align-items: flex-end;
     justify-content: center;
-    animation: fadeInOverlay 0.2s ease;
+    animation: overlayFade 0.2s ease;
 }
 
-@keyframes fadeInOverlay {
+@keyframes overlayFade {
     from { opacity: 0; }
     to { opacity: 1; }
 }
 
-.bottom-sheet {
-    background-color: var(--taxi-card);
+.tma-bottom-sheet {
+    background-color: var(--card-bg);
     width: 100%;
-    max-width: 540px;
+    max-width: 520px;
     max-height: 90vh;
     overflow-y: auto;
-    border-top-left-radius: 24px;
-    border-top-right-radius: 24px;
+    border-top-left-radius: 26px;
+    border-top-right-radius: 26px;
     padding: 12px 18px calc(18px + var(--safe-bottom));
-    box-shadow: var(--taxi-shadow-lg);
-    animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: var(--shadow-lg);
+    animation: sheetSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes slideUp {
+@keyframes sheetSlideUp {
     from { transform: translateY(100%); }
     to { transform: translateY(0); }
 }
 
-.sheet-handle {
-    width: 40px;
+.sheet-drag-handle {
+    width: 42px;
     height: 4px;
-    background-color: var(--taxi-border);
+    background-color: var(--border-color);
     border-radius: 2px;
     margin: 0 auto 12px;
 }
@@ -1169,382 +1391,469 @@ html, body {
 
 .sheet-title {
     font-size: 1.15rem;
-    font-weight: 800;
-    color: var(--taxi-ink);
+    font-weight: 900;
+    color: var(--text-primary);
 }
 
-.sheet-subtitle {
-    font-size: 0.82rem;
-    color: var(--taxi-text-muted);
+.sheet-sub {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
 }
 
-.sheet-close-btn {
-    width: 32px;
-    height: 32px;
+.btn-close-sheet {
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
-    background-color: var(--taxi-bg);
-    border: none;
-    color: var(--taxi-text-muted);
+    background-color: var(--card-elevated);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     font-size: 1rem;
+}
+
+.sheet-scrollable-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
 .modal-driver-card {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background-color: var(--taxi-bg);
-    border: 1px solid var(--taxi-border);
-    border-radius: var(--taxi-radius-md);
+    background-color: var(--card-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
     padding: 10px 14px;
-    margin-bottom: 14px;
 }
 
-.booking-form-group {
-    margin-bottom: 14px;
+.driver-info-body {
+    flex: 1;
+    margin: 0 12px;
 }
 
-.form-label {
-    display: block;
+.driver-name-row {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.verified-pill {
+    font-size: 0.65rem;
+    background-color: rgba(56, 189, 248, 0.15);
+    color: #38BDF8;
+    padding: 1px 6px;
+    border-radius: var(--radius-full);
+}
+
+.car-spec-row {
     font-size: 0.78rem;
-    font-weight: 700;
-    color: var(--taxi-text-dark);
+    color: var(--text-secondary);
+}
+
+.departure-pill {
+    background-color: var(--taxi-ink);
+    color: var(--taxi-yellow);
+    border: 1px solid var(--taxi-yellow);
+    font-size: 0.8rem;
+    font-weight: 800;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+}
+
+.form-group-card {
+    background-color: var(--card-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 10px 14px;
+}
+
+.form-group-card label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: var(--text-secondary);
     margin-bottom: 6px;
 }
 
-.input-with-icon {
+.group-label-row {
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: 10px;
-    background-color: var(--taxi-bg);
-    border: 1.5px solid var(--taxi-border);
-    border-radius: var(--taxi-radius-md);
-    padding: 10px 14px;
+    margin-bottom: 6px;
 }
 
-.input-with-icon i {
-    color: var(--taxi-text-muted);
+.seat-avail-tag {
+    font-size: 0.72rem;
+    color: var(--success-color);
+    font-weight: 800;
 }
 
-.sheet-input {
-    flex: 1;
-    border: none;
-    background: transparent;
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--taxi-text-dark);
-    outline: none;
-}
-
-/* Stepper Counter for Seats */
-.seat-stepper-wrapper {
+.stepper-box {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 18px;
-    background-color: var(--taxi-bg);
-    border: 1.5px solid var(--taxi-border);
-    border-radius: var(--taxi-radius-md);
-    padding: 8px 14px;
+    gap: 20px;
+    padding: 4px 0;
 }
 
-.stepper-btn {
-    width: 40px;
-    height: 40px;
+.stepper-action {
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
-    background-color: var(--taxi-card);
-    border: 1.5px solid var(--taxi-border);
-    color: var(--taxi-ink);
+    background-color: var(--card-bg);
+    border: 1.5px solid var(--border-color);
+    color: var(--text-primary);
+    font-size: 1.15rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.1rem;
     cursor: pointer;
-    box-shadow: var(--taxi-shadow-sm);
+    box-shadow: var(--shadow-sm);
     transition: transform 0.1s ease;
 }
 
-.stepper-btn:active {
-    transform: scale(0.92);
+.stepper-action:active {
+    transform: scale(0.9);
 }
 
-.seat-count-display {
+.stepper-count {
     text-align: center;
 }
 
-.seat-count-display span:first-child {
-    font-size: 1.45rem;
-    font-weight: 800;
-    color: var(--taxi-ink);
+.stepper-count span {
+    font-size: 1.6rem;
+    font-weight: 900;
+    color: var(--taxi-yellow);
     display: block;
     line-height: 1;
 }
 
-.seat-label-small {
+.stepper-count small {
     font-size: 0.72rem;
-    color: var(--taxi-text-muted);
+    color: var(--text-muted);
 }
 
-/* Payment Options */
-.payment-method-options {
+.input-icon-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.input-icon-wrapper i {
+    color: var(--text-muted);
+    font-size: 1rem;
+}
+
+.modern-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    font-weight: 700;
+    outline: none;
+    font-family: inherit;
+}
+
+.modern-input::placeholder {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.payment-pills-row {
     display: flex;
     gap: 8px;
 }
 
-.payment-option-pill {
+.pay-pill {
     flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
-    background-color: var(--taxi-bg);
-    border: 1.5px solid var(--taxi-border);
-    border-radius: var(--taxi-radius-md);
+    background-color: var(--card-bg);
+    border: 1.5px solid var(--border-color);
     padding: 10px 8px;
-    font-size: 0.78rem;
-    font-weight: 700;
-    color: var(--taxi-text-dark);
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: var(--text-primary);
     cursor: pointer;
     transition: all 0.15s ease;
 }
 
-.payment-option-pill.active {
-    background-color: var(--taxi-accent-light);
-    border-color: var(--taxi-accent);
-    color: var(--taxi-ink);
+.pay-pill.active {
+    background-color: var(--taxi-yellow-soft);
+    border-color: var(--taxi-yellow);
+    color: var(--taxi-yellow);
 }
 
-/* Price Summary Box */
-.price-summary-box {
-    background: #FFFBEB;
-    border: 1px solid #FDE68A;
-    border-radius: var(--taxi-radius-md);
+.price-breakdown-card {
+    background: rgba(255, 200, 61, 0.08);
+    border: 1.5px solid rgba(255, 200, 61, 0.25);
+    border-radius: var(--radius-md);
     padding: 12px 14px;
-    margin-bottom: 16px;
 }
 
-.summary-line {
+.price-line {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     font-size: 0.82rem;
-    color: #92400E;
+    color: var(--text-secondary);
     margin-bottom: 4px;
 }
 
-.summary-line.total-line {
-    font-size: 1rem;
-    font-weight: 800;
-    color: var(--taxi-ink);
+.total-price-line {
+    font-size: 0.95rem;
+    font-weight: 900;
+    color: var(--text-primary);
     margin-top: 6px;
     padding-top: 6px;
-    border-top: 1px dashed #FCD34D;
+    border-top: 1px dashed rgba(255, 200, 61, 0.3);
     margin-bottom: 0;
 }
 
-.total-usd {
-    font-size: 1.25rem;
-    color: var(--taxi-ink);
+.total-digits .usd-val {
+    font-size: 1.3rem;
+    font-weight: 900;
+    color: var(--taxi-yellow);
 }
 
-.total-khr {
+.total-digits .khr-val {
     font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--taxi-text-muted);
+    color: var(--text-secondary);
     margin-left: 4px;
 }
 
-/* Ticket Modal Body */
-.pass-sheet {
-    background: #FFFFFF;
-}
-
-.ticket-header-card {
+/* Boarding Pass / Ticket Modal Styles */
+.ticket-header-box {
     text-align: center;
-    padding: 14px 0 8px;
+    padding: 10px 0 6px;
 }
 
-.success-icon-badge {
-    width: 56px;
-    height: 56px;
+.success-ring {
+    width: 52px;
+    height: 52px;
     border-radius: 50%;
-    background-color: var(--taxi-success);
+    background-color: var(--success-color);
     color: #FFFFFF;
+    font-size: 1.6rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.7rem;
     margin: 0 auto 10px;
-    box-shadow: 0 4px 14px rgba(31, 168, 108, 0.35);
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
 }
 
-.ticket-title {
-    font-size: 1.3rem;
-    font-weight: 800;
-    color: var(--taxi-ink);
+.ticket-status-title {
+    font-size: 1.25rem;
+    font-weight: 900;
+    color: var(--text-primary);
 }
 
-.ticket-sub {
-    font-size: 0.82rem;
-    color: var(--taxi-text-muted);
+.ticket-status-sub {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
 }
 
-.ticket-code-row {
+.boarding-pass-card {
+    background-color: var(--card-elevated);
+    border: 1.5px solid var(--border-color);
+    border-radius: var(--radius-xl);
+    padding: 16px;
+    margin: 10px 0 14px;
+    position: relative;
+    box-shadow: var(--shadow-sm);
+}
+
+.pass-top-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background-color: var(--taxi-bg);
-    border-radius: var(--taxi-radius-md);
-    padding: 10px 14px;
-    margin: 12px 0;
 }
 
-.code-label {
-    font-size: 0.82rem;
-    color: var(--taxi-text-muted);
-    font-weight: 600;
+.pass-label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-weight: 700;
+    display: block;
 }
 
-.code-value {
+.pass-code-val {
     font-family: 'Outfit', sans-serif;
-    font-size: 1.15rem;
-    font-weight: 800;
-    color: var(--taxi-ink);
+    font-size: 1.2rem;
+    font-weight: 900;
+    color: var(--taxi-yellow);
     letter-spacing: 1px;
 }
 
-.ticket-route-display {
+.pass-status-badge {
+    background-color: var(--success-bg);
+    color: var(--success-color);
+    font-size: 0.75rem;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: var(--radius-full);
+}
+
+.pass-notch-divider {
+    position: relative;
+    margin: 12px -16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+}
+
+.notch {
+    width: 14px;
+    height: 14px;
+    background-color: var(--card-bg);
+    border-radius: 50%;
+    position: absolute;
+    top: 1px;
+}
+
+.notch-left { left: -7px; }
+.notch-right { right: -7px; }
+
+.dash-line {
+    width: 100%;
+    border-top: 1.5px dashed var(--border-color);
+}
+
+.pass-route-visual {
     display: flex;
     flex-direction: column;
     gap: 8px;
     position: relative;
-    padding: 4px 0 10px 6px;
+    padding-left: 8px;
+    margin-bottom: 12px;
 }
 
-.route-node {
+.route-point {
     display: flex;
     align-items: center;
     gap: 12px;
 }
 
-.node-dot {
+.dot-ring {
     width: 12px;
     height: 12px;
     border-radius: 50%;
     flex-shrink: 0;
 }
 
-.start-dot { background-color: var(--taxi-success); }
-.end-dot { background-color: var(--taxi-danger); }
+.green-ring { background-color: var(--success-color); }
+.red-ring { background-color: var(--danger-color); }
 
-.route-line-vert {
+.route-line-connector {
     position: absolute;
-    left: 11px;
+    left: 13px;
     top: 14px;
-    bottom: 18px;
+    bottom: 16px;
     width: 2px;
-    background: repeating-linear-gradient(to bottom, var(--taxi-border), var(--taxi-border) 4px, transparent 4px, transparent 8px);
+    background: repeating-linear-gradient(to bottom, var(--border-color), var(--border-color) 4px, transparent 4px, transparent 8px);
 }
 
-.node-label {
+.point-lbl {
     font-size: 0.68rem;
+    color: var(--text-muted);
     font-weight: 700;
-    color: var(--taxi-text-muted);
-    text-transform: uppercase;
+    display: block;
 }
 
-.node-name {
+.point-name {
     font-size: 0.98rem;
-    font-weight: 700;
-    color: var(--taxi-text-dark);
+    font-weight: 800;
+    color: var(--text-primary);
 }
 
-.ticket-info-grid {
+.pass-meta-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 14px;
+    gap: 8px;
+    margin-bottom: 12px;
 }
 
-.info-cell {
-    background-color: var(--taxi-bg);
-    padding: 8px 12px;
-    border-radius: var(--taxi-radius-md);
-    display: flex;
-    flex-direction: column;
+.meta-item {
+    background-color: var(--card-bg);
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
 }
 
-.cell-label {
-    font-size: 0.7rem;
-    color: var(--taxi-text-muted);
-    font-weight: 600;
-    margin-bottom: 2px;
-}
-
-.cell-val {
-    font-size: 0.88rem;
+.meta-k {
+    font-size: 0.68rem;
+    color: var(--text-muted);
     font-weight: 700;
-    color: var(--taxi-text-dark);
+    display: block;
 }
 
-.status-badge-ok {
-    color: var(--taxi-success);
+.meta-v {
+    font-size: 0.88rem;
+    font-weight: 800;
+    color: var(--text-primary);
 }
 
-.ticket-driver-info {
+.pass-driver-strip {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    background-color: #F8FAFC;
-    border: 1px solid var(--taxi-border);
-    border-radius: var(--taxi-radius-md);
-    padding: 10px 14px;
-    margin-bottom: 16px;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
 }
 
-.ticket-driver-name {
-    font-weight: 700;
+.driver-text-col {
+    flex: 1;
+    margin: 0 10px;
+}
+
+.driver-text-col strong {
     font-size: 0.92rem;
+    display: block;
+    color: var(--text-primary);
 }
 
-.ticket-vehicle {
+.driver-text-col span {
     font-size: 0.78rem;
-    color: var(--taxi-text-muted);
+    color: var(--text-secondary);
 }
 
-.call-driver-btn {
-    width: 38px;
-    height: 38px;
+.btn-phone-call {
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
-    background-color: var(--taxi-success);
+    background-color: var(--success-color);
     color: #FFFFFF;
     display: flex;
     align-items: center;
     justify-content: center;
+    font-size: 1.1rem;
     text-decoration: none;
-    font-size: 1.05rem;
-    box-shadow: 0 2px 8px rgba(31, 168, 108, 0.3);
+    box-shadow: 0 3px 10px rgba(16, 185, 129, 0.35);
 }
 
-.ticket-actions {
+.pass-actions-group {
     display: flex;
     flex-direction: column;
     gap: 8px;
 }
 
-.app-track-btn {
-    background-color: var(--taxi-ink);
-    color: var(--taxi-accent);
-    border-color: var(--taxi-ink);
-}
-
-/* Custom Modal Display */
-.custom-route-display {
-    background-color: var(--taxi-bg);
-    padding: 10px 14px;
-    border-radius: var(--taxi-radius-md);
-    font-weight: 700;
-    color: var(--taxi-ink);
+.route-highlight-box {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--taxi-yellow);
+    background-color: var(--card-bg);
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
 }
