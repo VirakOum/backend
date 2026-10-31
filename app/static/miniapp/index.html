@@ -22,7 +22,7 @@
     <link rel="stylesheet" href="/miniapp/css/miniapp.css">
     <link rel="icon" type="image/png" href="/assets/logo.png">
 
-    <!-- Inline Critical Core Styles to Guarantee Gorgeous UI Even Offline -->
+    <!-- Inline Critical Core Styles -->
     <style>
         :root {
             --bg-color: #0B0F19;
@@ -88,6 +88,68 @@
             position: relative;
             padding-bottom: calc(74px + var(--safe-bottom));
         }
+
+        /* Seat Picker Pills */
+        .seat-picker-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .seat-chip {
+            padding: 8px 13px;
+            border-radius: var(--radius-sm);
+            background: var(--card-elevated);
+            border: 1.5px solid var(--border-color);
+            color: var(--text-primary);
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.15s ease;
+        }
+        .seat-chip.selected {
+            background: rgba(255, 200, 61, 0.18);
+            border-color: var(--taxi-yellow);
+            color: var(--taxi-yellow);
+        }
+        .seat-chip.booked {
+            opacity: 0.4;
+            cursor: not-allowed;
+            text-decoration: line-through;
+        }
+        .route-stop-sub {
+            font-size: 0.76rem;
+            color: var(--text-secondary);
+            margin-top: 3px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .trip-route-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--card-elevated);
+            padding: 8px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            border-left: 3px solid var(--taxi-yellow);
+        }
+        .error-alert-box {
+            background: var(--danger-bg);
+            border: 1px solid var(--danger-color);
+            color: var(--danger-color);
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 0.82rem;
+            font-weight: 600;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -102,7 +164,7 @@
                     <div class="brand-title">MY TRAVEL <span class="brand-badge-pro">TAXI</span></div>
                     <div class="brand-status">
                         <span class="status-pulse"></span>
-                        <span data-i18n="dispatch_online">24/7 Inter-Province Service</span>
+                        <span data-i18n="dispatch_online">Live Inter-Province Dispatch</span>
                     </div>
                 </div>
             </div>
@@ -140,7 +202,7 @@
             </button>
             <button type="button" class="service-tab-btn" data-tab="tabCharter">
                 <i class="fa-solid fa-car-side"></i>
-                <span data-i18n="tab_private_charter">Charter (ម៉ៅដាច់ VIP)</span>
+                <span data-i18n="tab_private_charter">Fleet & Charter (ម៉ៅដាច់)</span>
             </button>
             <button type="button" class="service-tab-btn" data-tab="tabDelivery">
                 <i class="fa-solid fa-box-open"></i>
@@ -150,36 +212,35 @@
 
         <!-- 4. MAIN CONTENT TABS -->
         <main class="tma-content">
-            <!-- TAB A: SHARED INTER-CITY TAXI (FAST 1-TAP SEARCH & BOOKING) -->
+            <!-- TAB A: SHARED INTER-CITY TAXI (REAL API LIVE SEARCH & BOOKING) -->
             <section id="tabShared" class="tab-view active">
-                <!-- Popular Route Chips Carousel -->
+                <!-- Route Quick Filter Chips -->
                 <div class="popular-routes-block">
-                    <div class="block-title" data-i18n="popular_routes_title">🔥 ខ្សែរត់ពេញនិយម / Popular Routes:</div>
+                    <div class="block-title" data-i18n="popular_routes_title">🔥 ជ្រើសរើសខ្សែរត់រហ័ស / Quick Route Filters:</div>
                     <div class="route-chips-scroll">
-                        <button type="button" class="popular-chip active" data-from="Phnom Penh" data-to="Siem Reap">
+                        <button type="button" class="popular-chip active" data-from="all" data-to="all">
+                            <span class="chip-flag">🌍</span>
+                            <span class="chip-text" data-i18n="chip_all_routes">គ្រប់ខ្សែរត់ / All Routes</span>
+                        </button>
+                        <button type="button" class="popular-chip" data-from="Phnom Penh" data-to="Siem Reap">
                             <span class="chip-flag">🏙️ ⇄ 🏛️</span>
                             <span class="chip-text">ភ្នំពេញ ⇄ សៀមរាប</span>
-                            <span class="chip-fare">$12</span>
                         </button>
                         <button type="button" class="popular-chip" data-from="Phnom Penh" data-to="Preah Sihanouk">
                             <span class="chip-flag">🏙️ ⇄ 🏖️</span>
                             <span class="chip-text">ភ្នំពេញ ⇄ ព្រះសីហនុ</span>
-                            <span class="chip-fare">$10</span>
                         </button>
                         <button type="button" class="popular-chip" data-from="Phnom Penh" data-to="Battambang">
                             <span class="chip-flag">🏙️ ⇄ 🌾</span>
                             <span class="chip-text">ភ្នំពេញ ⇄ បាត់ដំបង</span>
-                            <span class="chip-fare">$13</span>
                         </button>
                         <button type="button" class="popular-chip" data-from="Phnom Penh" data-to="Kampot">
                             <span class="chip-flag">🏙️ ⇄ 🌿</span>
                             <span class="chip-text">ភ្នំពេញ ⇄ កំពត</span>
-                            <span class="chip-fare">$8</span>
                         </button>
                         <button type="button" class="popular-chip" data-from="Phnom Penh" data-to="Banteay Meanchey">
                             <span class="chip-flag">🏙️ ⇄ 🛂</span>
-                            <span class="chip-text">ភ្នំពេញ ⇄ ប៉ោយប៉ែត</span>
-                            <span class="chip-fare">$15</span>
+                            <span class="chip-text">ភ្នំពេញ ⇄ បន្ទាយមានជ័យ</span>
                         </button>
                     </div>
                 </div>
@@ -195,13 +256,15 @@
                             <div class="field-control">
                                 <span class="field-label" data-i18n="field_from_label">ចេញដំណើរពី / Departure:</span>
                                 <select id="selectDeparture" class="modern-select">
-                                    <option value="Phnom Penh" selected>🏙️ Phnom Penh (រាជធានីភ្នំពេញ)</option>
+                                    <option value="all" selected>🌍 គ្រប់ខេត្តទាំងអស់ / All Provinces</option>
+                                    <option value="Phnom Penh">🏙️ Phnom Penh (រាជធានីភ្នំពេញ)</option>
                                     <option value="Siem Reap">🏛️ Siem Reap (សៀមរាប)</option>
-                                    <option value="Preah Sihanouk">🏖️ Preah Sihanouk (ព្រះសីហនុ / កំពង់សោម)</option>
+                                    <option value="Preah Sihanouk">🏖️ Preah Sihanouk (ព្រះសីហនុ)</option>
                                     <option value="Battambang">🌾 Battambang (បាត់ដំបង)</option>
                                     <option value="Kampot">🌿 Kampot (កំពត)</option>
-                                    <option value="Banteay Meanchey">🛂 Banteay Meanchey (ប៉ោយប៉ែត / សិរីសោភ័ណ)</option>
+                                    <option value="Banteay Meanchey">🛂 Banteay Meanchey (បន្ទាយមានជ័យ)</option>
                                     <option value="Kampong Cham">🌴 Kampong Cham (កំពង់ចាម)</option>
+                                    <option value="Kampong Thom">🌾 Kampong Thom (កំពង់ធំ)</option>
                                     <option value="Kandal">🏘️ Kandal (កណ្តាល)</option>
                                     <option value="Koh Kong">⛰️ Koh Kong (កោះកុង)</option>
                                     <option value="Pursat">🍊 Pursat (ពោធិ៍សាត់)</option>
@@ -238,13 +301,15 @@
                             <div class="field-control">
                                 <span class="field-label" data-i18n="field_to_label">ទៅកាន់ខេត្ត / Destination:</span>
                                 <select id="selectDestination" class="modern-select">
-                                    <option value="Siem Reap" selected>🏛️ Siem Reap (សៀមរាប)</option>
+                                    <option value="all" selected>🌍 គ្រប់ខេត្តទាំងអស់ / All Provinces</option>
+                                    <option value="Siem Reap">🏛️ Siem Reap (សៀមរាប)</option>
                                     <option value="Phnom Penh">🏙️ Phnom Penh (រាជធានីភ្នំពេញ)</option>
-                                    <option value="Preah Sihanouk">🏖️ Preah Sihanouk (ព្រះសីហនុ / កំពង់សោម)</option>
+                                    <option value="Preah Sihanouk">🏖️ Preah Sihanouk (ព្រះសីហនុ)</option>
                                     <option value="Battambang">🌾 Battambang (បាត់ដំបង)</option>
                                     <option value="Kampot">🌿 Kampot (កំពត)</option>
-                                    <option value="Banteay Meanchey">🛂 Banteay Meanchey (ប៉ោយប៉ែត / សិរីសោភ័ណ)</option>
+                                    <option value="Banteay Meanchey">🛂 Banteay Meanchey (បន្ទាយមានជ័យ)</option>
                                     <option value="Kampong Cham">🌴 Kampong Cham (កំពង់ចាម)</option>
+                                    <option value="Kampong Thom">🌾 Kampong Thom (កំពង់ធំ)</option>
                                     <option value="Kandal">🏘️ Kandal (កណ្តាល)</option>
                                     <option value="Koh Kong">⛰️ Koh Kong (កោះកុង)</option>
                                     <option value="Pursat">🍊 Pursat (ពោធិ៍សាត់)</option>
@@ -269,7 +334,11 @@
 
                     <!-- Date Selection Row -->
                     <div class="search-date-pills">
-                        <button type="button" class="date-selector-pill active" data-date="today">
+                        <button type="button" class="date-selector-pill active" data-date="all">
+                            <i class="fa-solid fa-calendar-week"></i>
+                            <span data-i18n="date_all">គ្រប់ថ្ងៃ / All</span>
+                        </button>
+                        <button type="button" class="date-selector-pill" data-date="today">
                             <i class="fa-regular fa-calendar-check"></i>
                             <span data-i18n="date_today">ថ្ងៃនេះ / Today</span>
                         </button>
@@ -279,7 +348,7 @@
                         </button>
                         <button type="button" class="date-selector-pill" id="btnPickDate" data-date="custom">
                             <i class="fa-regular fa-calendar"></i>
-                            <span id="datePickLabel" data-i18n="date_pick">ជ្រើសថ្ងៃ / Date</span>
+                            <span id="datePickLabel" data-i18n="date_pick">ជ្រើសថ្ងៃ</span>
                         </button>
                         <input type="date" id="nativeDateInput" style="display:none;">
                     </div>
@@ -295,7 +364,7 @@
                 <div class="rides-listing-section">
                     <div class="listing-header">
                         <div class="header-left">
-                            <h2 class="section-title" data-i18n="available_cars_title">រថយន្តដែលមាន / Available Rides</h2>
+                            <h2 class="section-title" data-i18n="available_cars_title">រថយន្តដែលមានក្នុងប្រព័ន្ធ / Live Trips</h2>
                             <span class="count-tag" id="liveCarsCount">0</span>
                         </div>
                         <button type="button" id="btnRefreshList" class="btn-icon-soft" title="Refresh">
@@ -305,7 +374,6 @@
 
                     <!-- Rides Cards Container -->
                     <div id="ridesListContainer" class="rides-cards-list">
-                        <!-- Skeleton loading -->
                         <div class="ride-card skeleton-box">
                             <div class="sk-line sk-title"></div>
                             <div class="sk-line sk-body"></div>
@@ -318,89 +386,26 @@
                         <div class="banner-icon"><i class="fa-solid fa-bell-concierge"></i></div>
                         <div class="banner-body">
                             <h3 data-i18n="banner_custom_title">ត្រូវការឡានចេញម៉ោងផ្សេង ឬម៉ៅដាច់?</h3>
-                            <p data-i18n="banner_custom_sub">ប្រសិនបើគ្មានម៉ោងដែលត្រូវចិត្ត សូមកក់ឡានពិសេសតាមម៉ោងដែលអ្នកចង់បាន!</p>
+                            <p data-i18n="banner_custom_sub">ប្រសិនបើគ្មានម៉ោងដែលត្រូវចិត្ត សូមផ្ញើសំណើកក់ឡានពិសេសតាមម៉ោងដែលអ្នកចង់បាន!</p>
                         </div>
-                        <button type="button" id="btnOpenCustomModal" class="banner-btn" data-i18n="btn_custom_request">កក់ឡានតាមចិត្ត</button>
+                        <button type="button" id="btnOpenCustomModal" class="banner-btn" data-i18n="btn_custom_request">ស្នើសុំឡាន</button>
                     </div>
                 </div>
             </section>
 
-            <!-- TAB B: PRIVATE TAXI CHARTER (ម៉ៅដាច់ VIP CAR) -->
+            <!-- TAB B: VEHICLE FLEET & PRIVATE CHARTER (FROM /v1/api/travel/vehicle-models) -->
             <section id="tabCharter" class="tab-view">
                 <div class="charter-hero-card">
-                    <div class="charter-badge">VIP PRIVATE TAXI</div>
-                    <h2 class="charter-title" data-i18n="charter_title">សេវាកម្មឡានឈ្នួលម៉ៅដាច់ VIP</h2>
-                    <p class="charter-sub" data-i18n="charter_desc">ធ្វើដំណើរជាលក្ខណៈគ្រួសារ ឬការងារឯកជន ទទួលដល់ផ្ទះ មិនចាំបាច់រង់ចាំអ្នកដទៃ</p>
+                    <div class="charter-badge">MYTRAVEL VERIFIED FLEET</div>
+                    <h2 class="charter-title" data-i18n="charter_title">ប្រភេទរថយន្ត និងសេវាម៉ៅដាច់ VIP</h2>
+                    <p class="charter-sub" data-i18n="charter_desc">រថយន្តក្នុងប្រព័ន្ធ MyTravel ទទួលដល់ផ្ទះ ធ្វើដំណើរឯកជន ឬជាក្រុមគ្រួសារ</p>
                 </div>
 
-                <div class="charter-vehicles-grid">
-                    <!-- Vehicle 1: Sedan -->
-                    <div class="charter-card" data-tier="sedan">
-                        <div class="charter-card-top">
-                            <div class="car-badge bg-gold">VIP SEDAN (4 កៅអី)</div>
-                            <div class="charter-price-tag">
-                                <span class="price-val">$65 - $80</span>
-                                <span class="price-sub">/ មួយជើង</span>
-                            </div>
-                        </div>
-                        <div class="car-photo-placeholder sedan-bg">
-                            <i class="fa-solid fa-car-rear"></i>
-                            <span>Toyota Prius / Camry VIP</span>
-                        </div>
-                        <ul class="charter-features">
-                            <li><i class="fa-solid fa-check text-success"></i> សម្រាប់អ្នកដំណើរ 1 ទៅ 4 នាក់</li>
-                            <li><i class="fa-solid fa-check text-success"></i> ម៉ាស៊ីនត្រជាក់ត្រជាក់ស្រួល</li>
-                            <li><i class="fa-solid fa-check text-success"></i> ទទួលដល់ផ្ទះ និងជូនដល់គោលដៅ</li>
-                        </ul>
-                        <button type="button" class="btn-charter-action" data-tier="sedan" data-name="VIP Sedan (Prius/Camry)">
-                            <span data-i18n="btn_book_charter">កក់ឡាន Sedan ឥឡូវនេះ</span>
-                        </button>
-                    </div>
-
-                    <!-- Vehicle 2: SUV -->
-                    <div class="charter-card featured" data-tier="suv">
-                        <div class="charter-card-top">
-                            <div class="car-badge bg-yellow">VIP SUV (Lexus RX / Highlander)</div>
-                            <div class="charter-price-tag">
-                                <span class="price-val">$85 - $110</span>
-                                <span class="price-sub">/ មួយជើង</span>
-                            </div>
-                        </div>
-                        <div class="car-photo-placeholder suv-bg">
-                            <i class="fa-solid fa-car-side"></i>
-                            <span>Lexus RX330 / Highlander VIP</span>
-                        </div>
-                        <ul class="charter-features">
-                            <li><i class="fa-solid fa-check text-success"></i> សម្រាប់អ្នកដំណើរ 4 ទៅ 5 នាក់</li>
-                            <li><i class="fa-solid fa-check text-success"></i> ជិះទូលាយ ដាក់ឥវ៉ាន់បានច្រើន</li>
-                            <li><i class="fa-solid fa-check text-success"></i> សុវត្ថិភាពខ្ពស់ លើផ្លូវឆ្ងាយ</li>
-                        </ul>
-                        <button type="button" class="btn-charter-action btn-highlight" data-tier="suv" data-name="VIP SUV (Lexus RX330)">
-                            <span data-i18n="btn_book_charter">កក់ឡាន SUV ឥឡូវនេះ</span>
-                        </button>
-                    </div>
-
-                    <!-- Vehicle 3: Van -->
-                    <div class="charter-card" data-tier="van">
-                        <div class="charter-card-top">
-                            <div class="car-badge bg-blue">VIP VAN (Starex / Alphard)</div>
-                            <div class="charter-price-tag">
-                                <span class="price-val">$120 - $160</span>
-                                <span class="price-sub">/ មួយជើង</span>
-                            </div>
-                        </div>
-                        <div class="car-photo-placeholder van-bg">
-                            <i class="fa-solid fa-van-shuttle"></i>
-                            <span>Hyundai Starex / Alphard (7-11 កៅអី)</span>
-                        </div>
-                        <ul class="charter-features">
-                            <li><i class="fa-solid fa-check text-success"></i> សម្រាប់ក្រុមគ្រួសារធំ ឬក្រុមហ៊ុន</li>
-                            <li><i class="fa-solid fa-check text-success"></i> កៅអីទន់VIP ផាសុកភាពខ្ពស់</li>
-                            <li><i class="fa-solid fa-check text-success"></i> បើកបរដោយអ្នកជំនាញ</li>
-                        </ul>
-                        <button type="button" class="btn-charter-action" data-tier="van" data-name="VIP Van (Hyundai Starex)">
-                            <span data-i18n="btn_book_charter">កក់ឡាន Van ឥឡូវនេះ</span>
-                        </button>
+                <div id="vehicleModelsContainer" class="charter-vehicles-grid">
+                    <div class="ride-card skeleton-box">
+                        <div class="sk-line sk-title"></div>
+                        <div class="sk-line sk-body"></div>
+                        <div class="sk-line sk-btn"></div>
                     </div>
                 </div>
             </section>
@@ -412,77 +417,96 @@
                         <i class="fa-solid fa-truck-fast"></i>
                     </div>
                     <h2 class="delivery-title" data-i18n="parcel_title">សេវាផ្ញើឥវ៉ាន់រហ័សអន្តរខេត្ត</h2>
-                    <p class="delivery-sub" data-i18n="parcel_sub">ផ្ញើព្រឹកបានថ្ងៃត្រង់ ឬផ្ញើរសៀលបានល្ងាច ផ្ញើផ្ទាល់ជាមួយអ្នកបើកបរតាក់ស៊ី</p>
+                    <p class="delivery-sub" data-i18n="parcel_sub">ផ្ញើព្រឹកបានថ្ងៃត្រង់ ឬផ្ញើរសៀលបានល្ងាច ផ្ញើផ្ទាល់ជាមួយអ្នកបើកបរតាក់ស៊ីក្នុងប្រព័ន្ធ</p>
                 </div>
 
                 <div class="delivery-steps-box">
                     <div class="step-row">
                         <div class="step-num">1</div>
                         <div class="step-info">
-                            <strong>ទាក់ទង ឬកក់ទីតាំងផ្ញើ</strong>
-                            <p>ជ្រើសរើសខេត្តផ្ញើ និងខេត្តទទួល ជាមួយអ្នកបើកបរ</p>
+                            <strong>ជ្រើសរើសខ្សែរត់ដែលកំពុងចេញដំណើរ</strong>
+                            <p>ពិនិត្យមើលតារាងឡានទំនេរ ឬដាក់សំណើផ្ញើឥវ៉ាន់ទៅកាន់ខេត្តគោលដៅ</p>
                         </div>
                     </div>
                     <div class="step-row">
                         <div class="step-num">2</div>
                         <div class="step-info">
-                            <strong>ប្រគល់ឥវ៉ាន់ជូនអ្នកបើកបរ</strong>
-                            <p>អ្នកបើកបរអាចមកទទួលដល់ទីកន្លែង ឬជួបនៅចំណត</p>
+                            <strong>ប្រគល់ឥវ៉ាន់ជូនអ្នកបើកបរផ្ទាល់</strong>
+                            <p>អ្នកបើកបរមកទទួលដល់ទីតាំង ឬជួបតាមចំណតដែលបានណាត់</p>
                         </div>
                     </div>
                     <div class="step-row">
                         <div class="step-num">3</div>
                         <div class="step-info">
-                            <strong>អ្នកទទួលទទួលបានដល់ដៃសុវត្ថិភាព</strong>
-                            <p>ទូរស័ព្ទជូនដំណឹងភ្លាមៗនៅពេលឥវ៉ាន់ទៅដល់</p>
+                            <strong>ទទួលបានដល់ដៃក្នុងថ្ងៃតែមួយ</strong>
+                            <p>អ្នកបើកបរទាក់ទងអ្នកទទួលភ្លាមៗនៅពេលរថយន្តទៅដល់ខេត្តគោលដៅ</p>
                         </div>
                     </div>
                 </div>
 
                 <div class="delivery-cta-card">
                     <h4>ត្រូវការផ្ញើឥវ៉ាន់បន្ទាន់ថ្ងៃនេះ?</h4>
-                    <p>ទាក់ទងមកកាន់ផ្នែកបញ្ជូន MyTravel ដើម្បីរៀបចំឡានដែលចេញដំណើរជិតបំផុត</p>
-                    <a href="tel:0966519115" class="btn-primary-yellow text-center">
+                    <p>ដាក់សំណើផ្ញើឥវ៉ាន់ ឬទាក់ទងមកកាន់ផ្នែកបញ្ជូន MyTravel ផ្ទាល់</p>
+                    <button type="button" id="btnRequestParcel" class="btn-primary-yellow text-center" style="margin-bottom:8px;">
+                        <i class="fa-solid fa-box"></i>
+                        <span>ដាក់សំណើផ្ញើឥវ៉ាន់ / Request Parcel Dispatch</span>
+                    </button>
+                    <a href="tel:0966519115" id="parcelSupportPhoneLink" class="btn-secondary-soft text-center" style="text-decoration:none;">
                         <i class="fa-solid fa-phone"></i>
-                        <span>ទូរស័ព្ទផ្ញើឥវ៉ាន់: 096 651 9115</span>
+                        <span id="parcelSupportPhoneText">Hotline: 096 651 9115</span>
                     </a>
                 </div>
             </section>
 
-            <!-- TAB D: MY RIDES / TICKETS -->
+            <!-- TAB D: MY RIDES / TICKETS (FROM /v1/api/travel/telegram/miniapp/my-bookings) -->
             <section id="tabMyRides" class="tab-view">
                 <div class="my-rides-header">
                     <h2 class="section-title" data-i18n="my_rides_title">🎟️ សំបុត្រ និងការកក់របស់ខ្ញុំ</h2>
-                    <p class="section-subtitle" data-i18n="my_rides_subtitle">ពិនិត្យមើលសំបុត្រឌីជីថល និងប្រវត្តិធ្វើដំណើររបស់អ្នក</p>
+                    <p class="section-subtitle" data-i18n="my_rides_subtitle">ទិន្នន័យការកក់ពិតប្រាកដពីប្រព័ន្ធ MyTravel</p>
+                </div>
+
+                <!-- Phone Lookup Bar for Real DB Sync -->
+                <div class="route-search-card" style="padding: 12px; gap: 8px;">
+                    <label for="inputLookupPhone" style="font-size:0.78rem; color:var(--text-secondary); font-weight:700;" data-i18n="lookup_phone_label">លេខទូរស័ព្ទដែលបានកក់ / Your Booking Phone Number:</label>
+                    <div style="display:flex; gap:8px;">
+                        <div class="input-icon-wrapper" style="flex:1;">
+                            <i class="fa-solid fa-phone"></i>
+                            <input type="tel" id="inputLookupPhone" class="modern-input" placeholder="012 345 678">
+                        </div>
+                        <button type="button" id="btnSyncMyBookings" class="btn-primary-yellow" style="width:auto; padding:0 16px; font-size:0.85rem;">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                            <span data-i18n="btn_sync_bookings">ស្វែងរក</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div id="myRidesListContainer" class="my-rides-list">
-                    <!-- Populated dynamically via JavaScript -->
+                    <!-- Populated from GET /v1/api/travel/telegram/miniapp/my-bookings -->
                 </div>
             </section>
 
-            <!-- TAB E: 24/7 SUPPORT -->
+            <!-- TAB E: 24/7 SUPPORT (FROM /v1/api/travel/support/config) -->
             <section id="tabSupport" class="tab-view">
                 <div class="support-contact-card">
                     <div class="support-avatar">
                         <i class="fa-solid fa-headset"></i>
                     </div>
                     <h2 class="support-name" data-i18n="support_center_title">ផ្នែកបម្រើអតិថិជន MyTravel 24/7</h2>
-                    <p class="support-desc" data-i18n="support_center_desc">ក្រុមការងារយើងខ្ញុំប្រចាំការនៅរាជធានីភ្នំពេញ ត្រៀមឆ្លើយតបគ្រប់សំណួរ និងជួយសម្រួលការធ្វើដំណើរ។</p>
+                    <p class="support-desc" id="supportNoteText" data-i18n="support_center_desc">ក្រុមការងារយើងខ្ញុំប្រចាំការនៅរាជធានីភ្នំពេញ ត្រៀមឆ្លើយតបគ្រប់សំណួរ និងជួយសម្រួលការធ្វើដំណើរ។</p>
 
                     <div class="support-button-list">
-                        <a href="tel:0966519115" class="btn-support-item btn-phone">
+                        <a href="tel:0966519115" id="supportPhoneBtn" class="btn-support-item btn-phone">
                             <i class="fa-solid fa-phone-volume"></i>
                             <div class="btn-text">
                                 <span class="label">Hotline 24/7</span>
-                                <span class="val">096 651 9115</span>
+                                <span class="val" id="supportPhoneVal">096 651 9115</span>
                             </div>
                         </a>
-                        <a href="https://t.me/MyTravel_Taxi_bot" target="_blank" class="btn-support-item btn-tg">
+                        <a href="https://t.me/MyTravel_Taxi_bot" id="supportTelegramBtn" target="_blank" class="btn-support-item btn-tg">
                             <i class="fa-brands fa-telegram"></i>
                             <div class="btn-text">
-                                <span class="label">Telegram Bot Support</span>
-                                <span class="val">@MyTravel_Taxi_bot</span>
+                                <span class="label">Telegram Support</span>
+                                <span class="val" id="supportTelegramVal">@MyTravel_Taxi_bot</span>
                             </div>
                         </a>
                     </div>
@@ -493,12 +517,12 @@
                     
                     <details class="faq-row">
                         <summary><strong data-i18n="faq_q1">តើខ្ញុំត្រូវទូទាត់ប្រាក់តាមរបៀបណា?</strong></summary>
-                        <p data-i18n="faq_a1">លោកអ្នកអាចទូទាត់ជា <strong>សាច់ប្រាក់សុទ្ធ (Cash on Pickup)</strong> ពេលឡើងឡាន ឬស្កេន <strong>Bakong KHQR</strong> យ៉ាងងាយស្រួល មិនបាច់មានកាតធនាគារឡើយ!</p>
+                        <p data-i18n="faq_a1">លោកអ្នកអាចទូទាត់ជា <strong>សាច់ប្រាក់សុទ្ធ (Cash on Pickup)</strong> ពេលឡើងឡាន ឬស្កេន <strong>ABA / KHQR</strong> ជាមួយអ្នកបើកបរផ្ទាល់។</p>
                     </details>
 
                     <details class="faq-row">
                         <summary><strong data-i18n="faq_q2">តើឡាននឹងទៅទទួលខ្ញុំនៅកន្លែងណា?</strong></summary>
-                        <p data-i18n="faq_a2">MyTravel ផ្តល់ជូនសេវា <strong>ទទួលដល់ទីកន្លែង</strong> (សណ្ឋាគារ ផ្ទះ ឬទីតាំងចំណាំ)។ អ្នកបើកបរនឹងទូរស័ព្ទបញ្ជាក់ទីតាំងមុនពេលចេញដំណើរ។</p>
+                        <p data-i18n="faq_a2">MyTravel ផ្តល់ជូនសេវា <strong>ទទួលដល់ទីកន្លែង</strong> ឬតាមចំណតដែលបានកំណត់។ អ្នកបើកបរនឹងទូរស័ព្ទបញ្ជាក់ទីតាំងមុនពេលចេញដំណើរ។</p>
                     </details>
 
                     <details class="faq-row">
@@ -533,7 +557,7 @@
             </button>
             <button type="button" class="nav-tab-item" data-target="tabCharter">
                 <i class="fa-solid fa-car-side"></i>
-                <span data-i18n="nav_charter">ម៉ៅដាច់ VIP</span>
+                <span data-i18n="nav_charter">រថយន្ត & ម៉ៅដាច់</span>
             </button>
             <button type="button" class="nav-tab-item" data-target="tabMyRides">
                 <i class="fa-solid fa-ticket"></i>
@@ -546,14 +570,14 @@
             </button>
         </nav>
 
-        <!-- MODAL 1: 1-TAP FAST BOOKING SHEET -->
+        <!-- MODAL 1: REAL TRIP BOOKING SHEET -->
         <div id="bookingModal" class="tma-modal-overlay" style="display:none;">
             <div class="tma-bottom-sheet">
                 <div class="sheet-drag-handle"></div>
                 <div class="sheet-header">
                     <div>
                         <h3 class="sheet-title" data-i18n="sheet_booking_title">បញ្ជាក់ការកក់រថយន្ត</h3>
-                        <p class="sheet-sub" id="modalRouteSummary">ភ្នំពេញ ➔ សៀមរាប</p>
+                        <p class="sheet-sub" id="modalRouteSummary">-</p>
                     </div>
                     <button type="button" id="btnCloseBookingModal" class="btn-close-sheet" aria-label="Close">
                         <i class="fa-solid fa-xmark"></i>
@@ -561,6 +585,8 @@
                 </div>
 
                 <div class="sheet-scrollable-body">
+                    <div id="bookingErrorAlert" class="error-alert-box"></div>
+
                     <!-- Driver & Car Summary Card -->
                     <div class="modal-driver-card">
                         <div class="driver-avatar-circle">
@@ -568,21 +594,22 @@
                         </div>
                         <div class="driver-info-body">
                             <div class="driver-name-row">
-                                <strong id="modalDriverName">Sokha Driver</strong>
-                                <span class="verified-pill"><i class="fa-solid fa-shield-check"></i> Verified</span>
+                                <strong id="modalDriverName">-</strong>
+                                <span class="verified-pill"><i class="fa-solid fa-circle-check"></i> Verified</span>
                             </div>
-                            <div class="car-spec-row" id="modalCarSpec">Lexus RX330 • 2AB-1234</div>
+                            <div class="car-spec-row" id="modalCarSpec">-</div>
                         </div>
-                        <div class="departure-pill" id="modalDepartureTime">08:30 AM</div>
+                        <div class="departure-pill" id="modalDepartureTime">-</div>
                     </div>
 
-                    <!-- Seat Counter Stepper -->
+                    <!-- Seat Selection (Interactive Seat Chips + Stepper) -->
                     <div class="form-group-card">
                         <div class="group-label-row">
-                            <label data-i18n="label_seat_count">ចំនួនកៅអីដែលត្រូវកក់ / Number of Seats:</label>
-                            <span class="seat-avail-tag" id="modalAvailableSeatsTag">3 កៅអីនៅសល់</span>
+                            <label data-i18n="label_seat_count">ជ្រើសរើសកៅអីទំនេរ / Select Seat(s):</label>
+                            <span class="seat-avail-tag" id="modalAvailableSeatsTag">-</span>
                         </div>
-                        <div class="stepper-box">
+                        <div id="seatPickerGrid" class="seat-picker-grid"></div>
+                        <div class="stepper-box" style="margin-top:8px;">
                             <button type="button" id="btnMinusSeat" class="stepper-action" aria-label="Decrease">
                                 <i class="fa-solid fa-minus"></i>
                             </button>
@@ -619,7 +646,7 @@
                         <label for="inputPickupNote" data-i18n="label_pickup">ទីតាំងទទួល / Pickup Location (Hotel or Landmark):</label>
                         <div class="input-icon-wrapper">
                             <i class="fa-solid fa-map-pin"></i>
-                            <input type="text" id="inputPickupNote" class="modern-input" placeholder="e.g. Sokha Hotel, or Street 271">
+                            <input type="text" id="inputPickupNote" class="modern-input" placeholder="e.g. Street 271, Hotel, or Landmark">
                         </div>
                     </div>
 
@@ -630,12 +657,12 @@
                             <label class="pay-pill active">
                                 <input type="radio" name="payMethod" value="cash" checked style="display:none;">
                                 <i class="fa-solid fa-money-bill-wave text-success"></i>
-                                <span data-i18n="pay_cash">💵 Cash (ឡើងឡាន)</span>
+                                <span data-i18n="pay_cash">💵 Cash (ពេលឡើងឡាន)</span>
                             </label>
                             <label class="pay-pill">
-                                <input type="radio" name="payMethod" value="khqr" style="display:none;">
+                                <input type="radio" name="payMethod" value="aba" style="display:none;">
                                 <i class="fa-solid fa-qrcode text-warning"></i>
-                                <span data-i18n="pay_khqr">📱 Bakong KHQR</span>
+                                <span data-i18n="pay_khqr">📱 ABA / KHQR</span>
                             </label>
                         </div>
                     </div>
@@ -644,13 +671,13 @@
                     <div class="price-breakdown-card">
                         <div class="price-line">
                             <span data-i18n="price_per_seat">តម្លៃក្នុងមួយកៅអី / Rate per seat:</span>
-                            <strong id="modalPricePerSeat">$12.00</strong>
+                            <strong id="modalPricePerSeat">-</strong>
                         </div>
                         <div class="price-line total-price-line">
                             <span data-i18n="total_amount">សរុបទាំងអស់ / Total Fare:</span>
                             <div class="total-digits">
-                                <span class="usd-val" id="modalTotalUsd">$12.00</span>
-                                <span class="khr-val" id="modalTotalKhr">(49,200 ៛)</span>
+                                <span class="usd-val" id="modalTotalUsd">-</span>
+                                <span class="khr-val" id="modalTotalKhr"></span>
                             </div>
                         </div>
                     </div>
@@ -680,9 +707,9 @@
                     <div class="pass-top-row">
                         <div class="pass-code-group">
                             <span class="pass-label" data-i18n="ref_code_label">លេខកូដកក់ / Ref Code</span>
-                            <span class="pass-code-val" id="passRefCode">MT-8921</span>
+                            <span class="pass-code-val" id="passRefCode">-</span>
                         </div>
-                        <div class="pass-status-badge">
+                        <div class="pass-status-badge" id="passStatusBadge">
                             <span class="status-dot"></span> Confirmed 🟢
                         </div>
                     </div>
@@ -698,7 +725,7 @@
                             <div class="dot-ring green-ring"></div>
                             <div class="point-details">
                                 <span class="point-lbl" data-i18n="field_from_label">From</span>
-                                <strong class="point-name" id="passFromProvince">Phnom Penh</strong>
+                                <strong class="point-name" id="passFromProvince">-</strong>
                             </div>
                         </div>
                         <div class="route-line-connector"></div>
@@ -706,7 +733,7 @@
                             <div class="dot-ring red-ring"></div>
                             <div class="point-details">
                                 <span class="point-lbl" data-i18n="field_to_label">To</span>
-                                <strong class="point-name" id="passToProvince">Siem Reap</strong>
+                                <strong class="point-name" id="passToProvince">-</strong>
                             </div>
                         </div>
                     </div>
@@ -714,19 +741,19 @@
                     <div class="pass-meta-grid">
                         <div class="meta-item">
                             <span class="meta-k" data-i18n="ticket_departure">ម៉ោងចេញដំណើរ</span>
-                            <strong class="meta-v" id="passDepartureTime">Today, 08:30 AM</strong>
+                            <strong class="meta-v" id="passDepartureTime">-</strong>
                         </div>
                         <div class="meta-item">
-                            <span class="meta-k" data-i18n="ticket_seats">ចំនួនកៅអី</span>
-                            <strong class="meta-v" id="passSeatCount">1 កៅអី</strong>
+                            <span class="meta-k" data-i18n="ticket_seats">លេខកៅអី</span>
+                            <strong class="meta-v" id="passSeatCount">-</strong>
                         </div>
                         <div class="meta-item">
                             <span class="meta-k" data-i18n="ticket_total">តម្លៃសរុប</span>
-                            <strong class="meta-v text-success" id="passTotalPrice">$12.00 (Cash)</strong>
+                            <strong class="meta-v text-success" id="passTotalPrice">-</strong>
                         </div>
                         <div class="meta-item">
                             <span class="meta-k" data-i18n="ticket_passenger">អ្នកដំណើរ</span>
-                            <strong class="meta-v" id="passPassengerName">Sophea</strong>
+                            <strong class="meta-v" id="passPassengerName">-</strong>
                         </div>
                     </div>
 
@@ -736,10 +763,10 @@
                             <i class="fa-solid fa-id-card"></i>
                         </div>
                         <div class="driver-text-col">
-                            <strong id="passDriverName">Sokha Driver</strong>
-                            <span id="passCarModel">Lexus RX330 • 2AB-1234</span>
+                            <strong id="passDriverName">-</strong>
+                            <span id="passCarModel">-</span>
                         </div>
-                        <a href="tel:0966519115" id="btnCallDriver" class="btn-phone-call" title="Call Driver">
+                        <a href="tel:" id="btnCallDriver" class="btn-phone-call" title="Call Driver">
                             <i class="fa-solid fa-phone"></i>
                         </a>
                     </div>
@@ -757,14 +784,14 @@
             </div>
         </div>
 
-        <!-- MODAL 3: ON-DEMAND CUSTOM RIDE MODAL -->
+        <!-- MODAL 3: ON-DEMAND CUSTOM RIDE / CHARTER REQUEST MODAL -->
         <div id="customModal" class="tma-modal-overlay" style="display:none;">
             <div class="tma-bottom-sheet">
                 <div class="sheet-drag-handle"></div>
                 <div class="sheet-header">
                     <div>
-                        <h3 class="sheet-title" data-i18n="custom_modal_title">កក់រថយន្តពិសេសតាមចិត្ត</h3>
-                        <p class="sheet-sub" data-i18n="custom_modal_sub">ក្រុមការងារនឹងរៀបចំអ្នកបើកបរស្របតាមម៉ោងរបស់អ្នក</p>
+                        <h3 class="sheet-title" data-i18n="custom_modal_title">ស្នើសុំរថយន្តពិសេស / ម៉ៅដាច់</h3>
+                        <p class="sheet-sub" data-i18n="custom_modal_sub">សំណើនឹងត្រូវបញ្ជូនទៅកាន់ប្រព័ន្ធប្រតិបត្តិការ MyTravel ផ្ទាល់</p>
                     </div>
                     <button type="button" id="btnCloseCustomModal" class="btn-close-sheet" aria-label="Close">
                         <i class="fa-solid fa-xmark"></i>
@@ -774,7 +801,7 @@
                 <div class="sheet-scrollable-body">
                     <div class="form-group-card">
                         <label data-i18n="custom_label_route">ខ្សែរត់ដែលស្នើសុំ / Requested Route:</label>
-                        <div class="route-highlight-box" id="customRouteSummary">ភ្នំពេញ ➔ សៀមរាប</div>
+                        <div class="route-highlight-box" id="customRouteSummary">-</div>
                     </div>
 
                     <div class="form-group-card">
@@ -788,13 +815,13 @@
                     </div>
 
                     <div class="form-group-card">
-                        <label for="selectCustomType" data-i18n="custom_label_type">ប្រភេទរថយន្ត / Vehicle Type:</label>
+                        <label for="selectCustomType" data-i18n="custom_label_type">ចំនួនកៅអី ឬប្រភេទរថយន្ត / Seats & Vehicle Type:</label>
                         <select id="selectCustomType" class="modern-select">
-                            <option value="1">1 Seat (Shared Taxi)</option>
-                            <option value="2">2 Seats (Shared Taxi)</option>
-                            <option value="4" selected>VIP Sedan (ម៉ៅដាច់ 4 កៅអី Prius/Camry)</option>
-                            <option value="7">VIP SUV (ម៉ៅដាច់ 5-7 កៅអី Lexus/Highlander)</option>
-                            <option value="11">VIP Van (ម៉ៅដាច់ 7-11 កៅអី Hyundai Starex)</option>
+                            <option value="1">1 កៅអី (Shared Taxi)</option>
+                            <option value="2">2 កៅអី (Shared Taxi)</option>
+                            <option value="4" selected>4 កៅអី (Private Sedan / SUV)</option>
+                            <option value="7">7 កៅអី (Private MPV / SUV)</option>
+                            <option value="11">11 កៅអី (Private VIP Van)</option>
                         </select>
                     </div>
 

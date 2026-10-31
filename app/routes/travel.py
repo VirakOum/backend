@@ -2571,6 +2571,7 @@ def verify_telegram_otp(
 class TelegramMiniAppQuickBookRequest(BaseModel):
 	trip_id: str
 	seat_count: int = Field(default=1, ge=1, le=8)
+	seat_numbers: list[int] | None = None
 	passenger_name: str = Field(min_length=2, max_length=100)
 	phone: str = Field(min_length=6, max_length=30)
 	telegram_user_id: str | None = None
@@ -2595,11 +2596,28 @@ def telegram_miniapp_quick_book(
 	payload: TelegramMiniAppQuickBookRequest,
 	db: Session = Depends(get_db),
 ) -> dict:
-	"""Fast 1-tap booking endpoint directly inside Telegram Mini App."""
+	"""Fast 1-tap booking endpoint directly inside Telegram Mini App using real Trip records."""
 	_expire_stale_trips_and_bookings(db)
 	clean_phone = _clean_phone(payload.phone)
 	if len(clean_phone) < 6:
 		raise HTTPException(status_code=400, detail="Invalid phone number")
+
+	try:
+		trip_uuid = UUID(payload.trip_id)
+	except (ValueError, TypeError):
+		raise HTTPException(status_code=404, detail="Trip not found")
+
+	trip = db.execute(
+		select(Trip)
+		.options(selectinload(Trip.driver), selectinload(Trip.vehicle), selectinload(Trip.bookings))
+		.where(Trip.id == trip_uuid)
+		.with_for_update()
+	).scalar_one_or_none()
+
+	if trip is None:
+		raise HTTPException(status_code=404, detail="Trip not found")
+	if trip.status not in ("scheduled", "active"):
+		raise HTTPException(status_code=400, detail="Trip is not bookable")
 
 	# Ensure Passenger User exists
 	passenger = _find_user_by_phone(db, clean_phone)
@@ -2613,68 +2631,104 @@ def telegram_miniapp_quick_book(
 		)
 		db.add(passenger)
 		db.flush()
-	elif not passenger.is_verified:
-		passenger.is_verified = True
+	else:
+		if payload.passenger_name.strip() and (not passenger.full_name or passenger.full_name.startswith("Passenger")):
+			passenger.full_name = payload.passenger_name.strip()
+		if not passenger.is_verified:
+			passenger.is_verified = True
 		db.add(passenger)
 
-	trip: Trip | None = None
-	try:
-		trip_uuid = UUID(payload.trip_id)
-		trip = db.execute(
-			select(Trip)
-			.options(selectinload(Trip.driver), selectinload(Trip.vehicle), selectinload(Trip.bookings))
-			.where(Trip.id == trip_uuid)
-			.with_for_update()
-		).scalar_one_or_none()
-	except (ValueError, TypeError):
-		trip = None
-
-	requested_seats = max(1, min(payload.seat_count, 8))
-	ref_code = f"MT-{secrets.randbelow(8999) + 1000}"
-	allocated_seats: list[int] = [1]
-	total_price: Decimal = Decimal("12.00") * requested_seats
-	currency = DEFAULT_CURRENCY
-	booking_id_str = f"bk_{secrets.token_hex(6)}"
-
-	if trip is not None and trip.status in ("scheduled", "active"):
-		avail = _available_seat_numbers(trip)
+	avail = _available_seat_numbers(trip)
+	if payload.seat_numbers:
+		requested_list = sorted({int(s) for s in payload.seat_numbers if int(s) > 0})
+		if not requested_list:
+			raise HTTPException(status_code=400, detail="Invalid seat selection")
+		unavailable = [s for s in requested_list if s not in avail]
+		if unavailable:
+			raise HTTPException(status_code=400, detail=f"Seat(s) {unavailable} are no longer available")
+		allocated_seats = requested_list
+		requested_seats = len(allocated_seats)
+	else:
+		requested_seats = max(1, min(payload.seat_count, 8))
 		if len(avail) < requested_seats:
 			raise HTTPException(status_code=400, detail="Not enough available seats on this trip")
 		allocated_seats = avail[:requested_seats]
-		unit_price = _final_price_per_seat(trip)
-		total_price = _money(unit_price * requested_seats)
-		currency = getattr(trip, "currency", DEFAULT_CURRENCY) or DEFAULT_CURRENCY
-		booking = Booking(
-			trip_id=trip.id,
-			passenger_id=passenger.id,
-			seat_numbers=allocated_seats,
-			total_price=total_price,
-			currency=currency,
-			payment_method=_normalized_payment_method(payload.payment_method),
-			status="confirmed",
-			payment_status="pending",
-		)
-		trip.available_seats = max(0, trip.available_seats - requested_seats)
-		db.add(booking)
-		db.flush()
+
+	unit_price = _final_price_per_seat(trip)
+	total_price = _money(unit_price * requested_seats)
+	currency = getattr(trip, "currency", DEFAULT_CURRENCY) or DEFAULT_CURRENCY
+	normalized_pay = _normalized_payment_method(payload.payment_method)
+
+	booking = Booking(
+		trip_id=trip.id,
+		passenger_id=passenger.id,
+		seat_numbers=allocated_seats,
+		total_price=total_price,
+		currency=currency,
+		payment_method=normalized_pay,
+		status="confirmed",
+		payment_status="pending",
+	)
+	trip.available_seats = max(0, len(avail) - requested_seats)
+	db.add(booking)
+
+	# Link telegram_chat_id to phone in TelegramOtpSession if not yet linked so My Rides can resolve by telegram_user_id
+	target_chat = payload.telegram_chat_id or payload.telegram_user_id
+	if target_chat:
+		existing_link = db.execute(
+			select(TelegramOtpSession)
+			.where(TelegramOtpSession.telegram_chat_id == str(target_chat), TelegramOtpSession.phone == clean_phone)
+			.limit(1)
+		).scalar_one_or_none()
+		if existing_link is None:
+			now_pp = phnom_penh_now()
+			db.add(
+				TelegramOtpSession(
+					session_token=secrets.token_urlsafe(24),
+					phone=clean_phone,
+					purpose="login",
+					otp_code="000000",
+					status="verified",
+					telegram_chat_id=str(target_chat),
+					telegram_username=payload.telegram_username,
+					created_at=now_pp,
+					expires_at=now_pp + timedelta(days=365),
+					verified_at=now_pp,
+				)
+			)
+
+	db.commit()
+	db.refresh(booking)
+
+	booking_id_str = str(booking.id)
+	ref_code = f"MT-{booking_id_str[:6].upper()}"
+
+	driver_name = trip.driver.full_name if trip.driver and trip.driver.full_name else (trip.driver.phone if trip.driver else "")
+	driver_phone = trip.driver.phone if trip.driver and trip.driver.phone else ""
+	vehicle_model = trip.vehicle.model if trip.vehicle and trip.vehicle.model else ""
+	plate_number = trip.vehicle.plate_number if trip.vehicle and trip.vehicle.plate_number else ""
+	from_prov = trip.departure_province
+	to_prov = trip.destination_province
+	dep_time_iso = trip.departure_time.isoformat() if trip.departure_time else None
+	dep_str = trip.departure_time.strftime("%b %d, %Y %I:%M %p") if trip.departure_time else ""
+	booking_status = booking.status
+	booking_pickup_status = booking.pickup_status
+	booking_payment_status = booking.payment_status
+	passenger_full_name = passenger.full_name
+	passenger_phone = passenger.phone
+	trip_id_str = str(trip.id)
+
+	try:
 		_create_driver_booking_notification(db, trip, booking, passenger)
 		db.commit()
-		db.refresh(booking)
-		booking_id_str = str(booking.id)
+	except Exception:
+		db.rollback()
 
-	# Extract driver & vehicle info
-	driver_name = (trip.driver.full_name if trip and trip.driver else None) or "Sokha Driver"
-	driver_phone = (trip.driver.phone if trip and trip.driver else None) or "0966519115"
-	vehicle_model = (trip.vehicle.model if trip and trip.vehicle else None) or "Lexus RX330 VIP"
-	plate_number = (trip.vehicle.plate_number if trip and trip.vehicle else None) or "2AB-1234"
-	from_prov = trip.departure_province if trip else "Phnom Penh"
-	to_prov = trip.destination_province if trip else "Siem Reap"
-	dep_time_iso = trip.departure_time.isoformat() if trip and trip.departure_time else phnom_penh_now().isoformat()
-	dep_str = trip.departure_time.strftime("%b %d, %I:%M %p") if trip and trip.departure_time else "Today"
+	is_khr = currency.upper() in ("KHR", "៛") or float(total_price) >= 1000
+	price_display = f"{int(round(float(total_price))):,} ៛" if is_khr else f"${float(total_price):.2f}"
 
 	# Send rich confirmation directly to passenger Telegram chat if available
 	bot_token = get_telegram_bot_token()
-	target_chat = payload.telegram_chat_id or payload.telegram_user_id
 	if bot_token and target_chat:
 		base_url = get_public_base_url().rstrip("/")
 		conf_msg = (
@@ -2682,12 +2736,16 @@ def telegram_miniapp_quick_book(
 			f"🎟 <b>Booking Code / លេខកូដ:</b> <code>{ref_code}</code>\n"
 			f"🚖 <b>Route / ខ្សែរត់:</b> {from_prov} ➔ {to_prov}\n"
 			f"⏰ <b>Departure / ម៉ោងចេញ:</b> {dep_str}\n"
-			f"💺 <b>Seats / កៅអី:</b> {requested_seats} Seat(s)\n"
-			f"💵 <b>Total / តម្លៃសរុប:</b> ${float(total_price):.2f} ({payload.payment_method.upper()})\n\n"
-			f"👤 <b>Driver / អ្នកបើកបរ:</b> {driver_name} (📞 <code>{driver_phone}</code>)\n"
-			f"🚘 <b>Vehicle / រថយន្ត:</b> {vehicle_model} (<code>{plate_number}</code>)\n"
-			f"📍 <b>Pickup / ទីតាំងទទួល:</b> {payload.pickup_note or 'Door-to-door'}\n\n"
-			"Have a safe and pleasant journey with MyTravel!\n"
+			f"💺 <b>Seats / កៅអី:</b> {requested_seats} ({', '.join(f'#{s}' for s in allocated_seats)})\n"
+			f"💵 <b>Total / តម្លៃសរុប:</b> {price_display} ({normalized_pay.upper()})\n\n"
+			f"👤 <b>Driver / អ្នកបើកបរ:</b> {driver_name or '-'}"
+			+ (f" (📞 <code>{driver_phone}</code>)" if driver_phone else "")
+			+ "\n"
+			f"🚘 <b>Vehicle / រថយន្ត:</b> {vehicle_model or '-'}"
+			+ (f" (<code>{plate_number}</code>)" if plate_number else "")
+			+ "\n"
+			+ (f"📍 <b>Pickup / ទីតាំងទទួល:</b> {payload.pickup_note}\n\n" if payload.pickup_note else "\n")
+			+ "Have a safe and pleasant journey with MyTravel!\n"
 			"សូមអរគុណសម្រាប់ការធ្វើដំណើរជាមួយ MyTravel!"
 		)
 		_send_telegram_bot_message(
@@ -2699,10 +2757,10 @@ def telegram_miniapp_quick_book(
 					[
 						{
 							"text": "🎟 View Pass in Mini App",
-							"web_app": {"url": f"{base_url}/miniapp"},
+							"web_app": {"url": f"{base_url}/miniapp/"},
 						},
 						{
-							"text": "📍 Live GPS Radar",
+							"text": "📍 Open in App",
 							"url": f"{base_url}/app",
 						}
 					]
@@ -2712,15 +2770,18 @@ def telegram_miniapp_quick_book(
 
 	return {
 		"booking_id": booking_id_str,
+		"trip_id": trip_id_str,
 		"reference_code": ref_code,
-		"status": "confirmed",
-		"passenger_name": passenger.full_name,
-		"phone": passenger.phone,
+		"status": booking_status,
+		"pickup_status": booking_pickup_status,
+		"payment_status": booking_payment_status,
+		"passenger_name": passenger_full_name,
+		"phone": passenger_phone,
 		"seat_count": requested_seats,
 		"seat_numbers": allocated_seats,
 		"total_price": float(total_price),
 		"currency": currency,
-		"payment_method": payload.payment_method,
+		"payment_method": normalized_pay,
 		"departure_province": from_prov,
 		"destination_province": to_prov,
 		"departure_time": dep_time_iso,
@@ -2737,10 +2798,38 @@ def telegram_miniapp_custom_request(
 	payload: TelegramMiniAppCustomRequest,
 	db: Session = Depends(get_db),
 ) -> dict:
-	"""Handle on-demand custom ride requests when no scheduled trip exists."""
+	"""Persist on-demand custom ride / charter requests as a real SupportTicket in PostgreSQL."""
 	clean_phone = _clean_phone(payload.phone)
-	ref_code = f"REQ-{secrets.randbelow(8999) + 1000}"
-	# Optionally notify dispatch channel / bot admin
+	if len(clean_phone) < 6:
+		raise HTTPException(status_code=400, detail="Invalid phone number")
+
+	passenger = _find_user_by_phone(db, clean_phone)
+	if passenger is None:
+		passenger = User(
+			phone=clean_phone,
+			full_name=payload.passenger_name.strip() or f"Passenger ({clean_phone[-4:]})",
+			role="passenger",
+			password_hash=hash_password(f"tg_{secrets.token_hex(8)}"),
+			is_verified=True,
+		)
+		db.add(passenger)
+		db.flush()
+
+	ticket = SupportTicket(
+		user_id=passenger.id,
+		category="custom_ride_request",
+		message=(
+			f"[Telegram Mini App Request] Passenger: {payload.passenger_name.strip()} ({clean_phone}) | "
+			f"Route: {payload.departure_province} -> {payload.destination_province} | "
+			f"Seats: {payload.requested_seats} | Note: {payload.note or 'None'}"
+		),
+		status="open",
+	)
+	db.add(ticket)
+	db.commit()
+	db.refresh(ticket)
+
+	ref_code = f"REQ-{str(ticket.id)[:6].upper()}"
 	bot_token = get_telegram_bot_token()
 	if bot_token and payload.telegram_user_id:
 		_send_telegram_bot_message(
@@ -2751,11 +2840,12 @@ def telegram_miniapp_custom_request(
 			f"🚖 Route: <b>{payload.departure_province} ➔ {payload.destination_province}</b>\n"
 			f"💺 Seats / Car Type: <b>{payload.requested_seats} Seat(s)</b>\n"
 			f"📝 Note: {payload.note or 'Standard pickup'}\n\n"
-			"Our operations team is arranging a verified driver for you and will call shortly.\n"
-			"ក្រុមការងារកំពុងរៀបចំរថយន្ត និងទាក់ទងមកលោកអ្នកក្នុងពេលឆាប់ៗនេះ។"
+			"Our operations team has received your ticket and will contact you shortly.\n"
+			"ក្រុមការងារបានទទួលសំណើរបស់អ្នក និងទាក់ទងមកលោកអ្នកក្នុងពេលឆាប់ៗនេះ។"
 		)
 	return {
-		"status": "received",
+		"ticket_id": str(ticket.id),
+		"status": ticket.status,
 		"reference_code": ref_code,
 		"message": "Your ride request has been recorded.",
 	}
@@ -2764,40 +2854,65 @@ def telegram_miniapp_custom_request(
 @router.get("/telegram/miniapp/my-bookings")
 def telegram_miniapp_my_bookings(
 	phone: str | None = None,
-	limit: int = 10,
+	telegram_user_id: str | None = None,
+	limit: int = 20,
 	db: Session = Depends(get_db),
 ) -> list[dict]:
-	"""Retrieve past bookings by passenger phone number."""
-	if not phone:
+	"""Retrieve real passenger bookings from PostgreSQL by phone or linked telegram_user_id."""
+	resolved_phone = _clean_phone(phone) if phone else ""
+	if not resolved_phone and telegram_user_id:
+		otp_session = db.execute(
+			select(TelegramOtpSession)
+			.where(TelegramOtpSession.telegram_chat_id == str(telegram_user_id))
+			.order_by(TelegramOtpSession.created_at.desc())
+			.limit(1)
+		).scalar_one_or_none()
+		if otp_session and otp_session.phone:
+			resolved_phone = _clean_phone(otp_session.phone)
+
+	if not resolved_phone:
 		return []
-	clean_phone = _clean_phone(phone)
-	passenger = _find_user_by_phone(db, clean_phone)
+
+	passenger = _find_user_by_phone(db, resolved_phone)
 	if not passenger:
 		return []
+
 	bookings = db.execute(
 		select(Booking)
-		.options(selectinload(Booking.trip).selectinload(Trip.driver), selectinload(Booking.trip).selectinload(Trip.vehicle))
+		.options(
+			selectinload(Booking.trip).selectinload(Trip.driver),
+			selectinload(Booking.trip).selectinload(Trip.vehicle),
+		)
 		.where(Booking.passenger_id == passenger.id)
 		.order_by(Booking.created_at.desc())
-		.limit(max(1, min(limit, 30)))
+		.limit(max(1, min(limit, 50)))
 	).scalars().all()
 
 	result: list[dict] = []
 	for b in bookings:
 		t = b.trip
-		driver_name = t.driver.full_name if t and t.driver else "Verified Driver"
-		driver_phone = t.driver.phone if t and t.driver else "0966519115"
-		vehicle_model = t.vehicle.model if t and t.vehicle else "VIP Car"
-		plate_number = t.vehicle.plate_number if t and t.vehicle else "VIP"
+		if t is None:
+			continue
+		driver_name = t.driver.full_name if t.driver and t.driver.full_name else (t.driver.phone if t.driver else "")
+		driver_phone = t.driver.phone if t.driver and t.driver.phone else ""
+		vehicle_model = t.vehicle.model if t.vehicle and t.vehicle.model else ""
+		plate_number = t.vehicle.plate_number if t.vehicle and t.vehicle.plate_number else ""
 		result.append({
 			"booking_id": str(b.id),
-			"reference_code": f"MT-{str(b.id)[:4].upper()}",
-			"departure_province": t.departure_province if t else "Phnom Penh",
-			"destination_province": t.destination_province if t else "Siem Reap",
-			"departure_time": t.departure_time.isoformat() if t and t.departure_time else b.created_at.isoformat(),
+			"trip_id": str(t.id),
+			"reference_code": f"MT-{str(b.id)[:6].upper()}",
+			"passenger_name": passenger.full_name,
+			"phone": passenger.phone,
+			"departure_province": t.departure_province,
+			"destination_province": t.destination_province,
+			"departure_time": t.departure_time.isoformat() if t.departure_time else b.created_at.isoformat(),
 			"seat_count": len(b.seat_numbers) if b.seat_numbers else 1,
+			"seat_numbers": list(b.seat_numbers or []),
 			"total_price": float(b.total_price),
+			"currency": getattr(b, "currency", None) or getattr(t, "currency", DEFAULT_CURRENCY) or DEFAULT_CURRENCY,
 			"status": b.status,
+			"pickup_status": b.pickup_status,
+			"payment_status": b.payment_status,
 			"payment_method": b.payment_method,
 			"driver_name": driver_name,
 			"driver_phone": driver_phone,
@@ -3128,6 +3243,7 @@ def update_trip(
 def get_public_trips(
 	departure_province: str | None = None,
 	destination_province: str | None = None,
+	journey_date: str | None = None,
 	schedule: str | None = None,
 	search: str | None = None,
 	limit: int = Query(default=60, ge=1, le=100),
@@ -3135,11 +3251,11 @@ def get_public_trips(
 ) -> list[TripRead]:
 	_expire_stale_trips_and_bookings(db)
 	now_local = phnom_penh_now()
-	stmt = select(Trip).where(Trip.status.in_(["scheduled", "active"]))
-	if departure_province and departure_province.strip() and departure_province.strip().lower() != "all":
-		stmt = stmt.where(func.lower(Trip.departure_province) == departure_province.strip().lower())
-	if destination_province and destination_province.strip() and destination_province.strip().lower() != "all":
-		stmt = stmt.where(func.lower(Trip.destination_province) == destination_province.strip().lower())
+	stmt = (
+		select(Trip)
+		.options(selectinload(Trip.driver), selectinload(Trip.vehicle), selectinload(Trip.bookings))
+		.where(Trip.status.in_(["scheduled", "active"]))
+	)
 	if search and search.strip():
 		term = f"%{search.strip().lower()}%"
 		stmt = stmt.join(Trip.vehicle, isouter=True).join(Trip.driver, isouter=True).where(
@@ -3151,13 +3267,30 @@ def get_public_trips(
 				func.lower(User.full_name).like(term),
 			)
 		)
-	stmt = stmt.order_by(Trip.departure_time.asc()).limit(limit * 2)
+	stmt = stmt.order_by(Trip.departure_time.asc()).limit(max(limit * 4, 200))
 	trips = db.execute(stmt).scalars().all()
+
+	filter_dep = departure_province.strip() if departure_province and departure_province.strip().lower() != "all" else None
+	filter_dest = destination_province.strip() if destination_province and destination_province.strip().lower() != "all" else None
+
+	filter_date = None
+	if journey_date and journey_date.strip() and journey_date.strip().lower() != "all":
+		try:
+			dt_parsed, _ = _parse_iso_datetime_or_date(journey_date.strip())
+			filter_date = dt_parsed.date()
+		except ValueError:
+			filter_date = None
 
 	valid_trips: list[Trip] = []
 	for trip in trips:
+		if filter_dep and not _province_matches(trip.departure_province, filter_dep):
+			continue
+		if filter_dest and not _province_matches(trip.destination_province, filter_dest):
+			continue
 		dep_local = _trip_departure_local(trip)
 		if dep_local is None:
+			continue
+		if filter_date is not None and dep_local.date() != filter_date:
 			continue
 		# Only non-expired trips:
 		# - Scheduled trips must have departure_time in the future (not passed)
