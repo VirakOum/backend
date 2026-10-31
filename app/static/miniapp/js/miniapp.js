@@ -1183,42 +1183,10 @@
         });
     });
 
-    // 6. REAL PROVINCES API (/v1/api/addresses/provinces) & ROUTE FILTERS
+    // 6. ROUTE FILTERS & POPULAR PRESETS
     const selectDeparture = document.getElementById('selectDeparture');
     const selectDestination = document.getElementById('selectDestination');
     const btnSwapRoute = document.getElementById('btnSwapRoute');
-
-    async function loadRealProvinces() {
-        try {
-            const res = await fetch('/v1/api/addresses/provinces');
-            if (!res.ok) return;
-            const provinces = await res.json();
-            if (!Array.isArray(provinces) || provinces.length === 0) return;
-
-            [selectDeparture, selectDestination, drvFromSelect, drvToSelect].forEach(selectEl => {
-                if (!selectEl) return;
-                const currentVal = selectEl.value || 'all';
-                const existingValues = new Set(
-                    Array.from(selectEl.options).map(opt => opt.value.toLowerCase())
-                );
-                provinces.forEach(p => {
-                    const enName = (p.name || '').trim();
-                    const kmName = (p.description || '').trim();
-                    if (!enName) return;
-                    if (!existingValues.has(enName.toLowerCase())) {
-                        const opt = document.createElement('option');
-                        opt.value = enName;
-                        opt.textContent = kmName ? `📍 ${enName} (${kmName})` : `📍 ${enName}`;
-                        selectEl.appendChild(opt);
-                        existingValues.add(enName.toLowerCase());
-                    }
-                });
-                selectEl.value = currentVal;
-            });
-        } catch (err) {
-            console.warn('Could not load provinces list:', err);
-        }
-    }
 
     document.querySelectorAll('.popular-chip').forEach(chip => {
         chip.addEventListener('click', () => {
@@ -2133,7 +2101,6 @@
     // INITIALIZE MINI APP WITH REAL APIS
     setLanguage(currentLang);
     checkUserSessionAndRole();
-    loadRealProvinces();
     fetchAvailableRides();
     fetchVehicleModels();
     fetchMyBookings();
