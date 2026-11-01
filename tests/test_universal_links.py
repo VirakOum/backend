@@ -106,6 +106,14 @@ def test_trip_universal_link_not_found():
     assert f"mytravel://trip/{fake_id}" in response.text
 
 
+def test_live_tracking_universal_link_not_found():
+    fake_id = str(uuid.uuid4())
+    response = client.get(f"/live/{fake_id}", headers={"Accept": "text/html"})
+    assert response.status_code == 200
+    assert "My Travel" in response.text
+    assert f"mytravel://live/{fake_id}" in response.text
+
+
 def test_news_universal_link_not_found():
     fake_id = str(uuid.uuid4())
     response = client.get(f"/news/{fake_id}", headers={"Accept": "text/html"})

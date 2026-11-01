@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 from ..db import get_db
-from ..models import Trip, NewsArticle, SystemAd, Vehicle, UniversalLinkConfig, User
+from ..models import Trip, NewsArticle, SystemAd, Vehicle, UniversalLinkConfig, User, Booking
 
 router = APIRouter(tags=["universal_links"])
 
@@ -19,6 +19,8 @@ AASA_DATA = {
                 "paths": [
                     "/trips/*",
                     "/t/*",
+                    "/live/*",
+                    "/tracking/*",
                     "/news/*",
                     "/ads/*",
                     "/promotions/*",
@@ -988,3 +990,500 @@ def open_ad_universal_link(
     elif target_url:
         return RedirectResponse(url=f"{base_url}/{target_url}", status_code=302)
     return RedirectResponse(url=f"{base_url}/", status_code=302)
+
+
+@router.get("/live/{target_id}", response_class=HTMLResponse, include_in_schema=False)
+@router.get("/tracking/{target_id}", response_class=HTMLResponse, include_in_schema=False)
+@router.get("/t/{target_id}/live", response_class=HTMLResponse, include_in_schema=False)
+@router.get("/trips/{target_id}/live", response_class=HTMLResponse, include_in_schema=False)
+def open_live_tracking_universal_link(
+    target_id: str,
+    request: Request = None,  # type: ignore[assignment]
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    base_url = _resolve_base_url(request)
+    try:
+        target_uuid = uuid.UUID(target_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid tracking ID")
+
+    # 1. Check if target_uuid is a Trip
+    trip = db.get(Trip, target_uuid)
+    if not trip:
+        # 2. Check if target_uuid is a Booking
+        booking = db.get(Booking, target_uuid)
+        if booking:
+            trip = booking.trip
+
+    if not trip:
+        return _render_deep_link_page(
+            title="រកមិនឃើញការធ្វើដំណើរទេ / Trip Not Found",
+            description="ដំណើរកម្សាន្តនេះប្រហែលជាត្រូវបានបញ្ចប់ ឬលុបចេញពីប្រព័ន្ធ។ សូមស្វែងរកជើងដំណើរថ្មីៗនៅលើ My Travel!",
+            image_url=f"{base_url}/assets/logo.png",
+            app_deep_link=f"mytravel://live/{target_id}",
+            web_canonical_url=f"{base_url}/live/{target_id}",
+            badge_text="Live Tracking",
+        )
+
+    vehicle = db.get(Vehicle, trip.vehicle_id) if trip.vehicle_id else None
+    driver = db.get(User, trip.driver_id) if trip.driver_id else None
+
+    driver_name = driver.full_name if driver else "Verified Driver"
+    driver_phone = driver.phone if driver else ""
+    car_model = vehicle.model if vehicle else "Taxi"
+    plate_number = vehicle.plate_number if vehicle else ""
+
+    # Live coords or departure fallback
+    car_lat = float(trip.live_lat) if trip.live_lat is not None else float(trip.departure_lat or 11.5564)
+    car_lng = float(trip.live_lng) if trip.live_lng is not None else float(trip.departure_lng or 104.9282)
+    is_live = bool(trip.status == "active" and trip.live_lat is not None and trip.live_lng is not None)
+
+    app_deep_link = f"mytravel://live/{trip.id}"
+    web_canonical_url = f"{base_url}/live/{trip.id}"
+    miniapp_url = f"https://t.me/MyTravel_Taxi_bot/app?startapp=live_{trip.id}"
+
+    return _render_live_tracking_page(
+        trip=trip,
+        driver_name=driver_name,
+        driver_phone=driver_phone,
+        car_model=car_model,
+        plate_number=plate_number,
+        car_lat=car_lat,
+        car_lng=car_lng,
+        is_live=is_live,
+        app_deep_link=app_deep_link,
+        web_canonical_url=web_canonical_url,
+        miniapp_url=miniapp_url,
+        base_url=base_url,
+    )
+
+
+def _render_live_tracking_page(
+    trip: Trip,
+    driver_name: str,
+    driver_phone: str,
+    car_model: str,
+    plate_number: str,
+    car_lat: float,
+    car_lng: float,
+    is_live: bool,
+    app_deep_link: str,
+    web_canonical_url: str,
+    miniapp_url: str,
+    base_url: str,
+) -> HTMLResponse:
+    status_label = "🟢 កំពុងផ្សាយទីតាំងផ្ទាល់ / Moving Live" if is_live else "📍 ទីតាំងរថយន្ត / Vehicle Location"
+    route_text = f"{trip.departure_province} ➔ {trip.destination_province}"
+
+    html = f"""<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>📍 ទីតាំងធ្វើដំណើរផ្ទាល់ | Live Tracking - My Travel</title>
+    
+    <!-- OpenGraph & Twitter Cards -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{web_canonical_url}">
+    <meta property="og:title" content="📍 {route_text} - ទីតាំងធ្វើដំណើរផ្ទាល់">
+    <meta property="og:description" content="អ្នកបើកបរ: {driver_name} • {car_model} ({plate_number}) • ចុចដើម្បីមើលទីតាំងឡានផ្ទាល់នៅលើផែនទី My Travel">
+    <meta property="og:image" content="{base_url}/assets/logo.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="📍 {route_text} - Live Vehicle Tracking">
+    <meta name="twitter:description" content="Driver: {driver_name} • {car_model} ({plate_number})">
+
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Kantumruy+Pro:wght@400;500;600;700;800&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Leaflet.js for Interactive Mobile Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        :root {{
+            --bg: #0B0F19;
+            --card-bg: #151D2E;
+            --card-elevated: #1E293B;
+            --accent: #FFC83D;
+            --accent-hover: #F5B82E;
+            --text-primary: #F8FAFC;
+            --text-secondary: #94A3B8;
+            --border: rgba(255, 255, 255, 0.1);
+            --success: #10B981;
+            --radius-md: 14px;
+            --radius-lg: 18px;
+            --radius-full: 9999px;
+        }}
+        * {{ margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }}
+        body {{
+            background: var(--bg);
+            color: var(--text-primary);
+            font-family: 'Kantumruy Pro', 'Inter', -apple-system, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 12px;
+        }}
+        .top-nav {{
+            width: 100%;
+            max-width: 520px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }}
+        .brand-link {{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 800;
+            font-size: 15px;
+            font-family: 'Outfit', sans-serif;
+        }}
+        .brand-link img {{ width: 28px; height: 28px; border-radius: 8px; }}
+        .badge-live {{
+            background: rgba(16, 185, 129, 0.16);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.35);
+            padding: 5px 12px;
+            border-radius: var(--radius-full);
+            font-size: 11.5px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }}
+        .pulse-dot {{
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }}
+        @keyframes pulse {{
+            0% {{ transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }}
+            70% {{ transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }}
+            100% {{ transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }}
+        }}
+        .tracker-card {{
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            width: 100%;
+            max-width: 520px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+        }}
+        #liveMap {{
+            width: 100%;
+            height: 320px;
+            background: #1A2234;
+        }}
+        .tracker-body {{
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }}
+        .route-info {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--card-elevated);
+            padding: 12px 14px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+        }}
+        .route-info h3 {{
+            font-size: 1rem;
+            color: var(--text-primary);
+            font-weight: 700;
+        }}
+        .driver-card {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            padding: 12px 14px;
+            border-radius: var(--radius-md);
+        }}
+        .driver-meta {{
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }}
+        .driver-meta strong {{
+            font-size: 0.95rem;
+            color: var(--text-primary);
+        }}
+        .driver-meta span {{
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }}
+        .btn-call {{
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.35);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            font-size: 1rem;
+        }}
+        .telemetry-row {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }}
+        .telemetry-item {{
+            background: var(--card-elevated);
+            padding: 10px 12px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }}
+        .telemetry-item span {{ font-size: 0.75rem; color: var(--text-secondary); }}
+        .telemetry-item strong {{ font-size: 0.95rem; color: var(--accent); }}
+        .actions-col {{
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 4px;
+        }}
+        .btn-open-app {{
+            background: var(--accent);
+            color: #0F172A;
+            border: none;
+            border-radius: var(--radius-md);
+            padding: 14px;
+            font-size: 0.95rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(255, 200, 61, 0.35);
+        }}
+        .btn-open-miniapp {{
+            background: #2481CC;
+            color: #FFFFFF;
+            border: none;
+            border-radius: var(--radius-md);
+            padding: 12px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+            cursor: pointer;
+        }}
+        .custom-car-icon {{
+            background: #FFC83D;
+            color: #0F172A;
+            border: 2px solid #FFFFFF;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }}
+        .custom-user-icon {{
+            background: #3B82F6;
+            color: #FFFFFF;
+            border: 2px solid #FFFFFF;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }}
+    </style>
+</head>
+<body>
+    <div class="top-nav">
+        <a href="{base_url}" class="brand-link">
+            <img src="{base_url}/assets/logo.png" alt="My Travel Logo">
+            <span>My Travel</span>
+        </a>
+        <div class="badge-live">
+            <span class="pulse-dot"></span>
+            <span>{status_label}</span>
+        </div>
+    </div>
+
+    <div class="tracker-card">
+        <div id="liveMap"></div>
+        <div class="tracker-body">
+            <div class="route-info">
+                <div>
+                    <span style="font-size:0.75rem; color:var(--text-secondary);">ផ្លូវធ្វើដំណើរ / Route</span>
+                    <h3>{route_text}</h3>
+                </div>
+                <div style="text-align:right;">
+                    <span style="font-size:0.75rem; color:var(--text-secondary);">ស្ថានភាព / Status</span>
+                    <strong style="color:var(--accent); font-size:0.9rem; display:block;">{trip.status.upper()}</strong>
+                </div>
+            </div>
+
+            <div class="driver-card">
+                <div class="driver-meta">
+                    <strong>{driver_name}</strong>
+                    <span>{car_model} • <span style="color:var(--accent);">{plate_number}</span></span>
+                </div>
+                {f'<a href="tel:{driver_phone}" class="btn-call" title="Call Driver"><i class="fa-solid fa-phone"></i></a>' if driver_phone else ''}
+            </div>
+
+            <div class="telemetry-row">
+                <div class="telemetry-item">
+                    <span>ចម្ងាយពីអ្នក / Distance</span>
+                    <strong id="liveDistLabel">កំពុងគណនា...</strong>
+                </div>
+                <div class="telemetry-item">
+                    <span>ពេលវេលាមកដល់ / ETA</span>
+                    <strong id="liveEtaLabel">កំពុងគណនា...</strong>
+                </div>
+            </div>
+
+            <div class="actions-col">
+                <a href="{app_deep_link}" class="btn-open-app" id="btnLaunchApp">
+                    <i class="fa-solid fa-mobile-screen-button"></i>
+                    <span>បើកក្នុងកម្មវិធី My Travel (App)</span>
+                </a>
+                <a href="{miniapp_url}" class="btn-open-miniapp" target="_blank">
+                    <i class="fa-brands fa-telegram"></i>
+                    <span>បើកក្នុង Telegram Mini App</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Automatic Deep Link Handshake
+        const appDeepLink = "{app_deep_link}";
+        setTimeout(() => {{
+            window.location.href = appDeepLink;
+        }}, 400);
+
+        // Initialize Leaflet Interactive Map
+        let carLat = {car_lat};
+        let carLng = {car_lng};
+        let userLat = null;
+        let userLng = null;
+
+        const map = L.map('liveMap', {{ zoomControl: false }}).setView([carLat, carLng], 14);
+        L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }}).addTo(map);
+
+        // Car Marker
+        const carIcon = L.divIcon({{
+            className: 'custom-car-icon',
+            html: '<i class="fa-solid fa-car-side"></i>',
+            iconSize: [36, 36],
+            iconAnchor: [18, 18],
+        }});
+        const carMarker = L.marker([carLat, carLng], {{ icon: carIcon }}).addTo(map);
+        carMarker.bindPopup("<b>{car_model}</b><br>{plate_number}<br>{driver_name}");
+
+        let userMarker = null;
+        let routePolyline = null;
+
+        function updateDistanceAndRoute() {{
+            if (!userLat || !userLng) {{
+                document.getElementById('liveDistLabel').textContent = '{route_text}';
+                document.getElementById('liveEtaLabel').textContent = '{trip.status.capitalize()}';
+                return;
+            }}
+            // Haversine calculation
+            const R = 6371; // km
+            const dLat = (userLat - carLat) * Math.PI / 180;
+            const dLng = (userLng - carLng) * Math.PI / 180;
+            const a = Math.sin(dLat/2)*Math.sin(dLat/2) +
+                      Math.cos(carLat * Math.PI/180)*Math.cos(userLat * Math.PI/180) *
+                      Math.sin(dLng/2)*Math.sin(dLng/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const distKm = (R * c).toFixed(1);
+
+            document.getElementById('liveDistLabel').textContent = distKm + " km";
+            const etaMin = Math.max(2, Math.round(distKm * 2.2));
+            document.getElementById('liveEtaLabel').textContent = "~" + etaMin + " min";
+
+            if (routePolyline) map.removeLayer(routePolyline);
+            routePolyline = L.polyline([[carLat, carLng], [userLat, userLng]], {{
+                color: '#FFC83D',
+                weight: 3,
+                dashArray: '6, 8',
+                opacity: 0.85
+            }}).addTo(map);
+
+            const bounds = L.latLngBounds([[carLat, carLng], [userLat, userLng]]);
+            map.fitBounds(bounds, {{ padding: [40, 40] }});
+        }}
+
+        // Geolocation for User
+        if (navigator.geolocation) {{
+            navigator.geolocation.getCurrentPosition(pos => {{
+                userLat = pos.coords.latitude;
+                userLng = pos.coords.longitude;
+
+                const userIcon = L.divIcon({{
+                    className: 'custom-user-icon',
+                    html: '<i class="fa-solid fa-user"></i>',
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16],
+                }});
+                userMarker = L.marker([userLat, userLng], {{ icon: userIcon }}).addTo(map);
+                userMarker.bindPopup("<b>ទីតាំងរបស់អ្នក / You</b>");
+                updateDistanceAndRoute();
+            }}, err => {{
+                console.log("User geolocation not shared:", err);
+                updateDistanceAndRoute();
+            }});
+        }} else {{
+            updateDistanceAndRoute();
+        }}
+
+        // Live telemetry polling every 6 seconds
+        setInterval(async () => {{
+            try {{
+                const res = await fetch('/v1/api/travel/telegram/miniapp/trips/{trip.id}/live');
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.car_lat && data.car_lng) {{
+                    carLat = data.car_lat;
+                    carLng = data.car_lng;
+                    carMarker.setLatLng([carLat, carLng]);
+                    updateDistanceAndRoute();
+                }}
+            }} catch(e) {{}}
+        }}, 6000);
+    </script>
+</body>
+</html>"""
+    return HTMLResponse(content=html)
+

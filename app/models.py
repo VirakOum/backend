@@ -760,7 +760,7 @@ class UniversalLinkConfig(Base):
     apple_bundle_id: Mapped[str] = mapped_column(String(100), default="com.kh.mytravel.app", nullable=False)
     apple_paths: Mapped[Any] = mapped_column(
         JSON,
-        default=lambda: ["/trips/*", "/t/*", "/news/*", "/ads/*", "/promotions/*", "/travel/*"],
+        default=lambda: ["/trips/*", "/t/*", "/live/*", "/tracking/*", "/news/*", "/ads/*", "/promotions/*", "/travel/*"],
         nullable=False,
     )
     webcredentials_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

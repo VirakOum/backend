@@ -18,6 +18,10 @@
     <!-- FontAwesome 6 Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
+    <!-- Leaflet.js Interactive Mobile Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <!-- External Stylesheet with cache buster -->
     <link rel="stylesheet" href="/miniapp/css/miniapp.css?v=3.1">
     <link rel="icon" type="image/png" href="/assets/logo.png">
@@ -1131,13 +1135,92 @@
                 </div>
 
                 <div class="pass-actions-group">
+                    <button type="button" id="btnTrackLiveFromTicket" class="btn-primary-yellow full-width" style="background:#10B981; color:#FFFFFF; margin-bottom:8px;">
+                        <i class="fa-solid fa-map-location-dot"></i>
+                        <span>📍 មើលទីតាំងឡាន & ខ្ញុំផ្ទាល់ / Live Car & My Location</span>
+                    </button>
                     <button type="button" id="btnOpenInApp" class="btn-primary-yellow full-width">
-                        <i class="fa-solid fa-location-crosshairs"></i>
-                        <span data-i18n="btn_open_app_gps">បើកក្នុង App ដើម្បីមើលទីតាំង GPS Live</span>
+                        <i class="fa-solid fa-mobile-screen-button"></i>
+                        <span data-i18n="btn_open_app_gps">បើកក្នុង App (Universal Link Direct)</span>
                     </button>
                     <button type="button" id="btnCloseTicket" class="btn-secondary-soft full-width">
                         <span data-i18n="btn_done">រួចរាល់ / Done</span>
                     </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL 2.5: INTERACTIVE LIVE TRACKING MODAL (IN MINI APP) -->
+        <div id="liveTrackingModal" class="tma-modal-overlay" style="display:none;">
+            <div class="tma-bottom-sheet live-tracker-sheet">
+                <div class="sheet-drag-handle"></div>
+                <div class="live-tracker-header">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span class="live-pulse-radar"></span>
+                        <div>
+                            <h3 style="font-size:1rem; font-weight:800; color:var(--text-primary); margin:0;">
+                                📍 ទីតាំងឡាន & ខ្ញុំផ្ទាល់
+                            </h3>
+                            <span style="font-size:0.75rem; color:var(--text-secondary);">Live Vehicle & Passenger Tracking</span>
+                        </div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <button type="button" id="btnRefreshLiveMap" class="icon-circle-btn" title="Refresh GPS">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                        </button>
+                        <button type="button" id="btnCloseLiveTracking" class="btn-close-sheet" aria-label="Close">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="live-map-container-box">
+                    <div id="miniAppLiveMap"></div>
+                    <div class="map-floating-status" id="liveMapStatusBadge">
+                        <span class="status-live-dot"></span>
+                        <span id="liveStatusText">កំពុងស្វែងរក GPS...</span>
+                    </div>
+                </div>
+
+                <div class="live-tracker-info-body">
+                    <div class="tracker-route-card">
+                        <div>
+                            <span class="tracker-micro-label">ផ្លូវធ្វើដំណើរ / Route</span>
+                            <strong id="trackerRouteText" style="font-size:0.95rem; color:var(--text-primary); display:block;">-</strong>
+                        </div>
+                        <span id="trackerStatusBadge" class="pass-status-badge">Confirmed</span>
+                    </div>
+
+                    <div class="tracker-driver-card">
+                        <div class="driver-avatar-circle" style="background:rgba(255,200,61,0.15); color:var(--taxi-yellow); width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.1rem;">
+                            <i class="fa-solid fa-car-side"></i>
+                        </div>
+                        <div style="flex:1;">
+                            <strong id="trackerDriverName" style="color:var(--text-primary); font-size:0.92rem; display:block;">-</strong>
+                            <span id="trackerVehicleDetails" style="color:var(--text-secondary); font-size:0.8rem;">-</span>
+                        </div>
+                        <a href="tel:" id="trackerCallBtn" class="btn-phone-call" title="Call Driver">
+                            <i class="fa-solid fa-phone"></i>
+                        </a>
+                    </div>
+
+                    <div class="tracker-telemetry-grid">
+                        <div class="telemetry-card">
+                            <span class="tracker-micro-label"><i class="fa-solid fa-route"></i> ចម្ងាយពីអ្នក / Distance</span>
+                            <strong id="trackerDistVal" style="color:var(--taxi-yellow); font-size:1.05rem;">-</strong>
+                        </div>
+                        <div class="telemetry-card">
+                            <span class="tracker-micro-label"><i class="fa-regular fa-clock"></i> ពេលវេលាមកដល់ / ETA</span>
+                            <strong id="trackerEtaVal" style="color:var(--success-color); font-size:1.05rem;">-</strong>
+                        </div>
+                    </div>
+
+                    <div class="tracker-actions">
+                        <a href="#" id="btnOpenInAppUniversal" class="btn-primary-yellow full-width" style="text-decoration:none; justify-content:center; padding:12px 14px;">
+                            <i class="fa-solid fa-mobile-screen-button"></i>
+                            <span>បើកក្នុងកម្មវិធី My Travel (App)</span>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>

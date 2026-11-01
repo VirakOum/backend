@@ -437,3 +437,67 @@ def test_telegram_miniapp_register_role_and_link_existing_app_account():
     assert me_bopha.json()["user"]["phone"] == "012345678"
     assert me_bopha.json()["user"]["role"] == "passenger"
 
+
+def test_telegram_miniapp_trip_live_tracking_and_universal_link():
+    client = TestClient(app)
+
+    # 1. Register a driver
+    driver_reg = client.post(
+        "/v1/api/travel/telegram/miniapp/register",
+        json={
+            "full_name": "Meas Driver",
+            "phone": "089123999",
+            "role": "driver",
+            "telegram_user_id": "999888777",
+            "telegram_chat_id": "999888777",
+            "vehicle_model": "Toyota Prius 2012",
+            "plate_number": "2BC-9999",
+            "seat_type": 4,
+        },
+    )
+    assert driver_reg.status_code == 200
+    token = driver_reg.json()["auth_token"]
+
+    # 2. Driver creates a trip
+    trip_res = client.post(
+        "/v1/api/travel/telegram/miniapp/driver/trips",
+        json={
+            "auth_token": token,
+            "telegram_user_id": "999888777",
+            "departure_province": "Phnom Penh",
+            "destination_province": "Siem Reap",
+            "departure_time": "2026-11-02T08:00:00",
+            "total_seats": 4,
+            "price_per_seat": 40000.0,
+            "currency": "KHR",
+            "car_model": "Toyota Prius 2012",
+            "plate_number": "2BC-9999",
+        },
+    )
+    assert trip_res.status_code == 200
+    trip_id = trip_res.json()["trip_id"]
+
+    # 3. Call live telemetry endpoint
+    live_res = client.get(f"/v1/api/travel/telegram/miniapp/trips/{trip_id}/live")
+    assert live_res.status_code == 200
+    live_data = live_res.json()
+    assert live_data["trip_id"] == trip_id
+    assert live_data["departure_province"] == "Phnom Penh"
+    assert live_data["destination_province"] == "Siem Reap"
+    assert live_data["driver_name"] == "Meas Driver"
+    assert live_data["vehicle_model"] == "Toyota Prius 2012"
+    assert live_data["plate_number"] == "2BC-9999"
+    assert f"mytravel://live/{trip_id}" in live_data["app_deep_link"]
+    assert f"/live/{trip_id}" in live_data["universal_link"]
+    assert live_data["car_lat"] is not None
+    assert live_data["car_lng"] is not None
+
+    # 4. Open Universal Link in browser / HTTP GET
+    uni_res = client.get(f"/live/{trip_id}", headers={"Accept": "text/html"})
+    assert uni_res.status_code == 200
+    assert "Live Tracking" in uni_res.text or "ទីតាំងធ្វើដំណើរផ្ទាល់" in uni_res.text
+    assert f"mytravel://live/{trip_id}" in uni_res.text
+    assert "Toyota Prius 2012" in uni_res.text
+    assert "2BC-9999" in uni_res.text
+
+

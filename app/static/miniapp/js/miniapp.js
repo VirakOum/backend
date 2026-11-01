@@ -1778,14 +1778,25 @@
 
         if (ticketModal) ticketModal.style.display = 'flex';
 
+        const btnTrackLiveFromTicket = document.getElementById('btnTrackLiveFromTicket');
+        if (btnTrackLiveFromTicket) {
+            btnTrackLiveFromTicket.onclick = () => {
+                triggerHaptic('medium');
+                if (ticketModal) ticketModal.style.display = 'none';
+                openLiveTrackingModal(booking.trip_id, booking);
+            };
+        }
+
         if (btnOpenInApp) {
             btnOpenInApp.onclick = () => {
                 triggerHaptic('medium');
-                const schemeUrl = `mytravel://booking/${booking.booking_id || ''}`;
+                const tId = booking.trip_id || booking.booking_id || '';
+                const schemeUrl = `mytravel://live/${tId}`;
+                const universalUrl = `https://mytravel.taxi/live/${tId}`;
                 window.location.href = schemeUrl;
                 setTimeout(() => {
-                    window.location.href = '/app';
-                }, 1200);
+                    window.location.href = universalUrl;
+                }, 1000);
             };
         }
     }
@@ -1794,6 +1805,249 @@
         triggerHaptic('light');
         if (ticketModal) ticketModal.style.display = 'none';
     });
+
+    // ===================================================================
+    // 12.5. INTERACTIVE LIVE TRACKING MODAL (LEAFLET + REAL-TIME TELEMETRY)
+    // ===================================================================
+    const liveTrackingModal = document.getElementById('liveTrackingModal');
+    const btnCloseLiveTracking = document.getElementById('btnCloseLiveTracking');
+    const btnRefreshLiveMap = document.getElementById('btnRefreshLiveMap');
+    const miniAppLiveMapEl = document.getElementById('miniAppLiveMap');
+    const liveStatusText = document.getElementById('liveStatusText');
+    const trackerRouteText = document.getElementById('trackerRouteText');
+    const trackerStatusBadge = document.getElementById('trackerStatusBadge');
+    const trackerDriverName = document.getElementById('trackerDriverName');
+    const trackerVehicleDetails = document.getElementById('trackerVehicleDetails');
+    const trackerCallBtn = document.getElementById('trackerCallBtn');
+    const trackerDistVal = document.getElementById('trackerDistVal');
+    const trackerEtaVal = document.getElementById('trackerEtaVal');
+    const btnOpenInAppUniversal = document.getElementById('btnOpenInAppUniversal');
+
+    let leafMap = null;
+    let leafCarMarker = null;
+    let leafUserMarker = null;
+    let leafPolyline = null;
+    let liveTrackingPollTimer = null;
+    let activeTrackingTripId = null;
+    let cachedUserCoords = null;
+
+    function cleanupLiveTracking() {
+        if (liveTrackingPollTimer) {
+            clearInterval(liveTrackingPollTimer);
+            liveTrackingPollTimer = null;
+        }
+        activeTrackingTripId = null;
+        if (liveTrackingModal) liveTrackingModal.style.display = 'none';
+    }
+
+    btnCloseLiveTracking?.addEventListener('click', () => {
+        triggerHaptic('light');
+        cleanupLiveTracking();
+    });
+
+    btnRefreshLiveMap?.addEventListener('click', () => {
+        triggerHaptic('medium');
+        const icon = btnRefreshLiveMap.querySelector('i');
+        if (icon) {
+            icon.classList.add('fa-spin');
+            setTimeout(() => icon.classList.remove('fa-spin'), 1000);
+        }
+        if (activeTrackingTripId) {
+            pollLiveTripTelemetry(activeTrackingTripId, true);
+        }
+    });
+
+    async function pollLiveTripTelemetry(tripId, forceRefit = false) {
+        try {
+            const res = await fetch(`/v1/api/travel/telegram/miniapp/trips/${tripId}/live`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            updateLiveTrackingUI(data, forceRefit);
+        } catch (err) {
+            console.warn('Could not poll trip telemetry:', err);
+            if (liveStatusText) {
+                liveStatusText.textContent = currentLang === 'km' ? 'បាត់សញ្ញា GPS' : 'GPS Reconnecting...';
+            }
+        }
+    }
+
+    function updateLiveTrackingUI(data, forceRefit = false) {
+        if (!data) return;
+        const route = `${data.departure_province || 'Phnom Penh'} ➔ ${data.destination_province || 'Siem Reap'}`;
+        if (trackerRouteText) trackerRouteText.textContent = route;
+        if (trackerStatusBadge) {
+            const isMoving = data.is_live_moving;
+            trackerStatusBadge.textContent = isMoving ? 'Moving Live 🟢' : (data.status || 'Active');
+            trackerStatusBadge.style.background = isMoving ? 'rgba(16,185,129,0.2)' : 'rgba(255,200,61,0.2)';
+            trackerStatusBadge.style.color = isMoving ? '#10B981' : '#FFC83D';
+        }
+        if (trackerDriverName) trackerDriverName.textContent = data.driver_name || 'Verified Driver';
+        const vehParts = [data.vehicle_model, data.plate_number].filter(Boolean);
+        if (trackerVehicleDetails) trackerVehicleDetails.textContent = vehParts.length > 0 ? vehParts.join(' • ') : 'Taxi Service';
+
+        if (trackerCallBtn) {
+            if (data.driver_phone) {
+                trackerCallBtn.href = `tel:${data.driver_phone}`;
+                trackerCallBtn.style.display = 'flex';
+            } else {
+                trackerCallBtn.style.display = 'none';
+            }
+        }
+
+        if (btnOpenInAppUniversal) {
+            const appLink = data.app_deep_link || `mytravel://live/${data.trip_id}`;
+            const uniLink = data.universal_link || `https://mytravel.taxi/live/${data.trip_id}`;
+            btnOpenInAppUniversal.onclick = (e) => {
+                e.preventDefault();
+                triggerHaptic('medium');
+                window.location.href = appLink;
+                setTimeout(() => {
+                    window.location.href = uniLink;
+                }, 1000);
+            };
+        }
+
+        const carLat = Number(data.car_lat || 11.5564);
+        const carLng = Number(data.car_lng || 104.9282);
+
+        if (typeof L !== 'undefined' && miniAppLiveMapEl) {
+            if (!leafMap) {
+                leafMap = L.map('miniAppLiveMap', { zoomControl: false }).setView([carLat, carLng], 14);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '© OpenStreetMap'
+                }).addTo(leafMap);
+            }
+
+            // Invalidate size to ensure clean render inside modal
+            setTimeout(() => {
+                try { leafMap.invalidateSize(); } catch (_) {}
+            }, 100);
+
+            const carIcon = L.divIcon({
+                className: 'custom-leaflet-car-pin',
+                html: '<i class="fa-solid fa-car-side"></i>',
+                iconSize: [36, 36],
+                iconAnchor: [18, 18],
+            });
+
+            if (!leafCarMarker) {
+                leafCarMarker = L.marker([carLat, carLng], { icon: carIcon }).addTo(leafMap);
+            } else {
+                leafCarMarker.setLatLng([carLat, carLng]);
+            }
+            leafCarMarker.bindPopup(`<b>${data.driver_name || 'Driver'}</b><br>${vehParts.join(' • ')}`);
+
+            // Check passenger location
+            if (cachedUserCoords) {
+                const uLat = cachedUserCoords.latitude;
+                const uLng = cachedUserCoords.longitude;
+
+                const userIcon = L.divIcon({
+                    className: 'custom-leaflet-user-pin',
+                    html: '<i class="fa-solid fa-user"></i>',
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16],
+                });
+
+                if (!leafUserMarker) {
+                    leafUserMarker = L.marker([uLat, uLng], { icon: userIcon }).addTo(leafMap);
+                    leafUserMarker.bindPopup("<b>ទីតាំងរបស់អ្នក / Your Location</b>");
+                } else {
+                    leafUserMarker.setLatLng([uLat, uLng]);
+                }
+
+                // Haversine calculation
+                const R = 6371;
+                const dLat = (uLat - carLat) * Math.PI / 180;
+                const dLng = (uLng - carLng) * Math.PI / 180;
+                const a = Math.sin(dLat/2)*Math.sin(dLat/2) +
+                          Math.cos(carLat * Math.PI/180)*Math.cos(uLat * Math.PI/180) *
+                          Math.sin(dLng/2)*Math.sin(dLng/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                const distKm = (R * c).toFixed(1);
+
+                if (trackerDistVal) trackerDistVal.textContent = `${distKm} km`;
+                const etaMin = Math.max(2, Math.round(distKm * 2.2));
+                if (trackerEtaVal) trackerEtaVal.textContent = `~${etaMin} នាទី (min)`;
+
+                if (leafPolyline) leafMap.removeLayer(leafPolyline);
+                leafPolyline = L.polyline([[carLat, carLng], [uLat, uLng]], {
+                    color: '#FFC83D',
+                    weight: 3.5,
+                    dashArray: '6, 8',
+                    opacity: 0.85
+                }).addTo(leafMap);
+
+                if (forceRefit) {
+                    const bounds = L.latLngBounds([[carLat, carLng], [uLat, uLng]]);
+                    leafMap.fitBounds(bounds, { padding: [35, 35] });
+                }
+
+                if (liveStatusText) {
+                    liveStatusText.textContent = data.is_live_moving
+                        ? (currentLang === 'km' ? 'ឡានកំពុងធ្វើដំណើរ 🟢' : 'Car Moving Live 🟢')
+                        : (currentLang === 'km' ? 'GPS ទីតាំងរថយន្ត' : 'Vehicle GPS Found');
+                }
+            } else {
+                if (trackerDistVal) trackerDistVal.textContent = currentLang === 'km' ? 'ទីតាំងរថយន្តផ្ទាល់' : 'Car Live GPS';
+                if (trackerEtaVal) trackerEtaVal.textContent = data.status || 'Active';
+                if (forceRefit) {
+                    leafMap.setView([carLat, carLng], 14);
+                }
+                if (liveStatusText) {
+                    liveStatusText.textContent = currentLang === 'km' ? 'GPS ទីតាំងរថយន្ត' : 'Vehicle GPS Found';
+                }
+            }
+        }
+    }
+
+    function openLiveTrackingModal(tripId, bookingData) {
+        if (!tripId) return;
+        activeTrackingTripId = tripId;
+
+        if (liveTrackingModal) {
+            liveTrackingModal.style.display = 'flex';
+        }
+
+        // Preset data from booking if available
+        if (bookingData) {
+            if (trackerRouteText) trackerRouteText.textContent = `${bookingData.departure_province || '-'} ➔ ${bookingData.destination_province || '-'}`;
+            if (trackerDriverName) trackerDriverName.textContent = bookingData.driver_name || 'Driver';
+            const vehParts = [bookingData.vehicle_model, bookingData.plate_number].filter(Boolean);
+            if (trackerVehicleDetails) trackerVehicleDetails.textContent = vehParts.join(' • ');
+            if (trackerStatusBadge) trackerStatusBadge.textContent = bookingData.status || 'Confirmed';
+        }
+
+        if (liveStatusText) {
+            liveStatusText.textContent = currentLang === 'km' ? 'កំពុងស្វែងរក GPS...' : 'Locating GPS...';
+        }
+
+        // Request passenger's geolocation
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    cachedUserCoords = pos.coords;
+                    pollLiveTripTelemetry(tripId, true);
+                },
+                (err) => {
+                    console.log('User location declined or unavailable in Mini App:', err);
+                    pollLiveTripTelemetry(tripId, true);
+                },
+                { enableHighAccuracy: true, timeout: 8000 }
+            );
+        } else {
+            pollLiveTripTelemetry(tripId, true);
+        }
+
+        // Poll telemetry every 6 seconds while open
+        if (liveTrackingPollTimer) clearInterval(liveTrackingPollTimer);
+        liveTrackingPollTimer = setInterval(() => {
+            if (activeTrackingTripId) {
+                pollLiveTripTelemetry(activeTrackingTripId, false);
+            }
+        }, 6000);
+    }
 
     // 13. REAL VEHICLE MODELS FLEET (/v1/api/travel/vehicle-models)
     const vehicleModelsContainer = document.getElementById('vehicleModelsContainer');
@@ -2050,12 +2304,22 @@
                     <span><i class="fa-regular fa-clock"></i> ${formatDateTimeShort(bk.departure_time)} • 💺 ${seatText}</span>
                     <strong style="color:var(--taxi-yellow); font-size:0.95rem;">${priceInfo.primary}</strong>
                 </div>
-                <button type="button" class="btn-secondary-soft" style="padding:8px 14px; font-size:0.84rem;">
-                    <i class="fa-solid fa-receipt"></i> <span>${currentLang === 'km' ? 'បង្ហាញសំបុត្រឌីជីថល' : 'View Digital Pass'}</span>
-                </button>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px;">
+                    <button type="button" class="btn-track-live-card btn-primary-yellow" style="padding:9px 12px; font-size:0.82rem; display:flex; align-items:center; justify-content:center; gap:6px;">
+                        <i class="fa-solid fa-location-dot"></i> <span>${currentLang === 'km' ? 'មើលទីតាំងឡាន' : 'Track Car Live'}</span>
+                    </button>
+                    <button type="button" class="btn-view-ticket-card btn-secondary-soft" style="padding:9px 12px; font-size:0.82rem; display:flex; align-items:center; justify-content:center; gap:6px;">
+                        <i class="fa-solid fa-receipt"></i> <span>${currentLang === 'km' ? 'សំបុត្រឌីជីថល' : 'Digital Pass'}</span>
+                    </button>
+                </div>
             `;
 
-            card.querySelector('button')?.addEventListener('click', () => {
+            card.querySelector('.btn-track-live-card')?.addEventListener('click', () => {
+                triggerHaptic('medium');
+                openLiveTrackingModal(bk.trip_id, bk);
+            });
+
+            card.querySelector('.btn-view-ticket-card')?.addEventListener('click', () => {
                 triggerHaptic('light');
                 openTicketPass(bk);
             });
@@ -2105,5 +2369,20 @@
     fetchVehicleModels();
     fetchMyBookings();
     fetchSupportConfig();
+
+    // Check Telegram Deep Link Start Param (e.g. startapp=live_{trip_id})
+    try {
+        const startParam = tg?.initDataUnsafe?.start_param || new URLSearchParams(window.location.search).get('startapp') || '';
+        if (startParam) {
+            if (startParam.startsWith('live_') || startParam.startsWith('track_')) {
+                const targetTripId = startParam.replace(/^(live_|track_)/, '').trim();
+                if (targetTripId) {
+                    setTimeout(() => {
+                        openLiveTrackingModal(targetTripId);
+                    }, 800);
+                }
+            }
+        }
+    } catch (_) {}
 
 })();

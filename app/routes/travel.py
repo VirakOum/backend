@@ -3012,8 +3012,102 @@ def telegram_miniapp_my_bookings(
 			"driver_phone": driver_phone,
 			"vehicle_model": vehicle_model,
 			"plate_number": plate_number,
+			"trip_status": t.status,
+			"live_lat": float(t.live_lat) if t.live_lat is not None else None,
+			"live_lng": float(t.live_lng) if t.live_lng is not None else None,
+			"departure_lat": float(t.departure_lat) if t.departure_lat is not None else None,
+			"departure_lng": float(t.departure_lng) if t.departure_lng is not None else None,
+			"has_live_location": bool(t.live_lat is not None and t.live_lng is not None),
 		})
 	return result
+
+
+@router.get("/telegram/miniapp/trips/{trip_id}/live")
+def telegram_miniapp_trip_live_location(
+	trip_id: UUID,
+	booking_id: UUID | None = None,
+	db: Session = Depends(get_db),
+) -> dict:
+	"""Public telemetry endpoint for Telegram Mini App & Universal Link Live Tracking."""
+	trip = db.get(Trip, trip_id)
+	if not trip:
+		raise HTTPException(status_code=404, detail="Trip not found")
+
+	departure_lat, departure_lng = _trip_coordinates(trip)
+	if departure_lat is None or departure_lng is None:
+		prov_clean = (trip.departure_province or "").strip().lower()
+		coords_map = {
+			"phnom penh": (11.5564, 104.9282),
+			"siem reap": (13.3671, 103.8448),
+			"preah sihanouk": (10.6275, 103.5221),
+			"battambang": (13.0957, 103.2022),
+			"kampot": (10.6104, 104.1815),
+			"banteay meanchey": (13.5859, 102.9737),
+			"kampong cham": (11.9924, 105.4645),
+			"kampong thom": (12.7111, 104.8887),
+			"kandal": (11.4588, 104.9458),
+			"koh kong": (11.6153, 102.9838),
+			"pursat": (12.5388, 103.9192),
+			"kampong chhnang": (12.2500, 104.6667),
+			"kampong speu": (11.4533, 104.5209),
+			"takeo": (10.9908, 104.7850),
+			"prey veng": (11.4851, 105.3253),
+			"svay rieng": (11.0879, 105.7993),
+			"kratie": (12.4881, 106.0188),
+			"stung treng": (13.5259, 105.9683),
+			"ratanakiri": (13.7394, 106.9873),
+			"mondulkiri": (12.4558, 107.1881),
+			"preah vihear": (13.8073, 104.9805),
+			"oddar meanchey": (14.1818, 103.5176),
+			"kep": (10.4829, 104.3167),
+			"pailin": (12.8489, 102.6093),
+			"tboung khmum": (11.9167, 105.6500),
+		}
+		for p_name, coords in coords_map.items():
+			if p_name in prov_clean or prov_clean in p_name:
+				departure_lat, departure_lng = coords
+				break
+		if departure_lat is None:
+			departure_lat, departure_lng = 11.5564, 104.9282
+
+	live_lat = float(trip.live_lat) if trip.live_lat is not None else None
+	live_lng = float(trip.live_lng) if trip.live_lng is not None else None
+
+	driver = trip.driver
+	vehicle = trip.vehicle
+
+	booking_data = None
+	if booking_id:
+		booking = db.get(Booking, booking_id)
+		if booking and booking.trip_id == trip.id:
+			booking_data = {
+				"booking_id": str(booking.id),
+				"passenger_name": booking.passenger_name,
+				"pickup_status": booking.pickup_status,
+				"status": booking.status,
+			}
+
+	return {
+		"trip_id": str(trip.id),
+		"status": trip.status,
+		"departure_province": trip.departure_province,
+		"destination_province": trip.destination_province,
+		"departure_lat": departure_lat,
+		"departure_lng": departure_lng,
+		"car_lat": live_lat if live_lat is not None else departure_lat,
+		"car_lng": live_lng if live_lng is not None else departure_lng,
+		"is_live_moving": bool(trip.status == "active" and live_lat is not None and live_lng is not None),
+		"driver_name": driver.full_name if driver else "Verified Driver",
+		"driver_phone": driver.phone if driver else "",
+		"driver_avatar": driver.avatar_url if driver else None,
+		"vehicle_model": vehicle.model if vehicle else "",
+		"plate_number": vehicle.plate_number if vehicle else "",
+		"color": vehicle.color if vehicle else "",
+		"app_deep_link": f"mytravel://live/{trip.id}",
+		"universal_link": f"https://mytravel.taxi/live/{trip.id}",
+		"miniapp_link": f"https://t.me/MyTravel_Taxi_bot/app?startapp=live_{trip.id}",
+		"booking": booking_data,
+	}
 
 
 class TelegramMiniAppCheckPhoneRequest(BaseModel):
