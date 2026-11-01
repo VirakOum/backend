@@ -2370,18 +2370,40 @@
     fetchMyBookings();
     fetchSupportConfig();
 
-    // Check Telegram Deep Link Start Param (e.g. startapp=live_{trip_id})
+    // Check Telegram Deep Link Start Param & URL parameters (e.g. ?booking_id=... or startapp=live_{trip_id})
     try {
-        const startParam = tg?.initDataUnsafe?.start_param || new URLSearchParams(window.location.search).get('startapp') || '';
+        const urlParams = new URLSearchParams(window.location.search);
+        let targetBookingId = urlParams.get('booking_id') || urlParams.get('ticket_id') || '';
+        let targetTripId = urlParams.get('trip_id') || '';
+        const startParam = tg?.initDataUnsafe?.start_param || urlParams.get('startapp') || '';
+
         if (startParam) {
             if (startParam.startsWith('live_') || startParam.startsWith('track_')) {
-                const targetTripId = startParam.replace(/^(live_|track_)/, '').trim();
-                if (targetTripId) {
-                    setTimeout(() => {
-                        openLiveTrackingModal(targetTripId);
-                    }, 800);
-                }
+                targetTripId = startParam.replace(/^(live_|track_)/, '').trim();
+            } else if (startParam.startsWith('booking_') || startParam.startsWith('ticket_') || startParam.startsWith('pass_') || startParam.startsWith('bk_')) {
+                targetBookingId = startParam.replace(/^(booking_|ticket_|pass_|bk_)/, '').trim();
             }
+        }
+
+        if (targetBookingId) {
+            switchTab('my-rides');
+            fetch(`/v1/api/travel/telegram/miniapp/my-bookings?booking_id=${encodeURIComponent(targetBookingId)}`)
+                .then(r => r.ok ? r.json() : [])
+                .then(items => {
+                    if (Array.isArray(items) && items.length > 0) {
+                        const bk = items[0];
+                        if (!cachedMyBookings.some(x => x.booking_id === bk.booking_id)) {
+                            cachedMyBookings.unshift(bk);
+                            renderMyBookingsList(cachedMyBookings);
+                        }
+                        setTimeout(() => openTicketPass(bk), 350);
+                    }
+                })
+                .catch(e => console.warn('Could not auto-open booking pass:', e));
+        } else if (targetTripId && (startParam.startsWith('live_') || startParam.startsWith('track_') || urlParams.get('live') === '1')) {
+            setTimeout(() => {
+                openLiveTrackingModal(targetTripId);
+            }, 600);
         }
     } catch (_) {}
 

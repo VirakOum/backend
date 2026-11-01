@@ -227,6 +227,19 @@ def test_telegram_miniapp_quick_book_and_my_bookings_real_db():
     assert len(bookings_by_tg) == 1
     assert bookings_by_tg[0]["booking_id"] == data["booking_id"]
 
+    # 5.1 Retrieve My Bookings by booking_id
+    my_res_id = client.get(f"/v1/api/travel/telegram/miniapp/my-bookings?booking_id={data['booking_id']}")
+    assert my_res_id.status_code == 200
+    bookings_by_id = my_res_id.json()
+    assert len(bookings_by_id) == 1
+    assert bookings_by_id[0]["booking_id"] == data["booking_id"]
+
+    # 5.2 Retrieve My Bookings by reference code
+    ref_code = bookings_by_id[0]["reference_code"]
+    my_res_ref = client.get(f"/v1/api/travel/telegram/miniapp/my-bookings?booking_id={ref_code}")
+    assert my_res_ref.status_code == 200
+    assert len(my_res_ref.json()) == 1
+
 
 def test_telegram_miniapp_custom_request_persists_support_ticket():
     client = TestClient(app)

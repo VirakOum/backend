@@ -17,7 +17,7 @@ if __name__ == "__main__" and not __package__:
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import select, func, inspect, or_, and_, delete
+from sqlalchemy import select, func, inspect, or_, and_, delete, cast as sql_cast, String as SqlString
 from sqlalchemy.orm import Session, selectinload
 from uuid import UUID
 from datetime import date, datetime, time, timedelta
@@ -2850,12 +2850,18 @@ def telegram_miniapp_quick_book(
 				"inline_keyboard": [
 					[
 						{
-							"text": "🎟 View Pass in Mini App",
-							"web_app": {"url": f"{base_url}/miniapp/"},
+							"text": "🎟 សំបុត្រ / View Pass",
+							"web_app": {"url": f"{base_url}/miniapp/?booking_id={booking_id_str}&trip_id={trip_id_str}"},
 						},
 						{
-							"text": "📍 Open in App",
-							"url": f"{base_url}/app",
+							"text": "📍 ទីតាំងឡាន / Live Map",
+							"web_app": {"url": f"{base_url}/miniapp/?startapp=live_{trip_id_str}&booking_id={booking_id_str}&trip_id={trip_id_str}"},
+						}
+					],
+					[
+						{
+							"text": "🚖 បើកក្នុង MyTravel App / Open in App ↗",
+							"url": f"{base_url}/live/{trip_id_str}?booking_id={booking_id_str}",
 						}
 					]
 				]
@@ -2949,10 +2955,76 @@ def telegram_miniapp_custom_request(
 def telegram_miniapp_my_bookings(
 	phone: str | None = None,
 	telegram_user_id: str | None = None,
+	booking_id: str | None = None,
 	limit: int = 20,
 	db: Session = Depends(get_db),
 ) -> list[dict]:
-	"""Retrieve real passenger bookings from PostgreSQL by phone or linked telegram_user_id."""
+	"""Retrieve real passenger bookings from PostgreSQL by booking_id, phone, or linked telegram_user_id."""
+	if booking_id:
+		clean_b_id = booking_id.strip()
+		if clean_b_id.upper().startswith("MT-"):
+			clean_b_id = clean_b_id[3:].strip()
+		parsed_uuid: UUID | None = None
+		try:
+			parsed_uuid = UUID(clean_b_id)
+		except Exception:
+			parsed_uuid = None
+
+		query = (
+			select(Booking)
+			.options(
+				selectinload(Booking.trip).selectinload(Trip.driver),
+				selectinload(Booking.trip).selectinload(Trip.vehicle),
+				selectinload(Booking.passenger),
+			)
+		)
+		if parsed_uuid is not None:
+			query = query.where(Booking.id == parsed_uuid)
+		else:
+			query = query.where(
+				or_(
+					sql_cast(Booking.id, SqlString).ilike(f"{clean_b_id}%"),
+					sql_cast(Booking.id, SqlString).ilike(f"%{clean_b_id}%"),
+				)
+			)
+		b = db.execute(query.order_by(Booking.created_at.desc()).limit(1)).scalar_one_or_none()
+		if b and b.trip:
+			t = b.trip
+			passenger_name = b.passenger.full_name if b.passenger else ""
+			passenger_phone = b.passenger.phone if b.passenger else ""
+			driver_name = t.driver.full_name if t.driver and t.driver.full_name else (t.driver.phone if t.driver else "")
+			driver_phone = t.driver.phone if t.driver and t.driver.phone else ""
+			vehicle_model = t.vehicle.model if t.vehicle and t.vehicle.model else ""
+			plate_number = t.vehicle.plate_number if t.vehicle and t.vehicle.plate_number else ""
+			return [{
+				"booking_id": str(b.id),
+				"trip_id": str(t.id),
+				"reference_code": f"MT-{str(b.id)[:6].upper()}",
+				"passenger_name": passenger_name,
+				"phone": passenger_phone,
+				"departure_province": t.departure_province,
+				"destination_province": t.destination_province,
+				"departure_time": t.departure_time.isoformat() if t.departure_time else b.created_at.isoformat(),
+				"seat_count": len(b.seat_numbers) if b.seat_numbers else 1,
+				"seat_numbers": list(b.seat_numbers or []),
+				"total_price": float(b.total_price),
+				"currency": getattr(b, "currency", None) or getattr(t, "currency", DEFAULT_CURRENCY) or DEFAULT_CURRENCY,
+				"status": b.status,
+				"pickup_status": b.pickup_status,
+				"payment_status": b.payment_status,
+				"payment_method": b.payment_method,
+				"driver_name": driver_name,
+				"driver_phone": driver_phone,
+				"vehicle_model": vehicle_model,
+				"plate_number": plate_number,
+				"trip_status": t.status,
+				"live_lat": float(t.live_lat) if t.live_lat is not None else None,
+				"live_lng": float(t.live_lng) if t.live_lng is not None else None,
+				"departure_lat": float(t.departure_lat) if t.departure_lat is not None else None,
+				"departure_lng": float(t.departure_lng) if t.departure_lng is not None else None,
+				"has_live_location": bool(t.live_lat is not None and t.live_lng is not None),
+			}]
+
 	resolved_phone = _clean_phone(phone) if phone else ""
 	if not resolved_phone and telegram_user_id:
 		otp_session = db.execute(
