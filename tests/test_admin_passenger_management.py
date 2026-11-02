@@ -49,7 +49,7 @@ def compile_array_sqlite(type_, compiler, **kw):
 
 from app.main import app
 from app.db import Base, get_db
-from app.models import User, Trip, Booking, Vehicle, PassengerQuickPlace
+from app.models import User, Trip, Booking, Vehicle, PassengerQuickPlace, DriverWallet, DriverWalletEntry
 from app.auth import hash_password
 
 test_engine = create_engine(
@@ -310,3 +310,155 @@ def test_close_and_reopen_passenger_account():
         "password": "Pass123!"
     })
     assert login_again.status_code == 200
+
+
+def test_delete_driver_via_drivers_endpoint():
+    with TestingSessionLocal() as db:
+        driver = User(
+            phone="012777001",
+            full_name="Driver Heng",
+            role="driver",
+            password_hash=hash_password("Pass123!"),
+            is_verified=True,
+        )
+        passenger = User(
+            phone="012777002",
+            full_name="Passenger Dara",
+            role="passenger",
+            password_hash=hash_password("Pass123!"),
+            is_verified=True,
+        )
+        db.add_all([driver, passenger])
+        db.commit()
+        db.refresh(driver)
+        db.refresh(passenger)
+
+        vehicle = Vehicle(
+            owner_id=driver.id,
+            plate_number="2AB-9999",
+            seat_type=4,
+            model="Camry",
+            color="Silver",
+        )
+        db.add(vehicle)
+        db.commit()
+        db.refresh(vehicle)
+
+        # Create outward trip
+        outward_trip = Trip(
+            driver_id=driver.id,
+            vehicle_id=vehicle.id,
+            departure_province="Phnom Penh",
+            destination_province="Siem Reap",
+            departure_time=datetime.now(timezone.utc),
+            price_per_seat=45000,
+            currency="KHR",
+            total_seats=4,
+            available_seats=3,
+            status="scheduled",
+        )
+        db.add(outward_trip)
+        db.commit()
+        db.refresh(outward_trip)
+
+        # Create return trip linked by return_trip_id
+        return_trip = Trip(
+            driver_id=driver.id,
+            vehicle_id=vehicle.id,
+            return_trip_id=outward_trip.id,
+            departure_province="Siem Reap",
+            destination_province="Phnom Penh",
+            departure_time=datetime.now(timezone.utc),
+            price_per_seat=45000,
+            currency="KHR",
+            total_seats=4,
+            available_seats=4,
+            status="scheduled",
+        )
+        db.add(return_trip)
+        db.commit()
+        db.refresh(return_trip)
+
+        # Set outward trip's return_trip_id to create cycle / reference
+        outward_trip.return_trip_id = return_trip.id
+        db.commit()
+
+        # Create a booking on outward trip
+        booking = Booking(
+            trip_id=outward_trip.id,
+            passenger_id=passenger.id,
+            seat_numbers=[1],
+            total_price=45000,
+            currency="KHR",
+            payment_method="cash",
+            payment_status="pending",
+            pickup_status="pending",
+            status="pending",
+        )
+        db.add(booking)
+        db.commit()
+        db.refresh(booking)
+
+        # Create driver wallet and entry
+        wallet = DriverWallet(
+            driver_id=driver.id,
+            total_owed_khr=5000,
+            total_owed_usd=0,
+            is_locked=False,
+        )
+        db.add(wallet)
+        db.commit()
+
+        wallet_entry = DriverWalletEntry(
+            driver_id=driver.id,
+            booking_id=booking.id,
+            trip_id=outward_trip.id,
+            entry_type="trip_service_fee",
+            payment_method="cash",
+            membership_code_snapshot="normal",
+            membership_label_snapshot="Normal",
+            service_fee_khr=5000,
+            status="owed",
+        )
+        db.add(wallet_entry)
+        db.commit()
+
+        driver_id = driver.id
+        passenger_id = passenger.id
+        vehicle_id = vehicle.id
+        outward_trip_id = outward_trip.id
+        return_trip_id = return_trip.id
+        booking_id = booking.id
+
+    # 1. Reject passenger on driver delete endpoint (400)
+    bad_res = client.delete(f"/v1/api/travel/admin/drivers/{passenger_id}")
+    assert bad_res.status_code == 400
+    assert "Only driver accounts can be deleted" in bad_res.json()["detail"]
+
+    # 2. Reject non-existent user on driver delete endpoint (404)
+    fake_id = uuid.uuid4()
+    not_found_res = client.delete(f"/v1/api/travel/admin/drivers/{fake_id}")
+    assert not_found_res.status_code == 404
+
+    # 3. Successfully delete driver via driver endpoint
+    del_res = client.delete(f"/v1/api/travel/admin/drivers/{driver_id}")
+    assert del_res.status_code == 200
+    assert del_res.json()["status"] == "success"
+    assert del_res.json()["id"] == str(driver_id)
+
+    # 4. Verify DB state
+    with TestingSessionLocal() as db:
+        # Driver is deleted
+        assert db.get(User, driver_id) is None
+        # Vehicle is deleted
+        assert db.get(Vehicle, vehicle_id) is None
+        # Trips are deleted
+        assert db.get(Trip, outward_trip_id) is None
+        assert db.get(Trip, return_trip_id) is None
+        # Bookings on driver's trip are deleted
+        assert db.get(Booking, booking_id) is None
+        # Wallet and entries are deleted
+        assert db.query(DriverWallet).filter(DriverWallet.driver_id == driver_id).first() is None
+        assert db.query(DriverWalletEntry).filter(DriverWalletEntry.driver_id == driver_id).all() == []
+        # Passenger account still exists
+        assert db.get(User, passenger_id) is not None

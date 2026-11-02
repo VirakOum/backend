@@ -252,6 +252,11 @@ document.addEventListener('DOMContentLoaded', () => {
             btn_confirm_delete: "Delete Permanently",
             btn_cancel: "Cancel",
             btn_close: "Close",
+            confirm_delete_driver_title: "Delete Driver Account?",
+            confirm_delete_driver_msg: "Are you sure you want to permanently delete driver {name} ({phone})? All associated vehicles, trips, and wallet records will be removed.",
+            toast_driver_deleted: "Driver account deleted successfully.",
+            toast_driver_delete_failed: "Failed to delete driver account.",
+            btn_delete_driver: "Delete Driver",
             confirm_delete_passenger_title: "Delete Passenger Account?",
             confirm_delete_passenger_msg: "Are you sure you want to permanently delete passenger {name} ({phone})? All associated bookings and data will be removed.",
             toast_passenger_deleted: "Passenger account deleted successfully.",
@@ -472,6 +477,11 @@ document.addEventListener('DOMContentLoaded', () => {
             btn_confirm_delete: "លុបជាអចិន្ត្រៃយ៍",
             btn_cancel: "បោះបង់",
             btn_close: "បិទ",
+            confirm_delete_driver_title: "លុបគណនីអ្នកបើកបរ?",
+            confirm_delete_driver_msg: "តើអ្នកពិតជាចង់លុបគណនីអ្នកបើកបរ {name} ({phone}) នេះជាអចិន្ត្រៃយ៍មែនទេ? រាល់យានយន្ត ជើងដំណើរ និងទិន្នន័យកាបូបពាក់ព័ន្ធនឹងត្រូវលុបចេញ។",
+            toast_driver_deleted: "គណនីអ្នកបើកបរត្រូវបានលុបដោយជោគជ័យ។",
+            toast_driver_delete_failed: "មិនអាចលុបគណនីអ្នកបើកបរបានទេ។",
+            btn_delete_driver: "លុបអ្នកបើកបរ",
             confirm_delete_passenger_title: "លុបគណនីអ្នកដំណើរ?",
             confirm_delete_passenger_msg: "តើអ្នកពិតជាចង់លុបគណនីអ្នកដំណើរ {name} ({phone}) នេះជាអចិន្ត្រៃយ៍មែនទេ? រាល់ការកក់ និងទិន្នន័យពាក់ព័ន្ធនឹងត្រូវលុបចេញ។",
             toast_passenger_deleted: "គណនីអ្នកដំណើរត្រូវបានលុបដោយជោគជ័យ។",
@@ -2087,6 +2097,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button class="btn btn-primary btn-chip" style="flex-grow:0; padding: 0.4rem 0.8rem;" onclick="openSettleModal('${driver.id}', '${driver.full_name}', ${walletOwedKhr}, ${walletOwedUsd})">
                             <i class="fa-solid fa-hand-holding-dollar"></i> ${dict.btn_settle}
                         </button>
+                        <button class="btn btn-chip danger" style="flex-grow:0; padding: 0.4rem 0.8rem;" onclick="confirmDeleteDriver('${driver.id}', '${(driver.full_name || '').replace(/'/g, "\\'")}', '${driver.phone || ''}')" title="${dict.btn_delete_driver || 'Delete Driver'}">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
                     </div>
                 </div>
             `;
@@ -2268,6 +2281,100 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast(dict.toast_network_error, true);
         }
     });
+
+    // Modal: Confirm Delete Driver
+    const confirmDeleteDriverModal = document.getElementById('confirm-delete-driver-modal');
+    const btnCancelDeleteDriver = document.getElementById('btn-cancel-delete-driver');
+    const btnConfirmDeleteDriver = document.getElementById('btn-confirm-delete-driver');
+    let pendingDeleteDriverId = null;
+
+    function closeDriverDeleteModal() {
+        if (confirmDeleteDriverModal) confirmDeleteDriverModal.classList.remove('active');
+        pendingDeleteDriverId = null;
+    }
+
+    if (btnCancelDeleteDriver) btnCancelDeleteDriver.addEventListener('click', closeDriverDeleteModal);
+    if (confirmDeleteDriverModal) {
+        confirmDeleteDriverModal.addEventListener('click', (e) => {
+            if (e.target === confirmDeleteDriverModal) closeDriverDeleteModal();
+        });
+    }
+
+    window.confirmDeleteDriver = (id, name, phone) => {
+        pendingDeleteDriverId = id;
+        const d = (currentDrivers || []).find(item => item.id === id);
+        const driverName = name || (d ? d.full_name : 'Driver');
+        const driverPhone = phone || (d ? d.phone : '');
+        const dict = TRANSLATIONS[currentLanguage] || TRANSLATIONS.en;
+
+        const nameEl = document.getElementById('delete-driver-name');
+        const phoneEl = document.getElementById('delete-driver-phone');
+        const msgEl = document.getElementById('delete-driver-confirm-msg');
+
+        if (nameEl) nameEl.textContent = driverName;
+        if (phoneEl) phoneEl.textContent = driverPhone;
+        if (msgEl) {
+            msgEl.textContent = (dict.confirm_delete_driver_msg || 'Are you sure you want to permanently delete driver {name} ({phone})?')
+                .replace('{name}', driverName)
+                .replace('{phone}', driverPhone);
+        }
+
+        if (confirmDeleteDriverModal) {
+            confirmDeleteDriverModal.classList.add('active');
+        } else {
+            const confirmPrompt = (dict.confirm_delete_driver_msg || 'Are you sure you want to delete driver {name} ({phone})?')
+                .replace('{name}', driverName)
+                .replace('{phone}', driverPhone);
+            if (window.confirm(confirmPrompt)) {
+                fetch(`${API_BASE}/drivers/${id}`, { method: 'DELETE' })
+                    .then(res => {
+                        if (res.ok) {
+                            showToast(dict.toast_driver_deleted || 'Driver deleted successfully.');
+                            loadDrivers();
+                            loadSummary();
+                        } else {
+                            showToast(dict.toast_driver_delete_failed || 'Failed to delete driver.', true);
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Delete driver error:', err);
+                        showToast(dict.toast_driver_delete_failed || 'Failed to delete driver.', true);
+                    });
+            }
+        }
+    };
+    window.deleteDriver = window.confirmDeleteDriver;
+
+    if (btnConfirmDeleteDriver) {
+        btnConfirmDeleteDriver.addEventListener('click', async () => {
+            if (!pendingDeleteDriverId) return;
+            const dict = TRANSLATIONS[currentLanguage] || TRANSLATIONS.en;
+            btnConfirmDeleteDriver.disabled = true;
+            btnConfirmDeleteDriver.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> ' + (dict.btn_confirm_delete || 'Deleting...');
+
+            try {
+                const response = await fetch(`${API_BASE}/drivers/${pendingDeleteDriverId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    showToast(dict.toast_driver_deleted || 'Driver account deleted successfully.');
+                    closeDriverDeleteModal();
+                    await loadDrivers();
+                    loadSummary();
+                } else {
+                    const err = await response.json().catch(() => ({}));
+                    showToast(err.detail || dict.toast_driver_delete_failed || 'Failed to delete driver.', true);
+                }
+            } catch (error) {
+                console.error('Error deleting driver:', error);
+                showToast(dict.toast_driver_delete_failed || 'Failed to delete driver.', true);
+            } finally {
+                btnConfirmDeleteDriver.disabled = false;
+                btnConfirmDeleteDriver.innerHTML = '<i class="fa-solid fa-trash-can"></i> <span>' + (dict.btn_confirm_delete || 'Delete Permanently') + '</span>';
+            }
+        });
+    }
 
     // Passenger Management State
     let passengerStatusFilter = 'all';

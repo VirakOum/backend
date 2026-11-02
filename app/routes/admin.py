@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field, ConfigDict
-from sqlalchemy import select, func, or_, delete
+from sqlalchemy import select, func, or_, delete, update
 from sqlalchemy.orm import Session
 
 from ..db import get_db
@@ -38,6 +38,7 @@ from ..models import (
     NotificationPreference,
     SupportTicket,
     PassengerQuickPlace,
+    TelegramOtpSession,
     phnom_penh_now
 )
 from ..schemas import (
@@ -464,13 +465,21 @@ def get_passenger_bookings(passenger_id: uuid.UUID, db: Session = Depends(get_db
     return result
 
 
-def _delete_admin_passenger_or_user(target_id: uuid.UUID, db: Session, passenger_only: bool = False) -> Any:
+def _delete_admin_passenger_or_user(
+    target_id: uuid.UUID,
+    db: Session,
+    passenger_only: bool = False,
+    allowed_role: str | None = None,
+) -> Any:
     user = db.get(User, target_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
     if passenger_only and user.role != "passenger":
         raise HTTPException(status_code=400, detail="Only passenger accounts can be deleted via passenger endpoint")
+
+    if allowed_role and user.role != allowed_role:
+        raise HTTPException(status_code=400, detail=f"Only {allowed_role} accounts can be deleted via {allowed_role} endpoint")
 
     user_name = user.full_name
     user_phone = user.phone
@@ -498,8 +507,31 @@ def _delete_admin_passenger_or_user(target_id: uuid.UUID, db: Session, passenger
         db.execute(delete(DriverWalletEntry).where(DriverWalletEntry.booking_id.in_(booking_ids)))
         db.execute(delete(Booking).where(Booking.id.in_(booking_ids)))
 
-    # 2. If user is driver, clean up driver specific relations
+    # 2. If user is driver, clean up driver specific relations, trips, and their bookings
     if user_role == "driver":
+        driver_trips = db.execute(select(Trip).where(Trip.driver_id == user.id)).scalars().all()
+        driver_trip_ids = [t.id for t in driver_trips]
+        if driver_trip_ids:
+            # Clear return_trip_id self-references first
+            db.execute(
+                update(Trip)
+                .where(Trip.id.in_(driver_trip_ids))
+                .values(return_trip_id=None)
+            )
+            # Find all bookings on driver's trips
+            trip_bookings = db.execute(
+                select(Booking).where(Booking.trip_id.in_(driver_trip_ids))
+            ).scalars().all()
+            trip_booking_ids = [b.id for b in trip_bookings]
+            if trip_booking_ids:
+                db.execute(delete(BookingLiveLocation).where(BookingLiveLocation.booking_id.in_(trip_booking_ids)))
+                db.execute(delete(BookingPaymentInstruction).where(BookingPaymentInstruction.booking_id.in_(trip_booking_ids)))
+                db.execute(delete(Payment).where(Payment.booking_id.in_(trip_booking_ids)))
+                db.execute(delete(DriverWalletEntry).where(DriverWalletEntry.booking_id.in_(trip_booking_ids)))
+                db.execute(delete(Booking).where(Booking.id.in_(trip_booking_ids)))
+            # Delete trips
+            db.execute(delete(Trip).where(Trip.id.in_(driver_trip_ids)))
+
         db.execute(delete(DriverWalletEntry).where(DriverWalletEntry.driver_id == user.id))
         db.execute(delete(DriverDailyFeeSummary).where(DriverDailyFeeSummary.driver_id == user.id))
         db.execute(delete(DriverInvoice).where(DriverInvoice.driver_id == user.id))
@@ -508,6 +540,10 @@ def _delete_admin_passenger_or_user(target_id: uuid.UUID, db: Session, passenger
         db.execute(delete(Vehicle).where(Vehicle.owner_id == user.id))
 
     # 3. Clean up common child tables
+    try:
+        db.execute(delete(TelegramOtpSession).where(TelegramOtpSession.phone == user.phone))
+    except Exception:
+        pass
     db.execute(delete(PassengerQuickPlace).where(PassengerQuickPlace.user_id == user.id))
     db.execute(delete(AuthToken).where(AuthToken.user_id == user.id))
     db.execute(delete(TrustedDevice).where(TrustedDevice.user_id == user.id))
@@ -530,6 +566,11 @@ def _delete_admin_passenger_or_user(target_id: uuid.UUID, db: Session, passenger
 @router.delete("/passengers/{passenger_id}", status_code=200)
 def delete_admin_passenger(passenger_id: uuid.UUID, db: Session = Depends(get_db)) -> Any:
     return _delete_admin_passenger_or_user(passenger_id, db, passenger_only=True)
+
+
+@router.delete("/drivers/{driver_id}", status_code=200)
+def delete_admin_driver(driver_id: uuid.UUID, db: Session = Depends(get_db)) -> Any:
+    return _delete_admin_passenger_or_user(driver_id, db, allowed_role="driver")
 
 
 @router.delete("/users/{user_id}", status_code=200)
