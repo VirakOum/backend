@@ -2743,3 +2743,104 @@ button, input, select, textarea {
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.55);
 }
 
+
+/* 1-Click & Old User Sync Enhancements */
+.account-cta-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.btn-one-click-pulse {
+    position: relative;
+    box-shadow: 0 0 0 0 rgba(255, 200, 61, 0.7);
+    animation: oneClickPulse 2.2s infinite;
+}
+
+@keyframes oneClickPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(255, 200, 61, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 9px rgba(255, 200, 61, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 200, 61, 0);
+    }
+}
+
+.or-divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 8px 0;
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.or-divider::before,
+.or-divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.or-divider span {
+    padding: 0 10px;
+}
+
+.role-upgrade-chip {
+    background: rgba(255, 200, 61, 0.14);
+    border: 1px solid var(--taxi-yellow);
+    color: var(--taxi-yellow);
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: var(--radius-full);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    margin-left: 6px;
+    vertical-align: middle;
+    transition: all 0.2s ease;
+}
+
+.role-upgrade-chip:hover {
+    background: var(--taxi-yellow);
+    color: #111827;
+}
+
+.tma-toast-container {
+    position: fixed;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 99999;
+    width: calc(100% - 28px);
+    max-width: 420px;
+    pointer-events: none;
+}
+
+.tma-toast {
+    background: #17223A;
+    color: #FFFFFF;
+    border: 1.5px solid var(--taxi-yellow);
+    border-radius: var(--radius-md);
+    padding: 11px 15px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+    animation: toastSlideDown 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: auto;
+}
+
+@keyframes toastSlideDown {
+    from { opacity: 0; transform: translateY(-14px); }
+    to { opacity: 1; transform: translateY(0); }
+}

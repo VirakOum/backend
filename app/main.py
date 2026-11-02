@@ -386,12 +386,20 @@ def redirect_miniapp_slash():
     return RedirectResponse(url="/miniapp/", status_code=307)
 
 
+_MINIAPP_CACHE_HEADERS = {
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0",
+    "X-MiniApp-Version": "2.3.0",
+}
+
+
 @app.get("/miniapp/", include_in_schema=False)
 @api_v1_router.get("/miniapp/", include_in_schema=False)
 def serve_telegram_miniapp():
     index_file = STATIC_MINIAPP_DIR / "index.html"
     if index_file.is_file():
-        return FileResponse(index_file, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+        return FileResponse(index_file, headers=_MINIAPP_CACHE_HEADERS)
     raise HTTPException(status_code=404, detail="Mini App not found")
 
 
@@ -400,7 +408,7 @@ def serve_telegram_miniapp():
 def serve_miniapp_css(filename: str):
     file_path = STATIC_MINIAPP_DIR / "css" / filename
     if file_path.is_file():
-        return FileResponse(file_path, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+        return FileResponse(file_path, headers=_MINIAPP_CACHE_HEADERS)
     raise HTTPException(status_code=404, detail="Mini App CSS not found")
 
 
@@ -409,7 +417,7 @@ def serve_miniapp_css(filename: str):
 def serve_miniapp_js(filename: str):
     file_path = STATIC_MINIAPP_DIR / "js" / filename
     if file_path.is_file():
-        return FileResponse(file_path, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+        return FileResponse(file_path, headers=_MINIAPP_CACHE_HEADERS)
     raise HTTPException(status_code=404, detail="Mini App JS not found")
 
 
@@ -418,8 +426,8 @@ def serve_miniapp_js(filename: str):
 def serve_miniapp_static(filepath: str):
     target = STATIC_MINIAPP_DIR / filepath
     if target.is_file():
-        return FileResponse(target, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
-    return FileResponse(STATIC_MINIAPP_DIR / "index.html", headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+        return FileResponse(target, headers=_MINIAPP_CACHE_HEADERS)
+    return FileResponse(STATIC_MINIAPP_DIR / "index.html", headers=_MINIAPP_CACHE_HEADERS)
 
 app.include_router(api_v1_router)
 

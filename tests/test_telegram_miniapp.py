@@ -514,3 +514,132 @@ def test_telegram_miniapp_trip_live_tracking_and_universal_link():
     assert "2BC-9999" in uni_res.text
 
 
+
+
+def test_telegram_miniapp_one_click_register_and_old_user_sync():
+    client = TestClient(app)
+
+    # 1. Brand new user 1-click registration via Mini App endpoint
+    new_reg_res = client.post(
+        "/v1/api/travel/telegram/miniapp/one-click-register",
+        json={
+            "phone": "070112233",
+            "full_name": "Dara 1Click",
+            "telegram_user_id": "111222333",
+            "telegram_chat_id": "111222333",
+            "telegram_username": "dara_1click",
+            "role": "passenger",
+        },
+    )
+    assert new_reg_res.status_code == 200
+    new_reg_data = new_reg_res.json()
+    assert new_reg_data["registered"] is True
+    assert new_reg_data["telegram_linked"] is True
+    assert new_reg_data["account_action"] == "created_one_click_account"
+    assert new_reg_data["user"]["phone"] == "070112233"
+    assert new_reg_data["user"]["role"] == "passenger"
+    token_1 = new_reg_data["auth_token"]
+    assert token_1
+
+    # 2. Brand new user 1-click via Telegram Bot Contact Share Webhook (Zero typing!)
+    contact_share_update = {
+        "update_id": 999903,
+        "message": {
+            "message_id": 3,
+            "date": 1730000020,
+            "chat": {"id": 222333444, "type": "private"},
+            "from": {"id": 222333444, "first_name": "Sreyneang", "username": "sreyneang_tg"},
+            "contact": {
+                "phone_number": "+85598112233",
+                "first_name": "Sreyneang",
+                "user_id": 222333444,
+            },
+        },
+    }
+    wh_contact_res = client.post("/v1/api/travel/auth/telegram-otp/webhook", json=contact_share_update)
+    assert wh_contact_res.status_code == 200
+
+    # Mini App polls /me and user is instantly created & logged in!
+    me_contact = client.get("/v1/api/travel/telegram/miniapp/me?telegram_user_id=222333444")
+    assert me_contact.status_code == 200
+    assert me_contact.json()["registered"] is True
+    assert me_contact.json()["telegram_linked"] is True
+    assert me_contact.json()["user"]["phone"] == "098112233"
+    assert me_contact.json()["user"]["role"] == "passenger"
+
+    # 3. System Update / Stale Token Auto-Recovery
+    # Suppose system updated and client has an old/stale token:
+    stale_res = client.get(
+        "/v1/api/travel/telegram/miniapp/me?auth_token=stale_token_after_system_update&telegram_user_id=111222333"
+    )
+    assert stale_res.status_code == 200
+    stale_data = stale_res.json()
+    assert stale_data["registered"] is True
+    assert stale_data["telegram_linked"] is True
+    assert stale_data["account_action"] == "session_auto_recovered"
+    assert stale_data["auth_token"] != "stale_token_after_system_update"
+
+    # 4. Old User Mobile App Account Sync
+    # Simulate old user registered months ago in Flutter Mobile App with phone + password
+    db = TestingSessionLocal()
+    try:
+        old_driver = User(
+            phone="019999999",
+            full_name="Kosal Old Driver",
+            role="driver",
+            password_hash=hash_password("OldDriverPass123"),
+            is_verified=False,
+        )
+        db.add(old_driver)
+        db.commit()
+    finally:
+        db.close()
+
+    # 4.1 Check 1-click register on old phone without password -> prompts requires_app_link
+    old_detect = client.post(
+        "/v1/api/travel/telegram/miniapp/one-click-register",
+        json={
+            "phone": "019999999",
+            "telegram_user_id": "333444555",
+        },
+    )
+    assert old_detect.status_code == 200
+    assert old_detect.json()["requires_app_link"] is True
+    assert old_detect.json()["account_preview"]["role"] == "driver"
+
+    # 4.2 Link old account with password
+    link_old_res = client.post(
+        "/v1/api/travel/telegram/miniapp/link-account",
+        json={
+            "phone": "019999999",
+            "password": "OldDriverPass123",
+            "telegram_user_id": "333444555",
+            "telegram_chat_id": "333444555",
+        },
+    )
+    assert link_old_res.status_code == 200
+    assert link_old_res.json()["registered"] is True
+    assert link_old_res.json()["user"]["role"] == "driver"
+
+    # 4.3 Now opening Mini App by telegram_user_id directly loads the old driver account
+    me_old = client.get("/v1/api/travel/telegram/miniapp/me?telegram_user_id=333444555")
+    assert me_old.status_code == 200
+    assert me_old.json()["user"]["phone"] == "019999999"
+    assert me_old.json()["user"]["role"] == "driver"
+
+    # 5. Seamless Role Switch / Upgrade from Passenger to Driver
+    switch_res = client.post(
+        "/v1/api/travel/telegram/miniapp/switch-role",
+        json={
+            "telegram_user_id": "111222333",
+            "target_role": "driver",
+            "vehicle_model": "Lexus RX350",
+            "plate_number": "2BC-7788",
+            "seat_type": 4,
+        },
+    )
+    assert switch_res.status_code == 200
+    switch_data = switch_res.json()
+    assert switch_data["user"]["role"] == "driver"
+    assert switch_data["account_action"] == "role_switched"
+    assert len(switch_data["driver_summary"]["vehicles"]) >= 1

@@ -2060,10 +2060,10 @@ def _process_telegram_update_dict(
 
 		# No pending OTP session: user shared contact from Mini App (requestContact) or Bot to link/verify their account!
 		existing_user = _find_user_by_phone(db, clean_shared)
-		if existing_user is not None or allow_fallback_reply:
+		if existing_user is not None:
 			link_session = TelegramOtpSession(
 				session_token=secrets.token_urlsafe(24),
-				phone=existing_user.phone if existing_user else clean_shared,
+				phone=existing_user.phone,
 				purpose="login",
 				otp_code="000000",
 				status="verified",
@@ -2074,52 +2074,86 @@ def _process_telegram_update_dict(
 				verified_at=now,
 			)
 			db.add(link_session)
-			if existing_user is not None and not existing_user.is_verified:
+			if not existing_user.is_verified:
 				existing_user.is_verified = True
 				db.add(existing_user)
+			_link_telegram_to_phone(db, chat_id, existing_user.phone, display_name)
 			db.commit()
 
 			base_url = get_public_base_url().rstrip("/")
 			miniapp_url = f"{base_url}/miniapp/"
-			if existing_user is not None:
-				role_badge = "🚖 Driver / អ្នកបើកបរ" if existing_user.role == "driver" else "🎫 Passenger / អ្នកដំណើរ"
-				_send_telegram_bot_message(
-					bot_token,
-					chat_id,
-					"✅ <b>App Account Linked to Telegram! / គណនីត្រូវបានភ្ជាប់ជោគជ័យ!</b>\n\n"
-					f"👤 <b>Name / ឈ្មោះ:</b> {existing_user.full_name}\n"
-					f"📱 <b>Phone / លេខទូរស័ព្ទ:</b> <code>{existing_user.phone}</code>\n"
-					f"🎭 <b>Role / តួនាទី:</b> {role_badge}\n\n"
-					"Your MyTravel account is now connected to Telegram!",
-					reply_markup={
-						"inline_keyboard": [
-							[
-								{
-									"text": "🚖 Open MyTravel Mini App",
-									"web_app": {"url": miniapp_url},
-								}
-							]
+			role_badge = "🚖 Driver / អ្នកបើកបរ" if existing_user.role == "driver" else "🎫 Passenger / អ្នកដំណើរ"
+			_send_telegram_bot_message(
+				bot_token,
+				chat_id,
+				"✅ <b>Mobile App Account Synced with Telegram! / គណនី App ត្រូវបានភ្ជាប់ជោគជ័យ!</b>\n\n"
+				f"👤 <b>Name / ឈ្មោះ:</b> {existing_user.full_name}\n"
+				f"📱 <b>Phone / លេខទូរស័ព្ទ:</b> <code>{existing_user.phone}</code>\n"
+				f"🎭 <b>Role / តួនាទី:</b> {role_badge}\n\n"
+				"Your trips, bookings, and vehicle are now synchronized between the Mobile App and Telegram Mini App!\n"
+				"ទិន្នន័យ និងជើងដំណើររបស់អ្នកត្រូវបានធ្វើសមកាលកម្មរួចរាល់។",
+				reply_markup={
+					"inline_keyboard": [
+						[
+							{
+								"text": "🚖 Open MyTravel Mini App / បើកកម្មវិធី",
+								"web_app": {"url": miniapp_url},
+							}
 						]
-					},
-				)
-			else:
-				_send_telegram_bot_message(
-					bot_token,
-					chat_id,
-					"✅ <b>Telegram Phone Verified! / លេខទូរស័ព្ទត្រូវបានផ្ទៀងផ្ទាត់!</b>\n\n"
-					f"📱 <b>Phone / លេខទូរស័ព្ទ:</b> <code>{clean_shared}</code>\n\n"
-					"Return to the Mini App to choose your role (<b>Passenger</b> or <b>Driver</b>) and complete your registration!",
-					reply_markup={
-						"inline_keyboard": [
-							[
-								{
-									"text": "🚖 Continue in Mini App",
-									"web_app": {"url": miniapp_url},
-								}
-							]
+					]
+				},
+			)
+			return True
+		elif allow_fallback_reply:
+			# Auto-create brand new user via 1-click contact share!
+			new_user = User(
+				phone=clean_shared,
+				full_name=display_name or f"Telegram User ({clean_shared[-4:]})",
+				role="passenger",
+				password_hash=hash_password(f"tg_{secrets.token_hex(8)}"),
+				is_verified=True,
+			)
+			db.add(new_user)
+			db.flush()
+
+			link_session = TelegramOtpSession(
+				session_token=secrets.token_urlsafe(24),
+				phone=clean_shared,
+				purpose="login",
+				otp_code="000000",
+				status="verified",
+				telegram_chat_id=chat_id,
+				telegram_username=display_name,
+				created_at=now,
+				expires_at=now + timedelta(days=365),
+				verified_at=now,
+			)
+			db.add(link_session)
+			_link_telegram_to_phone(db, chat_id, clean_shared, display_name)
+			db.commit()
+
+			base_url = get_public_base_url().rstrip("/")
+			miniapp_url = f"{base_url}/miniapp/"
+			_send_telegram_bot_message(
+				bot_token,
+				chat_id,
+				"🎉 <b>MyTravel Account Created in 1-Click! / បង្កើតគណនីជោគជ័យដោយ 1-Click!</b>\n\n"
+				f"👤 <b>Name / ឈ្មោះ:</b> {new_user.full_name}\n"
+				f"📱 <b>Phone / លេខទូរស័ព្ទ:</b> <code>{new_user.phone}</code>\n"
+				"🎭 <b>Role / តួនាទី:</b> 🎫 Passenger / អ្នកដំណើរ (អាចប្តូរជាអ្នកបើកបរគ្រប់ពេល)\n\n"
+				"Tap below to open the Mini App and start booking rides across Cambodia!\n"
+				"សូមចុចប៊ូតុងខាងក្រោមដើម្បីកក់តាក់ស៊ីភ្លាមៗ។",
+				reply_markup={
+					"inline_keyboard": [
+						[
+							{
+								"text": "🚖 Open MyTravel Mini App / បើកកម្មវិធីកក់តាក់ស៊ី",
+								"web_app": {"url": miniapp_url},
+							}
 						]
-					},
-				)
+					]
+				},
+			)
 			return True
 	return False
 
@@ -3204,10 +3238,31 @@ class TelegramMiniAppRegisterRequest(BaseModel):
 class TelegramMiniAppLinkAccountRequest(BaseModel):
 	phone: str = Field(min_length=6, max_length=30)
 	password: str | None = None
+	otp_code: str | None = None
 	telegram_user_id: str | None = None
 	telegram_chat_id: str | None = None
 	telegram_username: str | None = None
 	telegram_contact_verified: bool = False
+
+
+class TelegramMiniAppOneClickRequest(BaseModel):
+	phone: str | None = None
+	telegram_user_id: str | None = None
+	telegram_chat_id: str | None = None
+	telegram_username: str | None = None
+	full_name: str | None = None
+	role: str = "passenger"
+	password: str | None = None
+
+
+class TelegramMiniAppSwitchRoleRequest(BaseModel):
+	telegram_user_id: str | None = None
+	phone: str | None = None
+	auth_token: str | None = None
+	target_role: str = "driver"
+	vehicle_model: str | None = None
+	plate_number: str | None = None
+	seat_type: int = 4
 
 
 class TelegramMiniAppDriverTripCreateRequest(BaseModel):
@@ -3360,7 +3415,7 @@ def telegram_miniapp_me(
 					db.commit()
 				return _build_tma_session_response(db, user, auth_token=tok_row.token)
 
-	# 2. Check by telegram_user_id in TelegramOtpSession
+	# 2. Check by telegram_user_id in TelegramOtpSession (Session Auto-Recovery across System Updates)
 	linked_phone: str | None = None
 	if telegram_user_id and telegram_user_id.strip():
 		otp_session = db.execute(
@@ -3368,6 +3423,7 @@ def telegram_miniapp_me(
 			.where(
 				TelegramOtpSession.telegram_chat_id == str(telegram_user_id).strip(),
 				TelegramOtpSession.phone != "",
+				TelegramOtpSession.status == "verified",
 			)
 			.order_by(TelegramOtpSession.created_at.desc())
 			.limit(1)
@@ -3375,8 +3431,12 @@ def telegram_miniapp_me(
 		if otp_session and otp_session.phone:
 			linked_phone = _clean_phone(otp_session.phone)
 			user = _find_user_by_phone(db, linked_phone)
-			if user is not None:
-				return _build_tma_session_response(db, user)
+			if user is not None and getattr(user, "is_active", True):
+				return _build_tma_session_response(
+					db,
+					user,
+					account_action="session_auto_recovered" if auth_token else "loaded_by_telegram_id",
+				)
 
 	# 3. Check by phone if provided (handle accounts created in Mobile App without Telegram OTP)
 	if phone and phone.strip():
@@ -3463,6 +3523,178 @@ def telegram_miniapp_check_phone(
 		"already_linked_to_this_telegram": linked_to_current,
 		"created_via_app_without_telegram": any_tg is None,
 	}
+
+
+@router.post("/telegram/miniapp/one-click-register")
+def telegram_miniapp_one_click_register(
+	payload: TelegramMiniAppOneClickRequest,
+	db: Session = Depends(get_db),
+) -> dict:
+	"""Instant 1-click account creation or smart sync for new and old users."""
+	target_chat = payload.telegram_chat_id or payload.telegram_user_id
+	phone_val = payload.phone
+
+	# If phone is omitted, try finding verified session by telegram_user_id
+	if not phone_val and target_chat:
+		otp_match = db.execute(
+			select(TelegramOtpSession)
+			.where(
+				TelegramOtpSession.telegram_chat_id == str(target_chat),
+				TelegramOtpSession.phone != "",
+				TelegramOtpSession.status == "verified",
+			)
+			.order_by(TelegramOtpSession.created_at.desc())
+			.limit(1)
+		).scalar_one_or_none()
+		if otp_match and otp_match.phone:
+			phone_val = otp_match.phone
+
+	if not phone_val or len(_clean_phone(phone_val)) < 6:
+		raise HTTPException(
+			status_code=400,
+			detail="Phone number is required. Please share your Telegram contact or enter your phone number.",
+		)
+
+	clean_p = _clean_phone(phone_val)
+	normalized_role = "driver" if (payload.role or "").strip().lower() == "driver" else "passenger"
+
+	existing = _find_user_by_phone(db, clean_p)
+	if existing is not None:
+		# Old User detected!
+		is_verified_tg = False
+		if target_chat:
+			tg_match = db.execute(
+				select(TelegramOtpSession)
+				.where(
+					TelegramOtpSession.telegram_chat_id == str(target_chat),
+					TelegramOtpSession.status == "verified",
+				)
+				.order_by(TelegramOtpSession.created_at.desc())
+				.limit(5)
+			).scalars().all()
+			is_verified_tg = any(_phone_matches_contact(s.phone, clean_p) for s in tg_match if s.phone)
+
+		pw_valid = bool(
+			payload.password
+			and existing.password_hash
+			and verify_password(payload.password, existing.password_hash)
+		)
+
+		if is_verified_tg or pw_valid:
+			if not existing.is_verified:
+				existing.is_verified = True
+				db.add(existing)
+			_link_telegram_to_phone(db, target_chat, existing.phone, payload.telegram_username)
+			db.commit()
+			db.refresh(existing)
+			return _build_tma_session_response(
+				db,
+				existing,
+				account_action="synced_existing_account" if is_verified_tg else "linked_existing_app_account",
+			)
+
+		# Unlinked Old App Account — return requires_app_link so client can prompt for password or 1-tap verify
+		return {
+			"registered": True,
+			"telegram_linked": False,
+			"requires_app_link": True,
+			"account_action": "requires_app_link",
+			"account_preview": {
+				"id": str(existing.id),
+				"phone": existing.phone,
+				"full_name": existing.full_name,
+				"role": existing.role,
+			},
+			"user": None,
+		}
+
+	# Brand New User — 1-click automatic registration!
+	display_name = (payload.full_name or "").strip() or f"Telegram User ({clean_p[-4:]})"
+	auto_pw = (payload.password or "").strip() or f"tg_{secrets.token_hex(8)}"
+	new_user = User(
+		phone=clean_p,
+		full_name=display_name,
+		role=normalized_role,
+		password_hash=hash_password(auto_pw),
+		is_verified=True,
+	)
+	db.add(new_user)
+	db.flush()
+
+	_link_telegram_to_phone(db, target_chat, clean_p, payload.telegram_username)
+	db.commit()
+	db.refresh(new_user)
+
+	bot_token = get_telegram_bot_token()
+	if bot_token and target_chat:
+		role_label = "🚖 Driver / អ្នកបើកបរ" if normalized_role == "driver" else "🎫 Passenger / អ្នកដំណើរ"
+		_send_telegram_bot_message(
+			bot_token,
+			str(target_chat),
+			"🎉 <b>MyTravel Account Created! / បង្កើតគណនីជោគជ័យដោយ 1-Click!</b>\n\n"
+			f"👤 <b>Name / ឈ្មោះ:</b> {new_user.full_name}\n"
+			f"📱 <b>Phone / លេខទូរស័ព្ទ:</b> <code>{new_user.phone}</code>\n"
+			f"🎭 <b>Role / តួនាទី:</b> {role_label}\n\n"
+			"Your account is now ready to use in the Telegram Mini App and MyTravel mobile app!",
+		)
+
+	return _build_tma_session_response(db, new_user, account_action="created_one_click_account")
+
+
+@router.post("/telegram/miniapp/switch-role")
+def telegram_miniapp_switch_role(
+	payload: TelegramMiniAppSwitchRoleRequest,
+	db: Session = Depends(get_db),
+) -> dict:
+	"""Allow a user to switch roles (e.g. upgrade from passenger to driver) seamlessly."""
+	user: User | None = None
+	if payload.auth_token:
+		tok = db.execute(
+			select(AuthToken).where(AuthToken.token == payload.auth_token.strip()).limit(1)
+		).scalar_one_or_none()
+		if tok:
+			user = db.get(User, tok.user_id)
+	if user is None and payload.telegram_user_id:
+		otp = db.execute(
+			select(TelegramOtpSession)
+			.where(
+				TelegramOtpSession.telegram_chat_id == str(payload.telegram_user_id),
+				TelegramOtpSession.status == "verified",
+			)
+			.order_by(TelegramOtpSession.created_at.desc())
+			.limit(1)
+		).scalar_one_or_none()
+		if otp and otp.phone:
+			user = _find_user_by_phone(db, otp.phone)
+	if user is None and payload.phone:
+		user = _find_user_by_phone(db, _clean_phone(payload.phone))
+
+	if user is None:
+		raise HTTPException(status_code=404, detail="User account not found")
+
+	target_role = "driver" if payload.target_role.strip().lower() == "driver" else "passenger"
+	user.role = target_role
+	db.add(user)
+
+	if target_role == "driver" and payload.plate_number and payload.plate_number.strip():
+		plate_clean = payload.plate_number.strip().upper()
+		veh = db.execute(
+			select(Vehicle).where(Vehicle.plate_number == plate_clean).limit(1)
+		).scalar_one_or_none()
+		if veh is None:
+			db.add(
+				Vehicle(
+					owner_id=user.id,
+					plate_number=plate_clean,
+					seat_type=max(1, min(payload.seat_type, 24)),
+					vehicle_type="SUV" if payload.seat_type <= 7 else "VAN",
+					model=(payload.vehicle_model or "VIP Taxi").strip(),
+				)
+			)
+
+	db.commit()
+	db.refresh(user)
+	return _build_tma_session_response(db, user, account_action="role_switched")
 
 
 @router.post("/telegram/miniapp/register")
@@ -3586,6 +3818,23 @@ def telegram_miniapp_link_account(
 			.limit(5)
 		).scalars().all()
 		verified_by_tg = any(_phone_matches_contact(s.phone, clean_p) for s in tg_sessions if s.phone)
+
+	if not verified_by_tg and payload.otp_code and payload.otp_code.strip():
+		otp_match = db.execute(
+			select(TelegramOtpSession)
+			.where(
+				TelegramOtpSession.phone == clean_p,
+				TelegramOtpSession.otp_code == payload.otp_code.strip(),
+				TelegramOtpSession.status.in_(("pending", "sent", "verified")),
+			)
+			.order_by(TelegramOtpSession.created_at.desc())
+			.limit(1)
+		).scalar_one_or_none()
+		if otp_match:
+			verified_by_tg = True
+			otp_match.status = "verified"
+			otp_match.verified_at = phnom_penh_now()
+			db.add(otp_match)
 
 	verified_by_pw = bool(
 		payload.password

@@ -233,6 +233,45 @@
         }
     };
 
+    const MINIAPP_SYSTEM_VERSION = '2.3.0';
+
+    function showMiniAppToast(message, type = 'info', duration = 3500) {
+        const container = document.getElementById('tmaToastContainer');
+        if (!container) return;
+        const toast = document.createElement('div');
+        toast.className = 'tma-toast';
+        if (type === 'error') {
+            toast.style.borderColor = 'var(--danger-color)';
+            toast.style.color = '#FFA2A2';
+        }
+        const icon = type === 'error' ? 'fa-circle-exclamation' : (type === 'success' ? 'fa-circle-check' : 'fa-bell');
+        toast.innerHTML = `<i class="fa-solid ${icon}"></i> <span>${message}</span>`;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    }
+
+    function checkAndMigrateAppVersion() {
+        const storedVersion = localStorage.getItem('mytravel_miniapp_version');
+        if (storedVersion !== MINIAPP_SYSTEM_VERSION) {
+            console.log(`[MyTravel] Syncing system version from ${storedVersion || 'legacy'} to ${MINIAPP_SYSTEM_VERSION}`);
+            localStorage.setItem('mytravel_miniapp_version', MINIAPP_SYSTEM_VERSION);
+            if (storedVersion) {
+                setTimeout(() => {
+                    showMiniAppToast(
+                        currentLang === 'km'
+                            ? '🚀 ប្រព័ន្ធបានធ្វើបច្ចុប្បន្នភាព (v2.3) និងធ្វើសមកាលកម្មទិន្នន័យជោគជ័យ!'
+                            : '🚀 System updated to v2.3 and session synchronized successfully!',
+                        'success'
+                    );
+                }, 1200);
+            }
+        }
+    }
+
     let currentLang = 'km';
     const tgUser = tg?.initDataUnsafe?.user;
     if (localStorage.getItem('mytravel_lang')) {
@@ -287,9 +326,20 @@
     const accountStripSub = document.getElementById('accountStripSub');
     const btnOpenAccountModal = document.getElementById('btnOpenAccountModal');
     const btnOpenAccountModalText = document.getElementById('btnOpenAccountModalText');
+    const btnOneClickStartTop = document.getElementById('btnOneClickStartTop');
+    const btnUpgradeDriverTop = document.getElementById('btnUpgradeDriverTop');
     const btnManageAccount = document.getElementById('btnManageAccount');
     const topTabDriverBtn = document.getElementById('topTabDriverBtn');
     const bottomNavDriverBtn = document.getElementById('bottomNavDriverBtn');
+    const accLinkPhoneInput = document.getElementById('accLinkPhoneInput');
+    const btnShareContactForLink = document.getElementById('btnShareContactForLink');
+    const upgradeDriverModal = document.getElementById('upgradeDriverModal');
+    const btnCloseUpgradeDriverModal = document.getElementById('btnCloseUpgradeDriverModal');
+    const btnSubmitUpgradeDriver = document.getElementById('btnSubmitUpgradeDriver');
+    const upgCarModel = document.getElementById('upgCarModel');
+    const upgPlateNumber = document.getElementById('upgPlateNumber');
+    const upgSeats = document.getElementById('upgSeats');
+    const upgradeDriverError = document.getElementById('upgradeDriverError');
 
     const inputPassengerName = document.getElementById('inputPassengerName');
     const inputPassengerPhone = document.getElementById('inputPassengerPhone');
@@ -348,6 +398,7 @@
         if (inputCustomPhone) inputCustomPhone.value = phone;
         if (inputLookupPhone) inputLookupPhone.value = phone;
         if (accPhoneInput && !accPhoneInput.value) accPhoneInput.value = phone;
+        if (accLinkPhoneInput && !accLinkPhoneInput.value) accLinkPhoneInput.value = phone;
     }
 
     function updateAccountHeaderUI(appLinkPreview = null) {
@@ -368,6 +419,7 @@
             }
             if (topTabDriverBtn) topTabDriverBtn.style.display = isDriver ? 'inline-flex' : 'none';
             if (bottomNavDriverBtn) bottomNavDriverBtn.style.display = isDriver ? 'flex' : 'none';
+            if (btnUpgradeDriverTop) btnUpgradeDriverTop.style.display = !isDriver ? 'inline-flex' : 'none';
             if (isDriver) {
                 renderDriverDashboard();
             }
@@ -434,6 +486,28 @@
             }
             updateAccountHeaderUI();
             fetchMyBookings();
+            if (data.account_action === 'session_auto_recovered') {
+                showMiniAppToast(
+                    currentLang === 'km'
+                        ? '✅ គណនីរបស់អ្នកត្រូវបានធ្វើសមកាលកម្មឡើងវិញជោគជ័យ!'
+                        : '✅ Session synchronized with updated system!',
+                    'success'
+                );
+            } else if (data.account_action === 'synced_existing_account' || data.account_action === 'linked_existing_app_account') {
+                showMiniAppToast(
+                    currentLang === 'km'
+                        ? '✅ គណនី Mobile App ចាស់ត្រូវបានភ្ជាប់ & ធ្វើសមកាលកម្មជោគជ័យ!'
+                        : '✅ Old Mobile App account successfully synchronized with Telegram!',
+                    'success'
+                );
+            } else if (data.account_action === 'created_one_click_account') {
+                showMiniAppToast(
+                    currentLang === 'km'
+                        ? '🎉 បង្កើតគណនី 1-Click ជោគជ័យ! សូមស្វាគមន៍មកកាន់ MyTravel!'
+                        : '🎉 Account created in 1-Click! Welcome to MyTravel!',
+                    'success'
+                );
+            }
             return true;
         }
         if (data.requires_app_link && data.account_preview) {
@@ -637,7 +711,7 @@
         btnSubmitRegisterAccount.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Creating Account...`;
 
         try {
-            const res = await fetch('/v1/api/travel/telegram/miniapp/register', {
+            const res = await fetch('/v1/api/travel/telegram/miniapp/one-click-register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -647,22 +721,20 @@
                     password: password || null,
                     telegram_user_id: tgUser?.id ? String(tgUser.id) : null,
                     telegram_chat_id: tg?.initDataUnsafe?.chat?.id ? String(tg.initDataUnsafe.chat.id) : (tgUser?.id ? String(tgUser.id) : null),
-                    telegram_username: tgUser?.username || null,
-                    telegram_contact_verified: telegramContactVerified,
-                    vehicle_model: vehModel || null,
-                    plate_number: plateNum || null,
-                    seat_type: 4
+                    telegram_username: tgUser?.username || null
                 })
             });
 
             const data = await res.json().catch(() => ({}));
-            if (res.status === 409) {
+            if (data.requires_app_link) {
                 // Phone already exists in Mobile App! Switch to Link App mode
                 switchAccountModalMode('link');
+                if (accLinkPhoneInput) accLinkPhoneInput.value = phone;
+                showDetectedAppAccountBanner(data.account_preview);
                 if (accountErrorAlert) {
                     accountErrorAlert.textContent = currentLang === 'km'
-                        ? 'លេខទូរស័ព្ទនេះមានគណនីក្នុងកម្មវិធី MyTravel រួចហើយ! សូមបញ្ចូលពាក្យសម្ងាត់ App ឬចុចចែករំលែកលេខ Telegram ដើម្បីភ្ជាប់គណនី។'
-                        : (data.detail || 'Account already exists in App. Please link it below.');
+                        ? 'រកឃើញគណនីក្នុង MyTravel Mobile App! សូមបញ្ចូលពាក្យសម្ងាត់ App ឬចុចចែករំលែកលេខ Telegram ដើម្បីភ្ជាប់ & ធ្វើសមកាលកម្មគណនី។'
+                        : 'Old Mobile App account detected! Please enter your App password or share Telegram contact to sync.';
                     accountErrorAlert.style.display = 'block';
                 }
                 return;
@@ -685,13 +757,13 @@
             }
         } finally {
             btnSubmitRegisterAccount.disabled = false;
-            btnSubmitRegisterAccount.innerHTML = `<i class="fa-solid fa-user-plus"></i> <span>បង្កើតគណនីជាមួយ Telegram / Create Account</span>`;
+            btnSubmitRegisterAccount.innerHTML = `<i class="fa-solid fa-bolt"></i> <span>⚡ ចាប់ផ្តើមធ្វើដំណើរ (1-Click Start)</span>`;
         }
     });
 
     // Submit Link Existing Mobile App Account
     btnSubmitLinkAppAccount?.addEventListener('click', async () => {
-        const phone = accPhoneInput?.value.trim() || '';
+        const phone = (accLinkPhoneInput?.value || accPhoneInput?.value || '').trim();
         const password = accLinkPasswordInput?.value || '';
 
         if (accountErrorAlert) {
@@ -2408,3 +2480,130 @@
     } catch (_) {}
 
 })();
+
+    // 1-Click Fast Start Trigger from Top Banner
+    function triggerOneClickFastStart() {
+        triggerHaptic('medium');
+        if (tg && typeof tg.requestContact === 'function') {
+            tg.requestContact(async (shared) => {
+                if (shared) {
+                    telegramContactVerified = true;
+                    showMiniAppToast(currentLang === 'km' ? '⏳ កំពុងធ្វើសមកាលកម្មគណនី 1-Click...' : '⏳ Fast 1-Click synchronizing...', 'info', 2500);
+                    for (let i = 0; i < 5; i++) {
+                        await new Promise(r => setTimeout(r, 800));
+                        await checkUserSessionAndRole();
+                        if (currentUser) {
+                            if (accountModal) accountModal.style.display = 'none';
+                            triggerHaptic('success');
+                            return;
+                        }
+                    }
+                }
+            });
+        } else {
+            // Fallback: Open Account Modal on Tab 1 and focus phone input
+            switchAccountModalMode('register');
+            if (accountModal) accountModal.style.display = 'flex';
+            setTimeout(() => accPhoneInput?.focus(), 250);
+        }
+    }
+
+    btnOneClickStartTop?.addEventListener('click', triggerOneClickFastStart);
+
+    btnShareContactForLink?.addEventListener('click', () => {
+        triggerHaptic('medium');
+        if (tg && typeof tg.requestContact === 'function') {
+            tg.requestContact(async (shared) => {
+                if (shared) {
+                    telegramContactVerified = true;
+                    showMiniAppToast(currentLang === 'km' ? '⏳ កំពុងផ្ទៀងផ្ទាត់ & ធ្វើសមកាលកម្ម...' : '⏳ Verifying & synchronizing...', 'info', 2500);
+                    for (let i = 0; i < 5; i++) {
+                        await new Promise(r => setTimeout(r, 800));
+                        await checkUserSessionAndRole();
+                        if (currentUser) {
+                            if (accountModal) accountModal.style.display = 'none';
+                            triggerHaptic('success');
+                            return;
+                        }
+                    }
+                }
+            });
+        } else {
+            alert(currentLang === 'km' ? 'សូមបញ្ចូលលេខទូរស័ព្ទ និងពាក្យសម្ងាត់ App របស់អ្នកដើម្បីភ្ជាប់គណនី។' : 'Please enter your App phone number and password to link.');
+            accLinkPhoneInput?.focus();
+        }
+    });
+
+    // Upgrade to Driver Modal Handlers
+    btnUpgradeDriverTop?.addEventListener('click', () => {
+        triggerHaptic('medium');
+        if (upgradeDriverModal) upgradeDriverModal.style.display = 'flex';
+    });
+
+    btnCloseUpgradeDriverModal?.addEventListener('click', () => {
+        if (upgradeDriverModal) upgradeDriverModal.style.display = 'none';
+    });
+
+    btnSubmitUpgradeDriver?.addEventListener('click', async () => {
+        const model = upgCarModel?.value.trim() || '';
+        const plate = upgPlateNumber?.value.trim() || '';
+        const seats = parseInt(upgSeats?.value || '4', 10);
+
+        if (upgradeDriverError) {
+            upgradeDriverError.style.display = 'none';
+            upgradeDriverError.textContent = '';
+        }
+
+        if (!plate || plate.length < 3) {
+            triggerHaptic('error');
+            if (upgradeDriverError) {
+                upgradeDriverError.textContent = currentLang === 'km' ? 'សូមបញ្ចូលផ្លាកលេខរថយន្ត' : 'Please enter vehicle plate number.';
+                upgradeDriverError.style.display = 'block';
+            }
+            upgPlateNumber?.focus();
+            return;
+        }
+
+        btnSubmitUpgradeDriver.disabled = true;
+        btnSubmitUpgradeDriver.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Activating...`;
+
+        try {
+            const res = await fetch('/v1/api/travel/telegram/miniapp/switch-role', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    auth_token: localStorage.getItem('mytravel_auth_token') || null,
+                    telegram_user_id: tgUser?.id ? String(tgUser.id) : null,
+                    phone: currentUser?.phone || null,
+                    target_role: 'driver',
+                    vehicle_model: model || 'VIP Taxi',
+                    plate_number: plate,
+                    seat_type: seats
+                })
+            });
+
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.detail || 'Could not upgrade to driver');
+            }
+
+            const data = await res.json();
+            applySessionData(data);
+            if (upgradeDriverModal) upgradeDriverModal.style.display = 'none';
+            showMiniAppToast(currentLang === 'km' ? '🎉 អ្នកបានក្លាយជាអ្នកបើកបរជោគជ័យ! Driver Mode ត្រូវបានបើកដំណើរការ។' : '🎉 Successfully upgraded to Driver! Driver Mode is now active.', 'success');
+            triggerHaptic('success');
+            switchTab('tabDriverDashboard');
+        } catch (err) {
+            triggerHaptic('error');
+            if (upgradeDriverError) {
+                upgradeDriverError.textContent = err.message || 'Upgrade failed';
+                upgradeDriverError.style.display = 'block';
+            }
+        } finally {
+            btnSubmitUpgradeDriver.disabled = false;
+            btnSubmitUpgradeDriver.innerHTML = `<i class="fa-solid fa-check"></i> <span>បើកដំណើរការ Driver Mode ឥឡូវនេះ</span>`;
+        }
+    });
+
+    // Run system version migration on init
+    checkAndMigrateAppVersion();
