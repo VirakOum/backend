@@ -1606,6 +1606,12 @@ def _send_telegram_verification_prompt(
 				[
 					{
 						"text": "✅ Verify & Continue (1-Tap) / ផ្ទៀងផ្ទាត់ភ្លាមៗ",
+						"callback_data": f"otp_ok:{session.session_token}",
+					}
+				],
+				[
+					{
+						"text": "🚖 Open App / បើកកម្មវិធី MyTravel",
 						"url": callback_url,
 					}
 				]
@@ -2495,17 +2501,30 @@ def telegram_otp_callback_redirect(
         const primaryTarget = isAndroid ? androidIntentUrl : customSchemeUrl;
 
         const btn = document.getElementById('btn-open-app');
-        btn.href = primaryTarget;
-        btn.onclick = function() {{
-            window.location.href = primaryTarget;
+        btn.href = customSchemeUrl;
+        btn.onclick = function(e) {{
+            e.preventDefault();
+            window.location.href = customSchemeUrl;
+            setTimeout(function() {{
+                window.location.href = primaryTarget;
+            }}, 200);
         }};
 
         // Attempt automatic callback into the app
         function launchApp() {{
             try {{
-                window.location.href = primaryTarget;
-            }} catch (err) {{
+                const ifr = document.createElement('iframe');
+                ifr.style.display = 'none';
+                ifr.src = customSchemeUrl;
+                document.body.appendChild(ifr);
+            }} catch (err) {{}}
+
+            try {{
                 window.location.href = customSchemeUrl;
+            }} catch (err) {{
+                try {{
+                    window.location.href = primaryTarget;
+                }} catch (e) {{}}
             }}
         }}
 
@@ -2514,8 +2533,10 @@ def telegram_otp_callback_redirect(
 
         // Fallback retry for iOS Safari / Telegram in-app browser
         setTimeout(function() {{
-            window.location.href = customSchemeUrl;
-        }}, 600);
+            try {{
+                window.location.href = customSchemeUrl;
+            }} catch (e) {{}}
+        }}, 400);
     </script>
 </body>
 </html>"""
