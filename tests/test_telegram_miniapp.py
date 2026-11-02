@@ -27,6 +27,7 @@ from app.models import (
     User,
     UserNotification,
     Vehicle,
+    VehicleModel,
     phnom_penh_now,
 )
 
@@ -89,6 +90,7 @@ def setup_module():
         SupportTicket.__table__,
         DriverMembership.__table__,
         TelegramOtpSession.__table__,
+        VehicleModel.__table__,
     ]:
         tbl.create(bind=test_engine, checkfirst=True)
     app.dependency_overrides[get_db] = override_get_db
@@ -643,3 +645,87 @@ def test_telegram_miniapp_one_click_register_and_old_user_sync():
     assert switch_data["user"]["role"] == "driver"
     assert switch_data["account_action"] == "role_switched"
     assert len(switch_data["driver_summary"]["vehicles"]) >= 1
+
+
+def test_telegram_miniapp_profile_completion_and_vehicle_models():
+    client = TestClient(app)
+
+    # 1. Test GET /vehicle-models returns list with popular cars (Lexus, Prius, etc.)
+    vm_res = client.get("/v1/api/travel/vehicle-models")
+    assert vm_res.status_code == 200
+    models = vm_res.json()
+    assert isinstance(models, list)
+    assert len(models) > 0
+    display_names = [m.get("display_name", "") for m in models]
+    assert any("Lexus" in name or "Prius" in name for name in display_names)
+
+    # 2. 1-Click register driver with vehicle info completes profile immediately
+    driver_res = client.post(
+        "/v1/api/travel/telegram/miniapp/one-click-register",
+        json={
+            "phone": "088991122",
+            "full_name": "Sopheap Driver",
+            "role": "driver",
+            "telegram_user_id": "888999111",
+            "telegram_chat_id": "888999111",
+            "vehicle_model": "Lexus RX330",
+            "plate_number": "2PP-8899",
+            "seat_type": 4,
+        },
+    )
+    assert driver_res.status_code == 200
+    d_data = driver_res.json()
+    assert d_data["profile_completed"] is True
+    assert d_data["missing_fields"] == []
+    assert d_data["driver_summary"]["vehicle_count"] == 1
+    assert d_data["driver_summary"]["vehicles"][0]["model"] == "Lexus RX330"
+
+    # 3. Simulate an existing driver account without registered vehicle
+    db = TestingSessionLocal()
+    try:
+        incomplete_driver = User(
+            phone="088112233",
+            full_name="Telegram User (2233)",
+            role="driver",
+            password_hash=hash_password("Pass123"),
+            is_verified=True,
+        )
+        db.add(incomplete_driver)
+        db.commit()
+    finally:
+        db.close()
+
+    # Link/login this driver via Mini App
+    login_res = client.post(
+        "/v1/api/travel/telegram/miniapp/link-account",
+        json={
+            "phone": "088112233",
+            "password": "Pass123",
+            "telegram_user_id": "999000111",
+            "telegram_chat_id": "999000111",
+        },
+    )
+    assert login_res.status_code == 200
+    l_data = login_res.json()
+    assert l_data["profile_completed"] is False
+    assert "driver_vehicle" in l_data["missing_fields"]
+    assert "full_name" in l_data["missing_fields"]
+
+    # 4. Driver completes missing profile info via /complete-profile
+    comp_res = client.post(
+        "/v1/api/travel/telegram/miniapp/complete-profile",
+        json={
+            "auth_token": l_data["auth_token"],
+            "full_name": "Kosal Driver Completed",
+            "vehicle_model": "Toyota Prius",
+            "plate_number": "2AA-5566",
+            "seat_type": 4,
+        },
+    )
+    assert comp_res.status_code == 200
+    c_data = comp_res.json()
+    assert c_data["profile_completed"] is True
+    assert c_data["missing_fields"] == []
+    assert c_data["user"]["full_name"] == "Kosal Driver Completed"
+    assert c_data["driver_summary"]["vehicle_count"] == 1
+    assert c_data["driver_summary"]["vehicles"][0]["plate_number"] == "2AA-5566"

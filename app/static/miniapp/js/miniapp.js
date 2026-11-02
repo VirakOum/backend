@@ -361,6 +361,23 @@
     const accFullNameInput = document.getElementById('accFullNameInput');
     const accVehicleModel = document.getElementById('accVehicleModel');
     const accPlateNumber = document.getElementById('accPlateNumber');
+    const accVehicleSeats = document.getElementById('accVehicleSeats');
+    const accVehicleModelDropdown = document.getElementById('accVehicleModelDropdown');
+
+    // Profile Completion Elements (Prompt before sync success)
+    const profileCompletionModal = document.getElementById('profileCompletionModal');
+    const btnCloseProfileCompletionModal = document.getElementById('btnCloseProfileCompletionModal');
+    const profileCompletionNotice = document.getElementById('profileCompletionNotice');
+    const profileCompletionError = document.getElementById('profileCompletionError');
+    const compNameGroup = document.getElementById('compNameGroup');
+    const compFullName = document.getElementById('compFullName');
+    const compVehicleGroup = document.getElementById('compVehicleGroup');
+    const compVehicleModel = document.getElementById('compVehicleModel');
+    const compPlateNumber = document.getElementById('compPlateNumber');
+    const compVehicleSeats = document.getElementById('compVehicleSeats');
+    const compVehicleModelDropdown = document.getElementById('compVehicleModelDropdown');
+    const btnSubmitCompleteProfile = document.getElementById('btnSubmitCompleteProfile');
+    let pendingCompletionSession = null;
     const accNewPasswordInput = document.getElementById('accNewPasswordInput');
     const accLinkPasswordInput = document.getElementById('accLinkPasswordInput');
     const roleCardPassenger = document.getElementById('roleCardPassenger');
@@ -486,6 +503,13 @@
             }
             updateAccountHeaderUI();
             fetchMyBookings();
+
+            // Check if profile is incomplete (e.g. driver missing vehicle or missing full name)
+            if (data.profile_completed === false && Array.isArray(data.missing_fields) && data.missing_fields.length > 0) {
+                openProfileCompletionModal(data);
+                return true;
+            }
+
             if (data.account_action === 'session_auto_recovered') {
                 showMiniAppToast(
                     currentLang === 'km'
@@ -707,6 +731,33 @@
             return;
         }
 
+        if (selectedRole === 'driver') {
+            if (!vehModel) {
+                triggerHaptic('error');
+                if (accountErrorAlert) {
+                    accountErrorAlert.textContent = currentLang === 'km'
+                        ? 'សូមជ្រើសរើស ឬវាយបញ្ចូលម៉ូដែលរថយន្តរបស់អ្នក'
+                        : 'Please enter or select your vehicle model.';
+                    accountErrorAlert.style.display = 'block';
+                }
+                accVehicleModel?.classList.add('input-highlight-error');
+                accVehicleModel?.focus();
+                return;
+            }
+            if (!plateNum || plateNum.length < 3) {
+                triggerHaptic('error');
+                if (accountErrorAlert) {
+                    accountErrorAlert.textContent = currentLang === 'km'
+                        ? 'សូមបញ្ចូលផ្លាកលេខរថយន្ត (ឧទាហរណ៍: 2AB-1234)'
+                        : 'Please enter your vehicle plate number (e.g. 2AB-1234).';
+                    accountErrorAlert.style.display = 'block';
+                }
+                accPlateNumber?.classList.add('input-highlight-error');
+                accPlateNumber?.focus();
+                return;
+            }
+        }
+
         btnSubmitRegisterAccount.disabled = true;
         btnSubmitRegisterAccount.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Creating Account...`;
 
@@ -719,6 +770,9 @@
                     full_name: fullName,
                     role: selectedRole,
                     password: password || null,
+                    vehicle_model: selectedRole === 'driver' ? vehModel : null,
+                    plate_number: selectedRole === 'driver' ? plateNum : null,
+                    seat_type: selectedRole === 'driver' ? parseInt(accVehicleSeats?.value || '4', 10) : 4,
                     telegram_user_id: tgUser?.id ? String(tgUser.id) : null,
                     telegram_chat_id: tg?.initDataUnsafe?.chat?.id ? String(tg.initDataUnsafe.chat.id) : (tgUser?.id ? String(tgUser.id) : null),
                     telegram_username: tgUser?.username || null
@@ -2121,27 +2175,297 @@
         }, 6000);
     }
 
-    // 13. REAL VEHICLE MODELS FLEET (/v1/api/travel/vehicle-models)
+    // 13. REAL VEHICLE MODELS FLEET (/v1/api/travel/vehicle-models) & SEARCHABLE PICKER
     const vehicleModelsContainer = document.getElementById('vehicleModelsContainer');
 
+    const DEFAULT_POPULAR_MODELS = [
+        { brand: 'Lexus', model_name: 'RX330', display_name: 'Lexus RX330', vehicle_type: 'SUV', seat_count: 4 },
+        { brand: 'Toyota', model_name: 'Prius', display_name: 'Toyota Prius', vehicle_type: 'SEDAN', seat_count: 4 },
+        { brand: 'Toyota', model_name: 'Highlander', display_name: 'Toyota Highlander', vehicle_type: 'SUV', seat_count: 4 },
+        { brand: 'Toyota', model_name: 'Alphard', display_name: 'Toyota Alphard', vehicle_type: 'VAN', seat_count: 7 },
+        { brand: 'Toyota', model_name: 'Sienna', display_name: 'Toyota Sienna', vehicle_type: 'VAN', seat_count: 7 },
+        { brand: 'Hyundai', model_name: 'Starex', display_name: 'Hyundai Starex', vehicle_type: 'VAN', seat_count: 12 },
+        { brand: 'Hyundai', model_name: 'H1', display_name: 'Hyundai H1', vehicle_type: 'VAN', seat_count: 12 },
+        { brand: 'Ford', model_name: 'Ranger', display_name: 'Ford Ranger', vehicle_type: 'PICKUP', seat_count: 4 },
+        { brand: 'Lexus', model_name: 'LX570', display_name: 'Lexus LX570', vehicle_type: 'SUV', seat_count: 7 },
+        { brand: 'Toyota', model_name: 'Camry', display_name: 'Toyota Camry', vehicle_type: 'SEDAN', seat_count: 4 },
+        { brand: 'Toyota', model_name: 'Corolla', display_name: 'Toyota Corolla', vehicle_type: 'SEDAN', seat_count: 4 },
+        { brand: 'Toyota', model_name: 'Raize', display_name: 'Toyota Raize', vehicle_type: 'SUV', seat_count: 4 },
+        { brand: 'Toyota', model_name: 'Cross', display_name: 'Toyota Corolla Cross', vehicle_type: 'SUV', seat_count: 4 },
+        { brand: 'Kia', model_name: 'Carnival', display_name: 'Kia Carnival', vehicle_type: 'VAN', seat_count: 7 },
+        { brand: 'Mazda', model_name: 'CX-5', display_name: 'Mazda CX-5', vehicle_type: 'SUV', seat_count: 4 },
+    ];
+
     async function fetchVehicleModels() {
-        if (!vehicleModelsContainer) return;
         try {
             const res = await fetch('/v1/api/travel/vehicle-models');
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const models = await res.json();
-            cachedVehicleModels = Array.isArray(models) ? models : [];
-            renderVehicleModels(cachedVehicleModels);
+            if (res.ok) {
+                const models = await res.json();
+                cachedVehicleModels = (Array.isArray(models) && models.length > 0) ? models : DEFAULT_POPULAR_MODELS;
+            } else {
+                cachedVehicleModels = DEFAULT_POPULAR_MODELS;
+            }
         } catch (err) {
-            console.error('Failed to load vehicle models:', err);
-            vehicleModelsContainer.innerHTML = `
-                <div class="empty-state-box">
-                    <i class="fa-solid fa-car-side"></i>
-                    <p>Unable to load vehicle fleet right now.</p>
-                </div>
-            `;
+            console.warn('Vehicle models API fallback to default fleet:', err);
+            cachedVehicleModels = DEFAULT_POPULAR_MODELS;
+        }
+        if (vehicleModelsContainer) {
+            renderVehicleModels(cachedVehicleModels);
         }
     }
+
+    function setupSearchableVehicleModelPicker({ inputEl, dropdownEl, seatsHiddenEl, chipsSelector, onSelect }) {
+        if (!inputEl || !dropdownEl) return;
+
+        function getModels() {
+            return (cachedVehicleModels && cachedVehicleModels.length > 0) ? cachedVehicleModels : DEFAULT_POPULAR_MODELS;
+        }
+
+        function renderDropdown(filterText = '') {
+            const models = getModels();
+            const q = (filterText || '').trim().toLowerCase();
+            const matches = q
+                ? models.filter(m => {
+                    const name = (m.display_name || `${m.brand} ${m.model_name}`).toLowerCase();
+                    const brand = (m.brand || '').toLowerCase();
+                    const model = (m.model_name || '').toLowerCase();
+                    return name.includes(q) || brand.includes(q) || model.includes(q);
+                })
+                : models.slice(0, 15);
+
+            if (matches.length === 0) {
+                dropdownEl.innerHTML = `
+                    <div class="model-dropdown-empty">
+                        <i class="fa-solid fa-car-side"></i> មិនមានក្នុងបញ្ជី — អ្នកអាចវាយបញ្ចូលដោយផ្ទាល់
+                    </div>
+                `;
+            } else {
+                dropdownEl.innerHTML = matches.map(m => {
+                    const name = m.display_name || `${m.brand} ${m.model_name}`;
+                    const type = (m.vehicle_type || 'VIP').toUpperCase();
+                    const seats = m.seat_count || 4;
+                    return `
+                        <div class="model-dropdown-item" data-name="${name}" data-seats="${seats}">
+                            <div class="model-item-left">
+                                <i class="fa-solid fa-car"></i>
+                                <span>${name}</span>
+                            </div>
+                            <span class="model-item-badge">${type} • ${seats} កៅអី</span>
+                        </div>
+                    `;
+                }).join('');
+            }
+            dropdownEl.style.display = 'block';
+        }
+
+        inputEl.addEventListener('focus', () => {
+            inputEl.classList.remove('input-highlight-error');
+            renderDropdown(inputEl.value);
+        });
+
+        inputEl.addEventListener('input', () => {
+            inputEl.classList.remove('input-highlight-error');
+            renderDropdown(inputEl.value);
+        });
+
+        dropdownEl.addEventListener('click', (e) => {
+            const item = e.target.closest('.model-dropdown-item');
+            if (!item) return;
+            const chosenName = item.dataset.name;
+            const chosenSeats = item.dataset.seats;
+            inputEl.value = chosenName;
+            inputEl.classList.remove('input-highlight-error');
+            if (seatsHiddenEl) seatsHiddenEl.value = chosenSeats;
+            dropdownEl.style.display = 'none';
+            triggerHaptic('light');
+            if (typeof onSelect === 'function') onSelect(chosenName, chosenSeats);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!inputEl.contains(e.target) && !dropdownEl.contains(e.target)) {
+                dropdownEl.style.display = 'none';
+            }
+        });
+
+        if (chipsSelector) {
+            document.querySelectorAll(chipsSelector).forEach(chip => {
+                chip.addEventListener('click', () => {
+                    const m = chip.dataset.model;
+                    const s = chip.dataset.seats || '4';
+                    inputEl.value = m;
+                    inputEl.classList.remove('input-highlight-error');
+                    if (seatsHiddenEl) seatsHiddenEl.value = s;
+                    dropdownEl.style.display = 'none';
+                    triggerHaptic('light');
+                    if (typeof onSelect === 'function') onSelect(m, s);
+                });
+            });
+        }
+    }
+
+    // Profile Completion Logic (Prompt when profile_completed === false before sync succeeds)
+    function openProfileCompletionModal(sessionData) {
+        pendingCompletionSession = sessionData;
+        if (accountModal) accountModal.style.display = 'none';
+        if (profileCompletionError) {
+            profileCompletionError.style.display = 'none';
+            profileCompletionError.textContent = '';
+        }
+
+        const missing = sessionData.missing_fields || [];
+        const isDriver = sessionData.user?.role === 'driver';
+
+        if (compNameGroup) {
+            compNameGroup.style.display = missing.includes('full_name') ? 'block' : 'none';
+            if (sessionData.user?.full_name && !sessionData.user.full_name.startsWith('Telegram User (')) {
+                if (compFullName) compFullName.value = sessionData.user.full_name;
+            }
+        }
+
+        if (compVehicleGroup) {
+            compVehicleGroup.style.display = (isDriver && (missing.includes('driver_vehicle') || !sessionData.driver_summary?.vehicle_count)) ? 'flex' : 'none';
+        }
+
+        if (profileCompletionModal) {
+            profileCompletionModal.style.display = 'flex';
+            triggerHaptic('medium');
+        }
+    }
+
+    btnCloseProfileCompletionModal?.addEventListener('click', () => {
+        if (profileCompletionModal) profileCompletionModal.style.display = 'none';
+    });
+
+    btnSubmitCompleteProfile?.addEventListener('click', async () => {
+        if (!pendingCompletionSession) return;
+        const missing = pendingCompletionSession.missing_fields || [];
+        const isDriver = pendingCompletionSession.user?.role === 'driver';
+
+        if (profileCompletionError) {
+            profileCompletionError.style.display = 'none';
+            profileCompletionError.textContent = '';
+        }
+
+        const fullName = compFullName?.value.trim() || '';
+        const vehModel = compVehicleModel?.value.trim() || '';
+        const plateNum = compPlateNumber?.value.trim() || '';
+        const seats = parseInt(compVehicleSeats?.value || '4', 10);
+
+        if (missing.includes('full_name') && (!fullName || fullName.length < 2)) {
+            triggerHaptic('error');
+            if (profileCompletionError) {
+                profileCompletionError.textContent = currentLang === 'km' ? 'សូមបញ្ចូលឈ្មោះពេញរបស់អ្នក' : 'Please enter your full name.';
+                profileCompletionError.style.display = 'block';
+            }
+            compFullName?.focus();
+            return;
+        }
+
+        if (isDriver && (missing.includes('driver_vehicle') || !pendingCompletionSession.driver_summary?.vehicle_count)) {
+            if (!vehModel) {
+                triggerHaptic('error');
+                if (profileCompletionError) {
+                    profileCompletionError.textContent = currentLang === 'km' ? 'សូមជ្រើសរើស ឬវាយបញ្ចូលម៉ូដែលរថយន្តរបស់អ្នក' : 'Please select or enter your vehicle model.';
+                    profileCompletionError.style.display = 'block';
+                }
+                compVehicleModel?.focus();
+                return;
+            }
+            if (!plateNum || plateNum.length < 3) {
+                triggerHaptic('error');
+                if (profileCompletionError) {
+                    profileCompletionError.textContent = currentLang === 'km' ? 'សូមបញ្ចូលផ្លាកលេខរថយន្តរបស់អ្នក (ឧ: 2AB-1234)' : 'Please enter your vehicle plate number.';
+                    profileCompletionError.style.display = 'block';
+                }
+                compPlateNumber?.focus();
+                return;
+            }
+        }
+
+        btnSubmitCompleteProfile.disabled = true;
+        btnSubmitCompleteProfile.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Completing Profile...`;
+
+        try {
+            const res = await fetch('/v1/api/travel/telegram/miniapp/complete-profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    auth_token: pendingCompletionSession.auth_token || localStorage.getItem('mytravel_auth_token'),
+                    telegram_user_id: tgUser?.id ? String(tgUser.id) : null,
+                    phone: pendingCompletionSession.user?.phone || null,
+                    full_name: fullName || null,
+                    vehicle_model: isDriver ? vehModel : null,
+                    plate_number: isDriver ? plateNum : null,
+                    seat_type: seats,
+                })
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                throw new Error(data.detail || `Failed to complete profile (${res.status})`);
+            }
+
+            if (profileCompletionModal) profileCompletionModal.style.display = 'none';
+            triggerHaptic('success');
+            applySessionData(data);
+            showMiniAppToast(
+                currentLang === 'km'
+                    ? '🎉 បំពេញព័ត៌មានគណនីជោគជ័យ! គណនីរបស់អ្នកបានធ្វើសមកាលកម្មរួចរាល់'
+                    : '🎉 Account profile completed & synchronized successfully!',
+                'success'
+            );
+            if (currentUser?.role === 'driver') {
+                switchTab('tabDriverDashboard');
+            }
+        } catch (err) {
+            triggerHaptic('error');
+            if (profileCompletionError) {
+                profileCompletionError.textContent = err.message || 'Could not complete profile.';
+                profileCompletionError.style.display = 'block';
+            }
+        } finally {
+            btnSubmitCompleteProfile.disabled = false;
+            btnSubmitCompleteProfile.innerHTML = `<i class="fa-solid fa-circle-check"></i> <span>✅ បញ្ចប់ការភ្ជាប់គណនី / Complete & Sync Account</span>`;
+        }
+    });
+
+    // Wire up searchable vehicle model pickers on DOM elements
+    setupSearchableVehicleModelPicker({
+        inputEl: accVehicleModel,
+        dropdownEl: accVehicleModelDropdown,
+        seatsHiddenEl: accVehicleSeats,
+        chipsSelector: '.acc-model-chip'
+    });
+
+    setupSearchableVehicleModelPicker({
+        inputEl: compVehicleModel,
+        dropdownEl: compVehicleModelDropdown,
+        seatsHiddenEl: compVehicleSeats,
+        chipsSelector: '.comp-model-chip'
+    });
+
+    const drvCarModelDropdown = document.getElementById('drvCarModelDropdown');
+    setupSearchableVehicleModelPicker({
+        inputEl: drvCarModelInput,
+        dropdownEl: drvCarModelDropdown,
+        onSelect: (name, seats) => {
+            const seatsNum = parseInt(seats, 10);
+            if (drvSeatsInput) drvSeatsInput.value = seatsNum;
+            document.querySelectorAll('#drvSeatPills .drv-seat-btn').forEach(btn => {
+                btn.classList.toggle('active', parseInt(btn.dataset.seats, 10) === seatsNum);
+            });
+        }
+    });
+
+    const upgCarModelDropdown = document.getElementById('upgCarModelDropdown');
+    setupSearchableVehicleModelPicker({
+        inputEl: upgCarModel,
+        dropdownEl: upgCarModelDropdown,
+        onSelect: (name, seats) => {
+            const seatsNum = parseInt(seats, 10);
+            if (upgSeats) upgSeats.value = String(seatsNum);
+        }
+    });
 
     function renderVehicleModels(models) {
         if (!vehicleModelsContainer) return;

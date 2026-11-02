@@ -2844,3 +2844,110 @@ button, input, select, textarea {
     from { opacity: 0; transform: translateY(-14px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+
+/* ==========================================================================
+   VEHICLE MODEL SEARCHABLE AUTOCOMPLETE & CHIPS
+   ========================================================================== */
+.model-search-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    max-height: 190px;
+    overflow-y: auto;
+    background: #131B2E;
+    border: 1.5px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+    z-index: 999;
+}
+
+.model-dropdown-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    font-size: 0.78rem;
+    color: var(--text-primary);
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.model-dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.model-dropdown-item:hover,
+.model-dropdown-item.active {
+    background: rgba(255, 200, 61, 0.12);
+    color: var(--taxi-yellow);
+}
+
+.model-item-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+}
+
+.model-item-left i {
+    font-size: 0.72rem;
+    color: var(--taxi-yellow);
+}
+
+.model-item-badge {
+    font-size: 0.64rem;
+    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+}
+
+.model-dropdown-empty {
+    padding: 10px;
+    text-align: center;
+    font-size: 0.74rem;
+    color: var(--text-muted);
+}
+
+.model-quick-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    align-items: center;
+    margin-top: 4px;
+}
+
+.model-chip {
+    font-size: 0.68rem;
+    font-weight: 500;
+    padding: 3px 8px;
+    border-radius: 12px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.model-chip:hover,
+.model-chip:active {
+    border-color: var(--taxi-yellow);
+    color: var(--taxi-yellow);
+    background: rgba(255, 200, 61, 0.1);
+}
+
+.input-highlight-error {
+    border-color: #EF4444 !important;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25) !important;
+    animation: shake 0.3s ease-in-out;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-4px); }
+    40%, 80% { transform: translateX(4px); }
+}

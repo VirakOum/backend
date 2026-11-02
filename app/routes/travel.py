@@ -3253,6 +3253,19 @@ class TelegramMiniAppOneClickRequest(BaseModel):
 	full_name: str | None = None
 	role: str = "passenger"
 	password: str | None = None
+	vehicle_model: str | None = None
+	plate_number: str | None = None
+	seat_type: int = 4
+
+
+class TelegramMiniAppCompleteProfileRequest(BaseModel):
+	telegram_user_id: str | None = None
+	auth_token: str | None = None
+	phone: str | None = None
+	full_name: str | None = None
+	vehicle_model: str | None = None
+	plate_number: str | None = None
+	seat_type: int = 4
 
 
 class TelegramMiniAppSwitchRoleRequest(BaseModel):
@@ -3375,10 +3388,26 @@ def _build_tma_session_response(
 	account_action: str = "loaded",
 ) -> dict:
 	token_str = auth_token or issue_token(db, user)
+	driver_summary = _build_tma_driver_summary(db, user)
+	is_driver = user.role == "driver"
+	has_vehicles = bool(driver_summary and driver_summary.get("vehicle_count", 0) > 0)
+	name_str = (user.full_name or "").strip()
+	has_valid_name = bool(name_str and not name_str.startswith("Telegram User (") and len(name_str) >= 2)
+
+	missing_fields: list[str] = []
+	if not has_valid_name:
+		missing_fields.append("full_name")
+	if is_driver and not has_vehicles:
+		missing_fields.append("driver_vehicle")
+
+	profile_completed = len(missing_fields) == 0
+
 	return {
 		"registered": True,
 		"telegram_linked": True,
 		"requires_app_link": False,
+		"profile_completed": profile_completed,
+		"missing_fields": missing_fields,
 		"account_action": account_action,
 		"auth_token": token_str,
 		"linked_phone": user.phone,
@@ -3390,7 +3419,7 @@ def _build_tma_session_response(
 			"is_verified": bool(user.is_verified),
 			"avatar_url": user.avatar_url,
 		},
-		"driver_summary": _build_tma_driver_summary(db, user),
+		"driver_summary": driver_summary,
 	}
 
 
@@ -3621,6 +3650,22 @@ def telegram_miniapp_one_click_register(
 	db.add(new_user)
 	db.flush()
 
+	if normalized_role == "driver" and payload.plate_number and payload.plate_number.strip():
+		plate_clean = payload.plate_number.strip().upper()
+		existing_veh = db.execute(
+			select(Vehicle).where(Vehicle.plate_number == plate_clean).limit(1)
+		).scalar_one_or_none()
+		if existing_veh is None:
+			db.add(
+				Vehicle(
+					owner_id=new_user.id,
+					plate_number=plate_clean,
+					seat_type=max(1, min(payload.seat_type or 4, 24)),
+					vehicle_type="SUV" if (payload.seat_type or 4) <= 7 else "VAN",
+					model=(payload.vehicle_model or "VIP Taxi").strip(),
+				)
+			)
+
 	_link_telegram_to_phone(db, target_chat, clean_p, payload.telegram_username)
 	db.commit()
 	db.refresh(new_user)
@@ -3695,6 +3740,67 @@ def telegram_miniapp_switch_role(
 	db.commit()
 	db.refresh(user)
 	return _build_tma_session_response(db, user, account_action="role_switched")
+
+
+@router.post("/telegram/miniapp/complete-profile")
+def telegram_miniapp_complete_profile(
+	payload: TelegramMiniAppCompleteProfileRequest,
+	db: Session = Depends(get_db),
+) -> dict:
+	"""Request missing account info before sync succeeds (e.g. driver vehicle or full name)."""
+	user: User | None = None
+	if payload.auth_token:
+		tok = db.execute(
+			select(AuthToken).where(AuthToken.token == payload.auth_token.strip()).limit(1)
+		).scalar_one_or_none()
+		if tok:
+			user = db.get(User, tok.user_id)
+	if user is None and payload.telegram_user_id:
+		otp = db.execute(
+			select(TelegramOtpSession)
+			.where(
+				TelegramOtpSession.telegram_chat_id == str(payload.telegram_user_id),
+				TelegramOtpSession.status == "verified",
+			)
+			.order_by(TelegramOtpSession.created_at.desc())
+			.limit(1)
+		).scalar_one_or_none()
+		if otp and otp.phone:
+			user = _find_user_by_phone(db, otp.phone)
+	if user is None and payload.phone:
+		user = _find_user_by_phone(db, _clean_phone(payload.phone))
+
+	if user is None:
+		raise HTTPException(status_code=404, detail="User account not found")
+
+	if payload.full_name and payload.full_name.strip():
+		user.full_name = payload.full_name.strip()
+		db.add(user)
+
+	if user.role == "driver" and payload.plate_number and payload.plate_number.strip():
+		plate_clean = payload.plate_number.strip().upper()
+		existing_veh = db.execute(
+			select(Vehicle).where(Vehicle.plate_number == plate_clean).limit(1)
+		).scalar_one_or_none()
+		if existing_veh is None:
+			db.add(
+				Vehicle(
+					owner_id=user.id,
+					plate_number=plate_clean,
+					seat_type=max(1, min(payload.seat_type or 4, 24)),
+					vehicle_type="SUV" if (payload.seat_type or 4) <= 7 else "VAN",
+					model=(payload.vehicle_model or "VIP Taxi").strip(),
+				)
+			)
+		elif existing_veh.owner_id != user.id:
+			existing_veh.owner_id = user.id
+			if payload.vehicle_model:
+				existing_veh.model = payload.vehicle_model.strip()
+			db.add(existing_veh)
+
+	db.commit()
+	db.refresh(user)
+	return _build_tma_session_response(db, user, account_action="profile_completed")
 
 
 @router.post("/telegram/miniapp/register")
