@@ -6,7 +6,7 @@ from pathlib import Path
 from base64 import b64decode
 from binascii import Error as Base64DecodeError
 from copy import deepcopy
-from typing import cast
+from typing import Any, cast
 
 if __name__ == "__main__" and not __package__:
 	backend_root = Path(__file__).resolve().parents[2]
@@ -15,7 +15,7 @@ if __name__ == "__main__" and not __package__:
 	__package__ = "app.routes"
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, status
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select, func, inspect, or_, and_, delete, cast as sql_cast, String as SqlString
 from sqlalchemy.orm import Session, selectinload
@@ -2332,18 +2332,49 @@ def request_telegram_otp(
 
 
 
+def _get_peer_public_base_url() -> str:
+	"""Return the corresponding peer environment URL (prod vs dev)."""
+	base_url = get_public_base_url().rstrip("/").lower()
+	if base_url == "https://mytravel.taxi":
+		return "https://dev.mytravel.taxi"
+	if "dev.mytravel.taxi" in base_url:
+		return "https://mytravel.taxi"
+	return ""
+
+
 @router.get("/auth/telegram/callback", response_class=HTMLResponse, include_in_schema=True)
 @router.get("/auth/telegram-otp/callback", response_class=HTMLResponse, include_in_schema=False)
 def telegram_otp_callback_redirect(
 	token: str = Query(..., description="Telegram OTP session token"),
+	peer_redirected: str | None = Query(None, include_in_schema=False),
 	db: Session = Depends(get_db),
-) -> HTMLResponse:
+) -> Any:
 	clean_token = token.strip()
 	otp_session = db.execute(
 		select(TelegramOtpSession).where(TelegramOtpSession.session_token == clean_token)
 	).scalar_one_or_none()
 
 	now = phnom_penh_now()
+
+	# If session is missing locally and hasn't been forwarded from peer yet, check peer (prod vs dev)
+	if otp_session is None and peer_redirected != "1":
+		peer_base = _get_peer_public_base_url()
+		if peer_base:
+			try:
+				import httpx
+				peer_resp = httpx.get(
+					f"{peer_base}/travel/auth/telegram/callback",
+					params={"token": clean_token, "peer_redirected": "1"},
+					timeout=3.5,
+				)
+				if peer_resp.status_code in (200, 302):
+					redirect_url = f"{peer_base}/travel/auth/telegram/callback?token={clean_token}&peer_redirected=1"
+					return RedirectResponse(url=redirect_url, status_code=302)
+			except Exception:
+				pass
+			redirect_url = f"{peer_base}/travel/auth/telegram/callback?token={clean_token}&peer_redirected=1"
+			return RedirectResponse(url=redirect_url, status_code=302)
+
 	is_valid = False
 	phone_display = ""
 
@@ -2546,12 +2577,29 @@ def telegram_otp_callback_redirect(
 @router.get("/auth/telegram-otp/status/{session_token}", response_model=TelegramOtpStatusResponse)
 def get_telegram_otp_status(
 	session_token: str,
+	request: Request,
 	db: Session = Depends(get_db),
 ) -> TelegramOtpStatusResponse:
 	otp_session = db.execute(
 		select(TelegramOtpSession).where(TelegramOtpSession.session_token == session_token)
 	).scalar_one_or_none()
 	if otp_session is None:
+		is_forwarded = request.headers.get("X-Telegram-Peer-Forward") == "1"
+		if not is_forwarded:
+			peer_base = _get_peer_public_base_url()
+			if peer_base:
+				try:
+					import httpx
+					resp = httpx.get(
+						f"{peer_base}/v1/api/travel/auth/telegram-otp/status/{session_token}",
+						headers={"X-Telegram-Peer-Forward": "1"},
+						timeout=3.0,
+					)
+					if resp.status_code == 200:
+						data = resp.json()
+						return TelegramOtpStatusResponse(**data)
+				except Exception:
+					pass
 		raise HTTPException(status_code=404, detail="OTP session not found")
 
 	now = phnom_penh_now()
@@ -2584,12 +2632,29 @@ def get_telegram_otp_status(
 @router.post("/auth/telegram-otp/verify", response_model=AuthResponse)
 def verify_telegram_otp(
 	payload: TelegramOtpVerifyRequest,
+	request: Request,
 	db: Session = Depends(get_db),
 ) -> AuthResponse:
 	otp_session = db.execute(
 		select(TelegramOtpSession).where(TelegramOtpSession.session_token == payload.session_token)
 	).scalar_one_or_none()
 	if otp_session is None:
+		is_forwarded = request.headers.get("X-Telegram-Peer-Forward") == "1"
+		if not is_forwarded:
+			peer_base = _get_peer_public_base_url()
+			if peer_base:
+				try:
+					import httpx
+					resp = httpx.post(
+						f"{peer_base}/v1/api/travel/auth/telegram-otp/verify",
+						json=payload.model_dump(),
+						headers={"X-Telegram-Peer-Forward": "1"},
+						timeout=4.0,
+					)
+					if resp.status_code == 200:
+						return AuthResponse(**resp.json())
+				except Exception:
+					pass
 		raise HTTPException(status_code=404, detail="OTP session not found")
 
 	now = phnom_penh_now()
@@ -4083,14 +4148,7 @@ def telegram_miniapp_driver_create_trip(
 
 def _forward_telegram_webhook_to_peer(update: dict) -> bool:
 	"""Forward an unmatched Telegram webhook update to the peer environment (prod <-> dev)."""
-	base_url = get_public_base_url().rstrip("/").lower()
-	peer_base = (
-		"https://dev.mytravel.taxi"
-		if base_url == "https://mytravel.taxi"
-		else "https://mytravel.taxi"
-		if "dev.mytravel.taxi" in base_url
-		else ""
-	)
+	peer_base = _get_peer_public_base_url()
 	if not peer_base:
 		return False
 	try:

@@ -219,3 +219,19 @@ def test_telegram_otp_auto_callback_redirect():
     assert cb_v1.status_code == 200
     assert "mytravel://auth/callback?token=" in cb_v1.text
 
+
+
+def test_telegram_otp_peer_redirect_when_missing_locally():
+    client = TestClient(app)
+
+    # When token is missing in local DB, it should issue a 302 redirect to peer base
+    resp = client.get("/travel/auth/telegram/callback?token=unknown_peer_token", follow_redirects=False)
+    assert resp.status_code == 302
+    assert "https://" in resp.headers["location"]
+    assert "token=unknown_peer_token" in resp.headers["location"]
+    assert "peer_redirected=1" in resp.headers["location"]
+
+    # When already peer_redirected=1, it should NOT loop and should return expired page
+    resp_looped = client.get("/travel/auth/telegram/callback?token=unknown_peer_token&peer_redirected=1")
+    assert resp_looped.status_code == 200
+    assert "Link Expired" in resp_looped.text
