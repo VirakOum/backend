@@ -1600,18 +1600,13 @@ def _send_telegram_verification_prompt(
 	)
 	if has_phone:
 		base_url = get_public_base_url().rstrip("/")
-		callback_url = f"{base_url}/travel/auth/telegram/callback?token={session.session_token}"
+		code_param = f"&code={session.otp_code}" if session.otp_code else ""
+		callback_url = f"{base_url}/travel/auth/telegram/callback?token={session.session_token}{code_param}"
 		reply_markup: dict = {
 			"inline_keyboard": [
 				[
 					{
 						"text": "✅ Verify & Continue (1-Tap) / ផ្ទៀងផ្ទាត់ភ្លាមៗ",
-						"callback_data": f"otp_ok:{session.session_token}",
-					}
-				],
-				[
-					{
-						"text": "🚖 Open App / បើកកម្មវិធី MyTravel",
 						"url": callback_url,
 					}
 				]
@@ -1811,7 +1806,8 @@ def _process_telegram_update_dict(
 						"✅ Verified! Return to the MyTravel app.",
 					)
 					base_url = get_public_base_url().rstrip("/")
-					callback_url = f"{base_url}/travel/auth/telegram/callback?token={session.session_token}"
+					code_param = f"&code={session.otp_code}" if session.otp_code else ""
+					callback_url = f"{base_url}/travel/auth/telegram/callback?token={session.session_token}{code_param}"
 					_send_telegram_bot_message(
 						bot_token,
 						chat_id,
@@ -2034,7 +2030,8 @@ def _process_telegram_update_dict(
 				_ensure_user_from_telegram_session(db, target_session)
 				db.commit()
 				base_url = get_public_base_url().rstrip("/")
-				callback_url = f"{base_url}/travel/auth/telegram/callback?token={target_session.session_token}"
+				code_param = f"&code={target_session.otp_code}" if target_session.otp_code else ""
+				callback_url = f"{base_url}/travel/auth/telegram/callback?token={target_session.session_token}{code_param}"
 				_send_telegram_bot_message(
 					bot_token,
 					chat_id,
@@ -2346,6 +2343,7 @@ def _get_peer_public_base_url() -> str:
 @router.get("/auth/telegram-otp/callback", response_class=HTMLResponse, include_in_schema=False)
 def telegram_otp_callback_redirect(
 	token: str = Query(..., description="Telegram OTP session token"),
+	code: str | None = Query(None, description="6-digit verification code"),
 	peer_redirected: str | None = Query(None, include_in_schema=False),
 	db: Session = Depends(get_db),
 ) -> Any:
@@ -2360,19 +2358,20 @@ def telegram_otp_callback_redirect(
 	if otp_session is None and peer_redirected != "1":
 		peer_base = _get_peer_public_base_url()
 		if peer_base:
+			code_query = f"&code={code.strip()}" if code and code.strip() else ""
 			try:
 				import httpx
 				peer_resp = httpx.get(
 					f"{peer_base}/travel/auth/telegram/callback",
-					params={"token": clean_token, "peer_redirected": "1"},
+					params={"token": clean_token, "code": code.strip() if code else None, "peer_redirected": "1"},
 					timeout=3.5,
 				)
 				if peer_resp.status_code in (200, 302):
-					redirect_url = f"{peer_base}/travel/auth/telegram/callback?token={clean_token}&peer_redirected=1"
+					redirect_url = f"{peer_base}/travel/auth/telegram/callback?token={clean_token}{code_query}&peer_redirected=1"
 					return RedirectResponse(url=redirect_url, status_code=302)
 			except Exception:
 				pass
-			redirect_url = f"{peer_base}/travel/auth/telegram/callback?token={clean_token}&peer_redirected=1"
+			redirect_url = f"{peer_base}/travel/auth/telegram/callback?token={clean_token}{code_query}&peer_redirected=1"
 			return RedirectResponse(url=redirect_url, status_code=302)
 
 	is_valid = False
@@ -2401,9 +2400,13 @@ def telegram_otp_callback_redirect(
 					pass
 
 	safe_token = clean_token.replace('"', '').replace("'", "")
+	raw_code = (code.strip() if code and code.strip() else (otp_session.otp_code if otp_session and otp_session.otp_code else "")).strip()
+	safe_code = raw_code.replace('"', '').replace("'", "")
 	status_title = "ផ្ទៀងផ្ទាត់ជោគជ័យ!<br>Verified Successfully!" if is_valid else "តំណភ្ជាប់ផុតកំណត់<br>Link Expired"
+	code_label = f"លេខកូដ / Code: <b>{safe_code}</b><br>" if safe_code else ""
+	phone_label = f"លេខទូរស័ព្ទ: {phone_display}<br>" if phone_display else ""
 	status_desc = (
-		f"លេខទូរស័ព្ទ: {phone_display}<br>កំពុងត្រឡប់ទៅកាន់កម្មវិធី MyTravel ដោយស្វ័យប្រវត្តិ...<br>Returning to the MyTravel app automatically..."
+		f"{code_label}{phone_label}កំពុងត្រឡប់ទៅកាន់កម្មវិធី MyTravel ដោយស្វ័យប្រវត្តិ...<br>Returning to the MyTravel app automatically..."
 		if is_valid
 		else "កូដផ្ទៀងផ្ទាត់នេះបានផុតកំណត់ហើយ។ សូមស្នើសុំកូដថ្មីក្នុងកម្មវិធី MyTravel។<br>This session has expired. Please request a new code in the app."
 	)
@@ -2523,11 +2526,13 @@ def telegram_otp_callback_redirect(
 
     <script>
         const token = "{safe_token}";
+        const code = "{safe_code}";
         const isAndroid = /Android/i.test(navigator.userAgent);
         const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-        const customSchemeUrl = "mytravel://auth/callback?token=" + encodeURIComponent(token);
-        const androidIntentUrl = "intent://auth/callback?token=" + encodeURIComponent(token) + "#Intent;scheme=mytravel;package=com.kh.mytravel.mytravel;end;";
+        const codeParam = code ? "&code=" + encodeURIComponent(code) : "";
+        const customSchemeUrl = "mytravel://auth/callback?token=" + encodeURIComponent(token) + codeParam;
+        const androidIntentUrl = "intent://auth/callback?token=" + encodeURIComponent(token) + codeParam + "#Intent;scheme=mytravel;package=com.kh.mytravel.mytravel;end;";
         
         const primaryTarget = isAndroid ? androidIntentUrl : customSchemeUrl;
 

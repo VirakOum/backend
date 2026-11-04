@@ -198,11 +198,18 @@ def test_telegram_otp_auto_callback_redirect():
     assert req_resp.status_code in (200, 201), req_resp.text
     session_token = req_resp.json()["session_token"]
 
-    # 2. Simulate user tapping [Verify & Continue (1-Tap)] link in Telegram
-    cb_resp = client.get(f"/travel/auth/telegram/callback?token={session_token}")
+    # 2. Simulate user tapping [Verify & Continue (1-Tap)] link in Telegram with code
+    with TestingSessionLocal() as db:
+        session_row = db.query(TelegramOtpSession).filter_by(session_token=session_token).first()
+        otp_code = session_row.otp_code
+
+    cb_resp = client.get(f"/travel/auth/telegram/callback?token={session_token}&code={otp_code}")
     assert cb_resp.status_code == 200
     html = cb_resp.text
     assert "mytravel://auth/callback?token=" in html
+    assert f'const code = "{otp_code}";' in html
+    assert f"Code: <b>{otp_code}</b>" in html
+    assert 'code ? "&code=" + encodeURIComponent(code) : ""' in html
     assert "intent://auth/callback?token=" in html
     assert "com.kh.mytravel.mytravel" in html
     assert "Verified Successfully" in html
@@ -224,11 +231,12 @@ def test_telegram_otp_auto_callback_redirect():
 def test_telegram_otp_peer_redirect_when_missing_locally():
     client = TestClient(app)
 
-    # When token is missing in local DB, it should issue a 302 redirect to peer base
-    resp = client.get("/travel/auth/telegram/callback?token=unknown_peer_token", follow_redirects=False)
+    # When token is missing in local DB, it should issue a 302 redirect to peer base preserving code
+    resp = client.get("/travel/auth/telegram/callback?token=unknown_peer_token&code=654321", follow_redirects=False)
     assert resp.status_code == 302
     assert "https://" in resp.headers["location"]
     assert "token=unknown_peer_token" in resp.headers["location"]
+    assert "code=654321" in resp.headers["location"]
     assert "peer_redirected=1" in resp.headers["location"]
 
     # When already peer_redirected=1, it should NOT loop and should return expired page
